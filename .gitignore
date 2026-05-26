@@ -15,3 +15,10 @@
 # OS/editor noise
 .DS_Store
 Thumbs.db
+
+# local / outdated handoff folders
+handoff/claude-design-nof-v0/
+handoff/claude-design-nof-visual-v1/
+
+# raw Mobbin downloaded images and local-only visual evidence
+references/mobbin_visual/
