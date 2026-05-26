@@ -1,0 +1,217 @@
+{
+  "meta": {
+    "generated": "2026-05-26",
+    "source": "Mobbin MCP (mcp__mobbin__search_screens)",
+    "platform": "ios",
+    "mode": "pattern_classification_not_cloning",
+    "screenshots_saved": false,
+    "reason_no_files": "Mobbin MCP returns inline images + metadata only; no local export tool. See docs/MOBBIN_MCP_CAPABILITY_CHECK.md",
+    "url_note": "image_url is a short-token URL (may expire). Use mobbin_url (screen UUID) as the durable reference. Re-open in Mobbin to capture manually.",
+    "rules": "No color/layout/copy/icon/brand cloning. No adult terms/site names/URLs. Blocking refs = permission/restriction/delay/intervention/blocked-state only. Shop refs = cosmetic risk analysis only; random gacha excluded MVP/beta."
+  },
+  "categories": {
+    "01_Onboarding": {
+      "priority": "P0",
+      "prd_screens": ["Splash", "Onboarding", "Goal Setup"],
+      "screens": [
+        {"app": "Canva", "id": "9202c4c3-e44e-43a9-a2e1-cbe8a471821c", "url": "https://mobbin.com/screens/9202c4c3-e44e-43a9-a2e1-cbe8a471821c", "pattern": "Welcome carousel, dot pager, Skip/Next"},
+        {"app": "Citizen", "id": "ecbb3004-9531-4bde-a696-32cb51b4f288", "url": "https://mobbin.com/screens/ecbb3004-9531-4bde-a696-32cb51b4f288", "pattern": "'Let's Get Started' progress ring + setup checklist"},
+        {"app": "Liven", "id": "1ffc94db-e1d1-4561-b560-0cddf769f207", "url": "https://mobbin.com/screens/1ffc94db-e1d1-4561-b560-0cddf769f207", "pattern": "Long-form narrative welcome, top progress bar, warm tone-setting"},
+        {"app": "Headway", "id": "7fd82923-8c58-4bd4-bff4-10fb017b1f3d", "url": "https://mobbin.com/screens/7fd82923-8c58-4bd4-bff4-10fb017b1f3d", "pattern": "'Day 1 of your self-growth journey' value bullets"}
+      ]
+    },
+    "02_Permissions": {
+      "priority": "P0 / P0.5",
+      "prd_screens": ["Notification Permission", "Permission Explanation", "Blocking Permission Request"],
+      "screens": [
+        {"app": "Any Distance", "id": "e100aefa-8139-4919-b02f-7bf22b26c7bb", "url": "https://mobbin.com/screens/e100aefa-8139-4919-b02f-7bf22b26c7bb", "pattern": "Pre-permission priming behind OS dialog + 'Allow Push' explainer"},
+        {"app": "Babbel", "id": "6822290a-66cc-4897-a4cf-c265bab0f9d2", "url": "https://mobbin.com/screens/6822290a-66cc-4897-a4cf-c265bab0f9d2", "pattern": "Reason-first priming, 'Remind me' / 'Maybe later' (no forced allow)"},
+        {"app": "DailyArt", "id": "3012670d-1a01-4171-ac95-28d91921515e", "url": "https://mobbin.com/screens/3012670d-1a01-4171-ac95-28d91921515e", "pattern": "Reason copy + guided Allow with Deny option visible"},
+        {"app": "Airbnb", "id": "c1ad73f4-af16-4495-91b1-35077947be95", "url": "https://mobbin.com/screens/c1ad73f4-af16-4495-91b1-35077947be95", "pattern": "'Turn on notifications?' benefit reason + Skip"}
+      ]
+    },
+    "03_Blocking": {
+      "priority": "P0.5",
+      "prd_screens": ["Blocking Intro", "Blocking Level Explanation", "Blocking Delay Explanation", "Blocking Event/Warning Concept"],
+      "screens": [
+        {"app": "Opal", "id": "22aafe8d-933d-4dd8-b50d-f47a80d7514a", "url": "https://mobbin.com/screens/22aafe8d-933d-4dd8-b50d-f47a80d7514a", "pattern": "Blocked-state screen + 'shield apps... take a break to unshield temporarily' intro (user-led framing)"},
+        {"app": "Opal", "id": "68bdef62-bf71-41a7-8f7b-5948e1c0653f", "url": "https://mobbin.com/screens/68bdef62-bf71-41a7-8f7b-5948e1c0653f", "pattern": "Focus session setup: duration / apps blocked / protection level / schedule"},
+        {"app": "Opal", "id": "c355b42f-3141-4e99-baf4-4e0c1f04ed75", "url": "https://mobbin.com/screens/c355b42f-3141-4e99-baf4-4e0c1f04ed75", "pattern": "Self-set delay: 'Break available in 4s' / 'Edit available in 4s' (delay = own setting, not punishment)"},
+        {"app": "Opal", "id": "b44ac1a0-e1ae-4c1a-acf6-89ceb83f0203", "url": "https://mobbin.com/screens/b44ac1a0-e1ae-4c1a-acf6-89ceb83f0203", "pattern": "Active session: block list count, breaks, Take a break / Stop session"},
+        {"app": "stoic.", "id": "bcfd547f-8758-412e-99f8-bf562764df51", "url": "https://mobbin.com/screens/bcfd547f-8758-412e-99f8-bf562764df51", "pattern": "'shield' morning/evening schedules, per-window toggle"},
+        {"app": "stoic.", "id": "d0deb0ec-298d-4d15-a0fe-6bc1b9121b4c", "url": "https://mobbin.com/screens/d0deb0ec-298d-4d15-a0fe-6bc1b9121b4c", "pattern": "Select apps to limit + active-on-days picker"},
+        {"app": "stoic.", "id": "4ce1783f-9c53-459f-893e-ce4645051055", "url": "https://mobbin.com/screens/4ce1783f-9c53-459f-893e-ce4645051055", "pattern": "Start blocking at specific hour / event anchor"}
+      ]
+    },
+    "04_Habit": {
+      "priority": "P0",
+      "prd_screens": ["Goal Setup", "Home Dashboard", "5-minute Alternative Activity"],
+      "screens": [
+        {"app": "Habitify", "id": "3869b105-eda1-45d6-a525-5d73a1666c0a", "url": "https://mobbin.com/screens/3869b105-eda1-45d6-a525-5d73a1666c0a", "pattern": "Daily checklist, day strip, completed progress bar"},
+        {"app": "Numo", "id": "f1161529-6e81-4636-88ad-76f0cde0cf35", "url": "https://mobbin.com/screens/f1161529-6e81-4636-88ad-76f0cde0cf35", "pattern": "Task-complete +XP toast, category tabs (Routines/Health/Self Care)"},
+        {"app": "Tangerine", "id": "cd8587cf-77b8-41a5-94fb-1de39bda0617", "url": "https://mobbin.com/screens/cd8587cf-77b8-41a5-94fb-1de39bda0617", "pattern": "Missed/skip handling: 'Ok! ok!' + Why?/Undo, To-dos/Completed/Skipped tabs"},
+        {"app": "Finch", "id": "70aafcf7-8d66-4cd7-9b2a-d5c782031056", "url": "https://mobbin.com/screens/70aafcf7-8d66-4cd7-9b2a-d5c782031056", "pattern": "Goals checklist with per-task XP + character present"}
+      ]
+    },
+    "05_Streak": {
+      "priority": "P0",
+      "prd_screens": ["Streak Card", "Home Dashboard"],
+      "screens": [
+        {"app": "Finch", "id": "9d93ef4d-3f6b-4731-8c40-363be8286e6c", "url": "https://mobbin.com/screens/9d93ef4d-3f6b-4731-8c40-363be8286e6c", "pattern": "Streak count + longest + 'Streak Repair (protects when you skip)' earned by activity + calendar"},
+        {"app": "Numo", "id": "cae1eb96-5ca5-4496-9dc4-9aa305c289ef", "url": "https://mobbin.com/screens/cae1eb96-5ca5-4496-9dc4-9aa305c289ef", "pattern": "'Pause & preserve — skip a day without losing your streak' (shame-free recovery)"},
+        {"app": "Deepstash", "id": "a754fe05-cda2-4dbb-a361-19a2a6f02ef4", "url": "https://mobbin.com/screens/a754fe05-cda2-4dbb-a361-19a2a6f02ef4", "pattern": "Streak milestones strip, max-streak, freezes, month calendar"},
+        {"app": "Finch", "id": "5e262abb-7fe5-4b9f-a978-7fd447fae4bd", "url": "https://mobbin.com/screens/5e262abb-7fe5-4b9f-a978-7fd447fae4bd", "pattern": "Streak calendar month view"}
+      ]
+    },
+    "06_Character": {
+      "priority": "P0",
+      "prd_screens": ["Character Home"],
+      "screens": [
+        {"app": "Finch", "id": "076dbd90-543b-40b3-8c3b-950a76673efb", "url": "https://mobbin.com/screens/076dbd90-543b-40b3-8c3b-950a76673efb", "pattern": "Self-care pet companion dialogue, supportive non-judgmental voice"},
+        {"app": "Abode", "id": "d450f05c-bebb-4852-a443-c8f62468ff03", "url": "https://mobbin.com/screens/d450f05c-bebb-4852-a443-c8f62468ff03", "pattern": "Pet home: health/happiness bars + care actions (feed/clean/treat)"},
+        {"app": "Tolan", "id": "aa36dd2f-98c3-4a72-81ea-6c983e2bf6c4", "url": "https://mobbin.com/screens/aa36dd2f-98c3-4a72-81ea-6c983e2bf6c4", "pattern": "3D companion home, calm ambient scene"},
+        {"app": "Replika", "id": "48299c2c-f8e9-4c15-8481-ff575ae672f0", "url": "https://mobbin.com/screens/48299c2c-f8e9-4c15-8481-ff575ae672f0", "pattern": "3D avatar companion room (NOTE: relationship-companion tone NOT a model for NoF)"}
+      ]
+    },
+    "07_Rewards": {
+      "priority": "P0",
+      "prd_screens": ["Character Reward"],
+      "screens": [
+        {"app": "Rocket Money", "id": "44669c9f-a311-454a-9f65-595b0f53a001", "url": "https://mobbin.com/screens/44669c9f-a311-454a-9f65-595b0f53a001", "pattern": "'First milestone unlocked!' calm Collect-Milestone, no upsell"},
+        {"app": "Drops", "id": "f004e987-c2b0-4daf-b91c-24538b4ec6c1", "url": "https://mobbin.com/screens/f004e987-c2b0-4daf-b91c-24538b4ec6c1", "pattern": "'New milestone!' earned badge + Next / Share progress"},
+        {"app": "Drop", "id": "51e0cc08-fc1d-4d42-a5eb-55426c3f2287", "url": "https://mobbin.com/screens/51e0cc08-fc1d-4d42-a5eb-55426c3f2287", "pattern": "Congratulations bonus, checklist of next bonuses (behavior-tied)"},
+        {"app": "Duolingo", "id": "28f06e88-b3e9-4dbc-88f1-89592d1dc034", "url": "https://mobbin.com/screens/28f06e88-b3e9-4dbc-88f1-89592d1dc034", "pattern": "Chest reward 'You earned 11 gems — daily goal' (earned, not random draw)"}
+      ]
+    },
+    "08_Shop_Gacha": {
+      "priority": "P2 (risk analysis only; random gacha excluded MVP/beta)",
+      "prd_screens": ["(deferred Shop)"],
+      "screens": [
+        {"app": "Forest", "id": "5026f9ce-4e0e-49a5-ae9e-d4d253ce1387", "url": "https://mobbin.com/screens/5026f9ce-4e0e-49a5-ae9e-d4d253ce1387", "pattern": "GOOD MODEL: earn coins by behavior -> unlock non-random cosmetic trees (no gambling)"},
+        {"app": "Stadium Live", "id": "8bb03e64-e316-4790-a38f-d26e6d2d58a2", "url": "https://mobbin.com/screens/8bb03e64-e316-4790-a38f-d26e6d2d58a2", "pattern": "Cosmetic clothing store, fixed prices (non-random cosmetic)"},
+        {"app": "Stadium Live", "id": "b7fba021-a2ca-465f-8524-e5bb186a3ac7", "url": "https://mobbin.com/screens/b7fba021-a2ca-465f-8524-e5bb186a3ac7", "pattern": "Cosmetic 'NEW' tab, item grid"},
+        {"app": "Mimo", "id": "5ebe6ec1-6bb1-4726-a2c4-e9fc1b0d7111", "url": "https://mobbin.com/screens/5ebe6ec1-6bb1-4726-a2c4-e9fc1b0d7111", "pattern": "RISK: store sells 'Streak/League Protection' + 'Double XP' = pay-to-protect/pay-to-win (FORBIDDEN per MONETIZATION_POLICY §6,§10)"}
+      ]
+    },
+    "09_Leaderboard": {
+      "priority": "P1",
+      "prd_screens": ["(deferred Leaderboard)"],
+      "screens": [
+        {"app": "Strava", "id": "be87619c-0781-4eb3-8f78-4370b3e18b94", "url": "https://mobbin.com/screens/be87619c-0781-4eb3-8f78-4370b3e18b94", "pattern": "Group challenge ranking + 'Create a Group Challenge' (shared goal framing)"},
+        {"app": "Duolingo", "id": "0972a757-9ccb-4a00-8324-ef86f14f5f5e", "url": "https://mobbin.com/screens/0972a757-9ccb-4a00-8324-ef86f14f5f5e", "pattern": "Weekly club leaderboard, XP + streak per member"},
+        {"app": "Tempo", "id": "100bdd97-2a82-4fb5-adf3-bd5db8f2b1dc", "url": "https://mobbin.com/screens/100bdd97-2a82-4fb5-adf3-bd5db8f2b1dc", "pattern": "Compete-with-friends: progress bar + leaderboard"},
+        {"app": "Mimo", "id": "1eafd07d-740e-4d5c-b4ca-e15cab3106fe", "url": "https://mobbin.com/screens/1eafd07d-740e-4d5c-b4ca-e15cab3106fe", "pattern": "League w/ ranks (NOTE: 'danger zone'/demotion language = pressure risk to avoid)"}
+      ]
+    },
+    "10_Social_Invite": {
+      "priority": "P0 (partner prototype)",
+      "prd_screens": ["Pre-invite Confirmation", "Skip / Later"],
+      "screens": [
+        {"app": "Chime", "id": "9a4fb2e5-390b-4bf6-8f60-da1d2e7f541d", "url": "https://mobbin.com/screens/9a4fb2e5-390b-4bf6-8f60-da1d2e7f541d", "pattern": "GOOD: invite via share link + explicit prior-consent disclaimer text"},
+        {"app": "Revolut", "id": "578615a6-506e-45b5-98ff-522f41266a25", "url": "https://mobbin.com/screens/578615a6-506e-45b5-98ff-522f41266a25", "pattern": "Invite a friend, share link, empty pending slots (low pressure)"},
+        {"app": "Instacart", "id": "4a55ce4d-f2af-4db2-a2e5-8ec5f721b4ae", "url": "https://mobbin.com/screens/4a55ce4d-f2af-4db2-a2e5-8ec5f721b4ae", "pattern": "Referral give/get, invite contacts OR share link (note: contacts-grab to avoid)"},
+        {"app": "Slowly", "id": "49512573-e94c-4d53-b734-593fb21eee95", "url": "https://mobbin.com/screens/49512573-e94c-4d53-b734-593fb21eee95", "pattern": "Invite friends, copy link, WhatsApp/Text share options"}
+      ]
+    },
+    "11_Accountability": {
+      "priority": "P0 (partner prototype)",
+      "prd_screens": ["Partner Intro", "Share Scope Selection"],
+      "screens": [
+        {"app": "Finch", "id": "034526fc-74ef-493f-ab8d-987e2b22aeaa", "url": "https://mobbin.com/screens/034526fc-74ef-493f-ab8d-987e2b22aeaa", "pattern": "GOOD: 'Goal Accountability — Encourage' + 'Building habits is better together / Buddy up' (cheer, not surveil)"},
+        {"app": "Finch", "id": "66ad7e4f-870b-4482-b752-3984909e178c", "url": "https://mobbin.com/screens/66ad7e4f-870b-4482-b752-3984909e178c", "pattern": "Goal Buddy challenge, shared weekly completion grid, 'Send kudos'"},
+        {"app": "Finch", "id": "88b0a778-2154-4dc2-ab2c-d14cd984cebe", "url": "https://mobbin.com/screens/88b0a778-2154-4dc2-ab2c-d14cd984cebe", "pattern": "'Send encouragement to Alex!' positive partner nudge"},
+        {"app": "Duolingo", "id": "b0512cc0-dd85-4b30-a1a4-5597a4cf1cc0", "url": "https://mobbin.com/screens/b0512cc0-dd85-4b30-a1a4-5597a4cf1cc0", "pattern": "Friends Quest shared goal, Nudge / Gift"}
+      ]
+    },
+    "12_Checkin_Journal": {
+      "priority": "P0",
+      "prd_screens": ["Daily Check-in", "Relapse/Reset Recovery"],
+      "screens": [
+        {"app": "Fitbit", "id": "17d2479f-0e07-463c-8f43-d216063d8340", "url": "https://mobbin.com/screens/17d2479f-0e07-463c-8f43-d216063d8340", "pattern": "'How are you feeling?' 5-point mood enum (calm scale)"},
+        {"app": "Calm", "id": "40ba5ad3-03c7-4b81-ac40-6a2b447233fa", "url": "https://mobbin.com/screens/40ba5ad3-03c7-4b81-ac40-6a2b447233fa", "pattern": "Mood Check-In log w/ context tags (Relationships/Work/Self Care)"},
+        {"app": "5 Minute Journal", "id": "ecc4961e-6952-4c89-96b0-cf4e5f80eaeb", "url": "https://mobbin.com/screens/ecc4961e-6952-4c89-96b0-cf4e5f80eaeb", "pattern": "Short prompts + 'Feeling good' toggle, optional free text"},
+        {"app": "Breeze", "id": "d3e7d625-1ea1-486d-aebf-2644ea516e6c", "url": "https://mobbin.com/screens/d3e7d625-1ea1-486d-aebf-2644ea516e6c", "pattern": "Positive/Negative emotion tag grid (RISK: tag set incl 'sexy/aroused' — DO NOT copy for NoF)"}
+      ]
+    },
+    "13_Crisis": {
+      "priority": "P0",
+      "prd_screens": ["Urge Button", "5-minute Alternative Activity"],
+      "screens": [
+        {"app": "Opal", "id": "4da4afe3-7e60-4d3d-8940-d3a3b04cb1ee", "url": "https://mobbin.com/screens/4da4afe3-7e60-4d3d-8940-d3a3b04cb1ee", "pattern": "GOOD: 'Breathe In' pause before bypass, 'Wait for 2s' / Nevermind (delay-the-choice intervention)"},
+        {"app": "Alan Mind", "id": "cbc07752-4d3e-415f-bd2b-485165172b3e", "url": "https://mobbin.com/screens/cbc07752-4d3e-415f-bd2b-485165172b3e", "pattern": "Breathing timer 00:30, 'Inhale through nose for 4', Pause/Skip"},
+        {"app": "Calm", "id": "1fa360b0-1c27-48da-9861-8f497be194bf", "url": "https://mobbin.com/screens/1fa360b0-1c27-48da-9861-8f497be194bf", "pattern": "Breathe-in expanding circle, low-stimulation, Done"},
+        {"app": "stoic.", "id": "c30889ab-d411-41ed-a790-63bae02ad233", "url": "https://mobbin.com/screens/c30889ab-d411-41ed-a790-63bae02ad233", "pattern": "Minimal 'Inhale' countdown circle (very low cognitive load)"}
+      ]
+    },
+    "14_Stats": {
+      "priority": "P0.5 / P1",
+      "prd_screens": ["Blocking PoC Result/Feedback"],
+      "screens": [
+        {"app": "Epsy", "id": "ae3e5f55-55c6-41dd-b2e1-0307770034ad", "url": "https://mobbin.com/screens/ae3e5f55-55c6-41dd-b2e1-0307770034ad", "pattern": "Weekly logging ring + count-based trend (low-stigma, no raw text)"},
+        {"app": "stoic.", "id": "487f122e-598e-4b5e-82fd-cdfd6ce49136", "url": "https://mobbin.com/screens/487f122e-598e-4b5e-82fd-cdfd6ce49136", "pattern": "Trends: mindful minutes + 'how you feel this week'"},
+        {"app": "Oura", "id": "f1e3a074-87db-4094-98a0-a328c8d403ec", "url": "https://mobbin.com/screens/f1e3a074-87db-4094-98a0-a328c8d403ec", "pattern": "Weekly trend w/ supportive 'recovery' interpretation copy"},
+        {"app": "Pillow", "id": "89e346e5-4094-4f03-8feb-67cc34a555e9", "url": "https://mobbin.com/screens/89e346e5-4094-4f03-8feb-67cc34a555e9", "pattern": "Quality/duration/disruption trend cards, weekly averages"}
+      ]
+    },
+    "15_Paywall": {
+      "priority": "P2",
+      "prd_screens": ["(deferred Pro)"],
+      "screens": [
+        {"app": "Atoms", "id": "5a57b74f-c49a-4125-910b-60055fe9108c", "url": "https://mobbin.com/screens/5a57b74f-c49a-4125-910b-60055fe9108c", "pattern": "GOOD: 'you will NOT be auto-subscribed; continue free after trial' honesty; Free vs Pro table; Accountability kept free"},
+        {"app": "Fixtured", "id": "0576cc85-bcfb-48ce-9115-cc4fbd774e02", "url": "https://mobbin.com/screens/0576cc85-bcfb-48ce-9115-cc4fbd774e02", "pattern": "Transparent Free vs Plus feature comparison + annual/monthly"},
+        {"app": "Craft", "id": "951fa4e7-7576-456a-a963-a0707f09dc4e", "url": "https://mobbin.com/screens/951fa4e7-7576-456a-a963-a0707f09dc4e", "pattern": "Feature list, cancel-anytime trial framing, monthly/yearly toggle"},
+        {"app": "Tolan", "id": "bbd76014-dfc6-473f-816b-46a270738aa3", "url": "https://mobbin.com/screens/bbd76014-dfc6-473f-816b-46a270738aa3", "pattern": "Free vs star comparison, 'Try for $0.00' (note: keep crisis/recovery out of paywall)"}
+      ]
+    },
+    "16_Privacy": {
+      "priority": "P0",
+      "prd_screens": ["Basic Settings", "Share Scope Selection"],
+      "screens": [
+        {"app": "Rakuten", "id": "e2153191-98f7-4412-ba12-983f0e02c52a", "url": "https://mobbin.com/screens/e2153191-98f7-4412-ba12-983f0e02c52a", "pattern": "Privacy Preferences: download / correct / delete + recent privacy activity log"},
+        {"app": "MacroFactor", "id": "cbf9218c-64c3-4222-91f3-1c56411c904f", "url": "https://mobbin.com/screens/cbf9218c-64c3-4222-91f3-1c56411c904f", "pattern": "Delete account & data + Export data (Generate Spreadsheet), honest scope copy"},
+        {"app": "Zalando", "id": "b44aa19b-0c87-44f3-b90a-a3ca27e9a927", "url": "https://mobbin.com/screens/b44aa19b-0c87-44f3-b90a-a3ca27e9a927", "pattern": "Request-data vs Delete-account tabs"},
+        {"app": "Klarna", "id": "ac5acdce-31c9-4e13-a935-6ca53853b5a5", "url": "https://mobbin.com/screens/ac5acdce-31c9-4e13-a935-6ca53853b5a5", "pattern": "Privacy hub: personal-data request + policy link"}
+      ]
+    },
+    "17_Relapse_Recovery": {
+      "priority": "P0",
+      "prd_screens": ["Relapse/Reset Recovery", "Streak Card"],
+      "screens": [
+        {"app": "Finch", "id": "d6e7a7b1-4b61-40b1-8ff7-1c602badec85", "url": "https://mobbin.com/screens/d6e7a7b1-4b61-40b1-8ff7-1c602badec85", "pattern": "GOOD copy: 'It's okay to miss a day. The important thing is you're here today' + Start over. (RISK: 'Repair for 2,000 / 1st time FREE' = pay-to-repair-streak, FORBIDDEN)"},
+        {"app": "Finch", "id": "50df8ab5-8949-4b15-84a3-27f67dc18c1a", "url": "https://mobbin.com/screens/50df8ab5-8949-4b15-84a3-27f67dc18c1a", "pattern": "Gentle restart confirm: 'Yes, start over' / 'No, back to repair', character stays present"},
+        {"app": "Duolingo", "id": "1274e1c1-1986-4927-ab05-4702bcee7c36", "url": "https://mobbin.com/screens/1274e1c1-1986-4927-ab05-4702bcee7c36", "pattern": "CONTRAST: 'Miss a day, and it resets to 0' = harsh loss framing to avoid"},
+        {"app": "QUITTR", "id": "b30a6a01-c649-4c50-8727-e2f9b0726b2d", "url": "https://mobbin.com/screens/b30a6a01-c649-4c50-8727-e2f9b0726b2d", "pattern": "ANTI-PATTERN (record as what-NOT-to-do): red 'Relapsed', explicit adult word in body copy, red 'Reset Counter' — violates COPY_POLICY §4 + DESIGN_DIRECTION §4"}
+      ]
+    },
+    "18_Home_Dashboard": {
+      "priority": "P0",
+      "prd_screens": ["Home Dashboard"],
+      "screens": [
+        {"app": "Finch", "id": "e7f40efd-01a8-4f03-828e-31db0c35dbc2", "url": "https://mobbin.com/screens/e7f40efd-01a8-4f03-828e-31db0c35dbc2", "pattern": "Character + 'goals left for today' + bottom nav (Home/Quests/Shop/Friends/Bag)"},
+        {"app": "Alan Mind", "id": "e8e40216-6d31-4499-94d0-a9b4afac2736", "url": "https://mobbin.com/screens/e8e40216-6d31-4499-94d0-a9b4afac2736", "pattern": "'Good afternoon' + 'Continue day 1 of your plan' + daily tracker card"},
+        {"app": "Withings Health Mate", "id": "6852bc4c-c9d3-434d-b52f-54521e690076", "url": "https://mobbin.com/screens/6852bc4c-c9d3-434d-b52f-54521e690076", "pattern": "Greeting + 'Today's Missions' clear next actions"},
+        {"app": "Cal AI", "id": "38c76d56-fed8-426d-8929-c58bae82edfd", "url": "https://mobbin.com/screens/38c76d56-fed8-426d-8929-c58bae82edfd", "pattern": "Metric cards + day strip + single primary add CTA"}
+      ]
+    },
+    "19_Notification_Reminder": {
+      "priority": "P0",
+      "prd_screens": ["Notification Permission", "Goal Setup (reminder)"],
+      "screens": [
+        {"app": "Calm", "id": "6d39ad82-b826-4742-a7cd-a711aafe52a9", "url": "https://mobbin.com/screens/6d39ad82-b826-4742-a7cd-a711aafe52a9", "pattern": "Reminder reason + time picker + repeat-days"},
+        {"app": "Bears Gratitude", "id": "c29458a7-a695-4842-bc80-241612e03d17", "url": "https://mobbin.com/screens/c29458a7-a695-4842-bc80-241612e03d17", "pattern": "'One Entry Everyday' set daily reminder time + Skip (low pressure)"},
+        {"app": "Mindvalley", "id": "3cc54c5d-09c3-49f2-b976-31f5be30a546", "url": "https://mobbin.com/screens/3cc54c5d-09c3-49f2-b976-31f5be30a546", "pattern": "Frequency choice once/twice a day + time wheel"},
+        {"app": "Coursera", "id": "35f13a63-b2f7-48dd-b4f1-0ea798c1961f", "url": "https://mobbin.com/screens/35f13a63-b2f7-48dd-b4f1-0ea798c1961f", "pattern": "Per-day reminder schedule + Reset all"}
+      ]
+    },
+    "20_AppStore_Positioning": {
+      "priority": "reference only (positioning pattern, not copy cloning)",
+      "prd_screens": ["Splash", "Onboarding (tone)"],
+      "screens": [
+        {"app": "Alan", "id": "0c93d2c3-c1d8-488c-a663-25d10f2090fa", "url": "https://mobbin.com/screens/0c93d2c3-c1d8-488c-a663-25d10f2090fa", "pattern": "Value + trust framing, explicit 'Is it safe to use for my health?' reassurance"},
+        {"app": "Headway", "id": "7fd82923-8c58-4bd4-bff4-10fb017b1f3d", "url": "https://mobbin.com/screens/7fd82923-8c58-4bd4-bff4-10fb017b1f3d", "pattern": "'Self-growth journey' value bullets (non-medical framing)"},
+        {"app": "N26", "id": "0d9fc310-d018-4fb6-95b9-6efe5829326a", "url": "https://mobbin.com/screens/0d9fc310-d018-4fb6-95b9-6efe5829326a", "pattern": "'Explore the app' concise value proposition list"},
+        {"app": "TheFork", "id": "fcadab42-61f3-4de1-bbc3-32e1c147203c", "url": "https://mobbin.com/screens/fcadab42-61f3-4de1-bbc3-32e1c147203c", "pattern": "'Introducing <feature>' single-feature intro framing"}
+      ]
+    }
+  }
+}

@@ -1,0 +1,1055 @@
+{
+  "meta": {
+    "generated": "2026-05-26",
+    "purpose": "Curated visual evidence pack for Claude Design (NoF Korean self-control/recovery app)",
+    "source": "Mobbin MCP — quality-audited, topped up, then strict re-audited",
+    "internal_reference_only": true,
+    "no_redistribution": true,
+    "total_curated": 100,
+    "counts": {
+      "USE": 67,
+      "CAUTION": 30,
+      "AVOID": 3
+    },
+    "use_by_category": {
+      "01_Onboarding": 7,
+      "02_Permissions": 4,
+      "03_Blocking": 7,
+      "04_Habit": 2,
+      "05_Streak": 2,
+      "06_Character": 5,
+      "07_Rewards": 2,
+      "10_Social_Invite": 2,
+      "11_Accountability": 3,
+      "12_Checkin_Journal": 3,
+      "13_Crisis": 6,
+      "14_Stats": 3,
+      "15_Paywall": 4,
+      "16_Privacy": 4,
+      "17_Relapse_Recovery": 4,
+      "18_Home_Dashboard": 4,
+      "19_Notification_Reminder": 3,
+      "20_AppStore_Positioning": 2
+    },
+    "core_categories": [
+      "01_Onboarding",
+      "03_Blocking",
+      "05_Streak",
+      "06_Character",
+      "12_Checkin_Journal",
+      "13_Crisis",
+      "17_Relapse_Recovery",
+      "18_Home_Dashboard"
+    ],
+    "classification_legend": {
+      "USE": "Safe positive visual reference for NoF recovery/self-control/peer/pause/check-in/home",
+      "CAUTION": "Information-structure reference only; copy/monetization/gamification/tone risk — do not copy tone",
+      "AVOID": "Anti-pattern. Never give to design as a recommendation. Documented for contrast only."
+    },
+    "originals_preserved": "references/mobbin_visual (81 files, untouched)",
+    "revision": "strict re-audit round 2 (USE re-screened image-by-image; 8 USE→CAUTION)",
+    "handoff": "handoff/claude-design-nof-visual-v2 — USE only, Mobbin footer cropped (originals uncropped in references/)"
+  },
+  "images": [
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "alan-mind",
+      "screen_title": "calm-confident-you",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/7b391246-78fb-4579-87b9-dd8b43a8cdb0",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/alan-mind__calm-confident-you__7b391246.webp",
+      "bytes": 18780
+    },
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "calm",
+      "screen_title": "breathwork-daily-habit",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/2c0f98f3-34bd-4461-9c9a-c471f380fa65",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/calm__breathwork-daily-habit__2c0f98f3.webp",
+      "bytes": 27380
+    },
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "calm",
+      "screen_title": "welcome-breathing-practice",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/9f4026b8-9d8d-411f-be3e-995d511eff95",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/calm__welcome-breathing-practice__9f4026b8.webp",
+      "bytes": 26070
+    },
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "canva",
+      "screen_title": "welcome-carousel",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/9202c4c3-e44e-43a9-a2e1-cbe8a471821c",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/canva__welcome-carousel__9202c4c3.webp",
+      "bytes": 18754
+    },
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "citizen",
+      "screen_title": "get-started-checklist",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/ecbb3004-9531-4bde-a696-32cb51b4f288",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/citizen__get-started-checklist__ecbb3004.webp",
+      "bytes": 29772
+    },
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "headway",
+      "screen_title": "value-bullets",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/7fd82923-8c58-4bd4-bff4-10fb017b1f3d",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/headway__value-bullets__7fd82923.webp",
+      "bytes": 41780
+    },
+    {
+      "classification": "USE",
+      "category": "01_Onboarding",
+      "app_name": "liven",
+      "screen_title": "narrative-welcome",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/1ffc94db-e1d1-4561-b560-0cddf769f207",
+      "local_file": "mobbin_visual_curated/USE/01_Onboarding/liven__narrative-welcome__1ffc94db.webp",
+      "bytes": 55244
+    },
+    {
+      "classification": "USE",
+      "category": "02_Permissions",
+      "app_name": "airbnb",
+      "screen_title": "turn-on-notif-skip",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/c1ad73f4-af16-4495-91b1-35077947be95",
+      "local_file": "mobbin_visual_curated/USE/02_Permissions/airbnb__turn-on-notif-skip__c1ad73f4.webp",
+      "bytes": 29244
+    },
+    {
+      "classification": "USE",
+      "category": "02_Permissions",
+      "app_name": "any-distance",
+      "screen_title": "notif-priming",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/e100aefa-8139-4919-b02f-7bf22b26c7bb",
+      "local_file": "mobbin_visual_curated/USE/02_Permissions/any-distance__notif-priming__e100aefa.webp",
+      "bytes": 40346
+    },
+    {
+      "classification": "USE",
+      "category": "02_Permissions",
+      "app_name": "babbel",
+      "screen_title": "reason-first-maybe-later",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/6822290a-66cc-4897-a4cf-c265bab0f9d2",
+      "local_file": "mobbin_visual_curated/USE/02_Permissions/babbel__reason-first-maybe-later__6822290a.webp",
+      "bytes": 27266
+    },
+    {
+      "classification": "USE",
+      "category": "02_Permissions",
+      "app_name": "dailyart",
+      "screen_title": "reason-guided-allow",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/3012670d-1a01-4171-ac95-28d91921515e",
+      "local_file": "mobbin_visual_curated/USE/02_Permissions/dailyart__reason-guided-allow__3012670d.webp",
+      "bytes": 28646
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "opal",
+      "screen_title": "active-session-stop",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/b44ac1a0-e1ae-4c1a-acf6-89ceb83f0203",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/opal__active-session-stop__b44ac1a0.webp",
+      "bytes": 83328
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "opal",
+      "screen_title": "blocked-state-intro",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/22aafe8d-933d-4dd8-b50d-f47a80d7514a",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/opal__blocked-state-intro__22aafe8d.webp",
+      "bytes": 30648
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "opal",
+      "screen_title": "self-set-delay-timer",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/c355b42f-3141-4e99-baf4-4e0c1f04ed75",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/opal__self-set-delay-timer__c355b42f.webp",
+      "bytes": 23126
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "opal",
+      "screen_title": "session-setup",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/68bdef62-bf71-41a7-8f7b-5948e1c0653f",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/opal__session-setup__68bdef62.webp",
+      "bytes": 21286
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "stoic",
+      "screen_title": "select-apps-days",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/d0deb0ec-298d-4d15-a0fe-6bc1b9121b4c",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/stoic__select-apps-days__d0deb0ec.webp",
+      "bytes": 19180
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "stoic",
+      "screen_title": "shield-schedule-toggle",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/bcfd547f-8758-412e-99f8-bf562764df51",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/stoic__shield-schedule-toggle__bcfd547f.webp",
+      "bytes": 27686
+    },
+    {
+      "classification": "USE",
+      "category": "03_Blocking",
+      "app_name": "stoic",
+      "screen_title": "start-at-hour",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/4ce1783f-9c53-459f-893e-ce4645051055",
+      "local_file": "mobbin_visual_curated/USE/03_Blocking/stoic__start-at-hour__4ce1783f.webp",
+      "bytes": 20540
+    },
+    {
+      "classification": "USE",
+      "category": "04_Habit",
+      "app_name": "habitify",
+      "screen_title": "daily-checklist",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/3869b105-eda1-45d6-a525-5d73a1666c0a",
+      "local_file": "mobbin_visual_curated/USE/04_Habit/habitify__daily-checklist__3869b105.webp",
+      "bytes": 22060
+    },
+    {
+      "classification": "USE",
+      "category": "04_Habit",
+      "app_name": "tangerine",
+      "screen_title": "skip-why-undo",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/cd8587cf-77b8-41a5-94fb-1de39bda0617",
+      "local_file": "mobbin_visual_curated/USE/04_Habit/tangerine__skip-why-undo__cd8587cf.webp",
+      "bytes": 30764
+    },
+    {
+      "classification": "USE",
+      "category": "05_Streak",
+      "app_name": "habitify",
+      "screen_title": "skip-fail-gentle-streak",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/6cd17f96-9eae-4ed5-86f7-d7d9d8fb2944",
+      "local_file": "mobbin_visual_curated/USE/05_Streak/habitify__skip-fail-gentle-streak__6cd17f96.webp",
+      "bytes": 23384
+    },
+    {
+      "classification": "USE",
+      "category": "05_Streak",
+      "app_name": "macrofactor",
+      "screen_title": "longest-current-streak",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/041c19d7-9361-4900-a9ae-148867c875f0",
+      "local_file": "mobbin_visual_curated/USE/05_Streak/macrofactor__longest-current-streak__041c19d7.webp",
+      "bytes": 41524
+    },
+    {
+      "classification": "USE",
+      "category": "06_Character",
+      "app_name": "finch",
+      "screen_title": "companion-dialogue",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/076dbd90-543b-40b3-8c3b-950a76673efb",
+      "local_file": "mobbin_visual_curated/USE/06_Character/finch__companion-dialogue__076dbd90.webp",
+      "bytes": 26582
+    },
+    {
+      "classification": "USE",
+      "category": "06_Character",
+      "app_name": "finch",
+      "screen_title": "earned-star-encourage",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/2ae59897-7aee-4055-a1c5-53f2e3d69295",
+      "local_file": "mobbin_visual_curated/USE/06_Character/finch__earned-star-encourage__2ae59897.webp",
+      "bytes": 25772
+    },
+    {
+      "classification": "USE",
+      "category": "06_Character",
+      "app_name": "meplus",
+      "screen_title": "deep-breath-mascot",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/41b9d871-bc97-4bb6-a9d4-0efdbb3efcb3",
+      "local_file": "mobbin_visual_curated/USE/06_Character/meplus__deep-breath-mascot__41b9d871.webp",
+      "bytes": 17590
+    },
+    {
+      "classification": "USE",
+      "category": "06_Character",
+      "app_name": "meplus",
+      "screen_title": "journey-companion",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/59717fd3-8d48-4592-b977-8ae0f18cbe69",
+      "local_file": "mobbin_visual_curated/USE/06_Character/meplus__journey-companion__59717fd3.webp",
+      "bytes": 31028
+    },
+    {
+      "classification": "USE",
+      "category": "06_Character",
+      "app_name": "tolan",
+      "screen_title": "3d-companion-home",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/aa36dd2f-98c3-4a72-81ea-6c983e2bf6c4",
+      "local_file": "mobbin_visual_curated/USE/06_Character/tolan__3d-companion-home__aa36dd2f.webp",
+      "bytes": 18996
+    },
+    {
+      "classification": "USE",
+      "category": "07_Rewards",
+      "app_name": "drops",
+      "screen_title": "milestone-badge",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/f004e987-c2b0-4daf-b91c-24538b4ec6c1",
+      "local_file": "mobbin_visual_curated/USE/07_Rewards/drops__milestone-badge__f004e987.webp",
+      "bytes": 22090
+    },
+    {
+      "classification": "USE",
+      "category": "07_Rewards",
+      "app_name": "rocket-money",
+      "screen_title": "milestone-collect",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/44669c9f-a311-454a-9f65-595b0f53a001",
+      "local_file": "mobbin_visual_curated/USE/07_Rewards/rocket-money__milestone-collect__44669c9f.webp",
+      "bytes": 17882
+    },
+    {
+      "classification": "USE",
+      "category": "10_Social_Invite",
+      "app_name": "chime",
+      "screen_title": "consent-disclaimer-invite",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/9a4fb2e5-390b-4bf6-8f60-da1d2e7f541d",
+      "local_file": "mobbin_visual_curated/USE/10_Social_Invite/chime__consent-disclaimer-invite__9a4fb2e5.webp",
+      "bytes": 34106
+    },
+    {
+      "classification": "USE",
+      "category": "10_Social_Invite",
+      "app_name": "revolut",
+      "screen_title": "share-link-pending",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/578615a6-506e-45b5-98ff-522f41266a25",
+      "local_file": "mobbin_visual_curated/USE/10_Social_Invite/revolut__share-link-pending__578615a6.webp",
+      "bytes": 25698
+    },
+    {
+      "classification": "USE",
+      "category": "11_Accountability",
+      "app_name": "finch",
+      "screen_title": "encourage-buddy-up",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/034526fc-74ef-493f-ab8d-987e2b22aeaa",
+      "local_file": "mobbin_visual_curated/USE/11_Accountability/finch__encourage-buddy-up__034526fc.webp",
+      "bytes": 34518
+    },
+    {
+      "classification": "USE",
+      "category": "11_Accountability",
+      "app_name": "finch",
+      "screen_title": "goal-buddy-kudos",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/66ad7e4f-870b-4482-b752-3984909e178c",
+      "local_file": "mobbin_visual_curated/USE/11_Accountability/finch__goal-buddy-kudos__66ad7e4f.webp",
+      "bytes": 28226
+    },
+    {
+      "classification": "USE",
+      "category": "11_Accountability",
+      "app_name": "finch",
+      "screen_title": "send-encouragement",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/88b0a778-2154-4dc2-ab2c-d14cd984cebe",
+      "local_file": "mobbin_visual_curated/USE/11_Accountability/finch__send-encouragement__88b0a778.webp",
+      "bytes": 32174
+    },
+    {
+      "classification": "USE",
+      "category": "12_Checkin_Journal",
+      "app_name": "breeze",
+      "screen_title": "emotion-positive-negative",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/31de3990-42d1-4a76-b64b-ecd3fb90aefa",
+      "local_file": "mobbin_visual_curated/USE/12_Checkin_Journal/breeze__emotion-positive-negative__31de3990.webp",
+      "bytes": 28164
+    },
+    {
+      "classification": "USE",
+      "category": "12_Checkin_Journal",
+      "app_name": "breeze",
+      "screen_title": "mood-slider-feelings-tags",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/8f5a4a98-0a40-400d-8e38-b715532f8887",
+      "local_file": "mobbin_visual_curated/USE/12_Checkin_Journal/breeze__mood-slider-feelings-tags__8f5a4a98.webp",
+      "bytes": 30512
+    },
+    {
+      "classification": "USE",
+      "category": "12_Checkin_Journal",
+      "app_name": "fitbit",
+      "screen_title": "mood-5point-enum",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/17d2479f-0e07-463c-8f43-d216063d8340",
+      "local_file": "mobbin_visual_curated/USE/12_Checkin_Journal/fitbit__mood-5point-enum__17d2479f.webp",
+      "bytes": 31342
+    },
+    {
+      "classification": "USE",
+      "category": "13_Crisis",
+      "app_name": "alan-mind",
+      "screen_title": "breathing-timer",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/cbc07752-4d3e-415f-bd2b-485165172b3e",
+      "local_file": "mobbin_visual_curated/USE/13_Crisis/alan-mind__breathing-timer__cbc07752.webp",
+      "bytes": 12262
+    },
+    {
+      "classification": "USE",
+      "category": "13_Crisis",
+      "app_name": "calm",
+      "screen_title": "breathe-circle",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/1fa360b0-1c27-48da-9861-8f497be194bf",
+      "local_file": "mobbin_visual_curated/USE/13_Crisis/calm__breathe-circle__1fa360b0.webp",
+      "bytes": 21012
+    },
+    {
+      "classification": "USE",
+      "category": "13_Crisis",
+      "app_name": "insight-timer",
+      "screen_title": "breathing-paused",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/05498758-407c-4edc-9429-5fa4aa59448e",
+      "local_file": "mobbin_visual_curated/USE/13_Crisis/insight-timer__breathing-paused__05498758.webp",
+      "bytes": 12318
+    },
+    {
+      "classification": "USE",
+      "category": "13_Crisis",
+      "app_name": "opal",
+      "screen_title": "breathe-pause-delay",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/4da4afe3-7e60-4d3d-8940-d3a3b04cb1ee",
+      "local_file": "mobbin_visual_curated/USE/13_Crisis/opal__breathe-pause-delay__4da4afe3.webp",
+      "bytes": 32546
+    },
+    {
+      "classification": "USE",
+      "category": "13_Crisis",
+      "app_name": "opal",
+      "screen_title": "heads-up-take-break",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/9b6e911e-c770-4178-bb5d-ebe5a29695e7",
+      "local_file": "mobbin_visual_curated/USE/13_Crisis/opal__heads-up-take-break__9b6e911e.webp",
+      "bytes": 52250
+    },
+    {
+      "classification": "USE",
+      "category": "13_Crisis",
+      "app_name": "stoic",
+      "screen_title": "inhale-countdown",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/c30889ab-d411-41ed-a790-63bae02ad233",
+      "local_file": "mobbin_visual_curated/USE/13_Crisis/stoic__inhale-countdown__c30889ab.webp",
+      "bytes": 6004
+    },
+    {
+      "classification": "USE",
+      "category": "14_Stats",
+      "app_name": "oura",
+      "screen_title": "recovery-framing-trend",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/f1e3a074-87db-4094-98a0-a328c8d403ec",
+      "local_file": "mobbin_visual_curated/USE/14_Stats/oura__recovery-framing-trend__f1e3a074.webp",
+      "bytes": 40062
+    },
+    {
+      "classification": "USE",
+      "category": "14_Stats",
+      "app_name": "pillow",
+      "screen_title": "quality-duration-cards",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/89e346e5-4094-4f03-8feb-67cc34a555e9",
+      "local_file": "mobbin_visual_curated/USE/14_Stats/pillow__quality-duration-cards__89e346e5.webp",
+      "bytes": 33782
+    },
+    {
+      "classification": "USE",
+      "category": "14_Stats",
+      "app_name": "stoic",
+      "screen_title": "trends-feel-week",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/487f122e-598e-4b5e-82fd-cdfd6ce49136",
+      "local_file": "mobbin_visual_curated/USE/14_Stats/stoic__trends-feel-week__487f122e.webp",
+      "bytes": 21190
+    },
+    {
+      "classification": "USE",
+      "category": "15_Paywall",
+      "app_name": "atoms",
+      "screen_title": "honest-no-autosub",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/5a57b74f-c49a-4125-910b-60055fe9108c",
+      "local_file": "mobbin_visual_curated/USE/15_Paywall/atoms__honest-no-autosub__5a57b74f.webp",
+      "bytes": 51536
+    },
+    {
+      "classification": "USE",
+      "category": "15_Paywall",
+      "app_name": "craft",
+      "screen_title": "cancel-anytime-trial",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/951fa4e7-7576-456a-a963-a0707f09dc4e",
+      "local_file": "mobbin_visual_curated/USE/15_Paywall/craft__cancel-anytime-trial__951fa4e7.webp",
+      "bytes": 47244
+    },
+    {
+      "classification": "USE",
+      "category": "15_Paywall",
+      "app_name": "fixtured",
+      "screen_title": "free-vs-plus-table",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/0576cc85-bcfb-48ce-9115-cc4fbd774e02",
+      "local_file": "mobbin_visual_curated/USE/15_Paywall/fixtured__free-vs-plus-table__0576cc85.webp",
+      "bytes": 61268
+    },
+    {
+      "classification": "USE",
+      "category": "15_Paywall",
+      "app_name": "tolan",
+      "screen_title": "free-vs-star",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/bbd76014-dfc6-473f-816b-46a270738aa3",
+      "local_file": "mobbin_visual_curated/USE/15_Paywall/tolan__free-vs-star__bbd76014.webp",
+      "bytes": 36840
+    },
+    {
+      "classification": "USE",
+      "category": "16_Privacy",
+      "app_name": "klarna",
+      "screen_title": "data-request-hub",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/ac5acdce-31c9-4e13-a935-6ca53853b5a5",
+      "local_file": "mobbin_visual_curated/USE/16_Privacy/klarna__data-request-hub__ac5acdce.webp",
+      "bytes": 39618
+    },
+    {
+      "classification": "USE",
+      "category": "16_Privacy",
+      "app_name": "macrofactor",
+      "screen_title": "delete-export-honest",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/cbf9218c-64c3-4222-91f3-1c56411c904f",
+      "local_file": "mobbin_visual_curated/USE/16_Privacy/macrofactor__delete-export-honest__cbf9218c.webp",
+      "bytes": 47860
+    },
+    {
+      "classification": "USE",
+      "category": "16_Privacy",
+      "app_name": "rakuten",
+      "screen_title": "download-delete-log",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/e2153191-98f7-4412-ba12-983f0e02c52a",
+      "local_file": "mobbin_visual_curated/USE/16_Privacy/rakuten__download-delete-log__e2153191.webp",
+      "bytes": 32906
+    },
+    {
+      "classification": "USE",
+      "category": "16_Privacy",
+      "app_name": "zalando",
+      "screen_title": "request-vs-delete-tabs",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/b44aa19b-0c87-44f3-b90a-a3ca27e9a927",
+      "local_file": "mobbin_visual_curated/USE/16_Privacy/zalando__request-vs-delete-tabs__b44aa19b.webp",
+      "bytes": 51080
+    },
+    {
+      "classification": "USE",
+      "category": "17_Relapse_Recovery",
+      "app_name": "duolingo",
+      "screen_title": "okay-start-fresh",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/392377a9-5035-42e4-86be-77c944737101",
+      "local_file": "mobbin_visual_curated/USE/17_Relapse_Recovery/duolingo__okay-start-fresh__392377a9.webp",
+      "bytes": 11728
+    },
+    {
+      "classification": "USE",
+      "category": "17_Relapse_Recovery",
+      "app_name": "fabulous",
+      "screen_title": "rome-wasnt-built-restart",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/f579a382-4997-4e67-95b4-3d80bdc395d0",
+      "local_file": "mobbin_visual_curated/USE/17_Relapse_Recovery/fabulous__rome-wasnt-built-restart__f579a382.webp",
+      "bytes": 36748
+    },
+    {
+      "classification": "USE",
+      "category": "17_Relapse_Recovery",
+      "app_name": "how-we-feel",
+      "screen_title": "new-story-reframe",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/b66e9736-1f13-4b15-9bf2-638232858378",
+      "local_file": "mobbin_visual_curated/USE/17_Relapse_Recovery/how-we-feel__new-story-reframe__b66e9736.webp",
+      "bytes": 17734
+    },
+    {
+      "classification": "USE",
+      "category": "17_Relapse_Recovery",
+      "app_name": "ynab",
+      "screen_title": "make-fresh-start-archive",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/aae0dc4c-a301-4644-9bc9-627ab19ee220",
+      "local_file": "mobbin_visual_curated/USE/17_Relapse_Recovery/ynab__make-fresh-start-archive__aae0dc4c.webp",
+      "bytes": 56210
+    },
+    {
+      "classification": "USE",
+      "category": "18_Home_Dashboard",
+      "app_name": "alan-mind",
+      "screen_title": "continue-day1-tracker",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/e8e40216-6d31-4499-94d0-a9b4afac2736",
+      "local_file": "mobbin_visual_curated/USE/18_Home_Dashboard/alan-mind__continue-day1-tracker__e8e40216.webp",
+      "bytes": 32640
+    },
+    {
+      "classification": "USE",
+      "category": "18_Home_Dashboard",
+      "app_name": "cal-ai",
+      "screen_title": "metric-cards-daystrip",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/38c76d56-fed8-426d-8929-c58bae82edfd",
+      "local_file": "mobbin_visual_curated/USE/18_Home_Dashboard/cal-ai__metric-cards-daystrip__38c76d56.webp",
+      "bytes": 27618
+    },
+    {
+      "classification": "USE",
+      "category": "18_Home_Dashboard",
+      "app_name": "noom",
+      "screen_title": "todays-course-progress",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/23b0920b-3a38-49ec-b8fe-97b311de7c05",
+      "local_file": "mobbin_visual_curated/USE/18_Home_Dashboard/noom__todays-course-progress__23b0920b.webp",
+      "bytes": 27936
+    },
+    {
+      "classification": "USE",
+      "category": "18_Home_Dashboard",
+      "app_name": "withings-health-mate",
+      "screen_title": "todays-missions",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/6852bc4c-c9d3-434d-b52f-54521e690076",
+      "local_file": "mobbin_visual_curated/USE/18_Home_Dashboard/withings-health-mate__todays-missions__6852bc4c.webp",
+      "bytes": 42858
+    },
+    {
+      "classification": "USE",
+      "category": "19_Notification_Reminder",
+      "app_name": "bears-gratitude",
+      "screen_title": "daily-reminder-skip",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/c29458a7-a695-4842-bc80-241612e03d17",
+      "local_file": "mobbin_visual_curated/USE/19_Notification_Reminder/bears-gratitude__daily-reminder-skip__c29458a7.webp",
+      "bytes": 34214
+    },
+    {
+      "classification": "USE",
+      "category": "19_Notification_Reminder",
+      "app_name": "calm",
+      "screen_title": "reason-time-repeat",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/6d39ad82-b826-4742-a7cd-a711aafe52a9",
+      "local_file": "mobbin_visual_curated/USE/19_Notification_Reminder/calm__reason-time-repeat__6d39ad82.webp",
+      "bytes": 21102
+    },
+    {
+      "classification": "USE",
+      "category": "19_Notification_Reminder",
+      "app_name": "mindvalley",
+      "screen_title": "frequency-time",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/3cc54c5d-09c3-49f2-b976-31f5be30a546",
+      "local_file": "mobbin_visual_curated/USE/19_Notification_Reminder/mindvalley__frequency-time__3cc54c5d.webp",
+      "bytes": 18420
+    },
+    {
+      "classification": "USE",
+      "category": "20_AppStore_Positioning",
+      "app_name": "headway",
+      "screen_title": "self-growth-bullets",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/7fd82923-8c58-4bd4-bff4-10fb017b1f3d",
+      "local_file": "mobbin_visual_curated/USE/20_AppStore_Positioning/headway__self-growth-bullets__7fd82923.webp",
+      "bytes": 41780
+    },
+    {
+      "classification": "USE",
+      "category": "20_AppStore_Positioning",
+      "app_name": "n26",
+      "screen_title": "explore-value-prop",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/0d9fc310-d018-4fb6-95b9-6efe5829326a",
+      "local_file": "mobbin_visual_curated/USE/20_AppStore_Positioning/n26__explore-value-prop__0d9fc310.webp",
+      "bytes": 22866
+    },
+    {
+      "classification": "CAUTION",
+      "category": "04_Habit",
+      "app_name": "finch",
+      "screen_title": "goals-xp-character",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/70aafcf7-8d66-4cd7-9b2a-d5c782031056",
+      "local_file": "mobbin_visual_curated/CAUTION/04_Habit/finch__goals-xp-character__70aafcf7.webp",
+      "bytes": 38160
+    },
+    {
+      "classification": "CAUTION",
+      "category": "04_Habit",
+      "app_name": "numo",
+      "screen_title": "task-complete-xp",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/f1161529-6e81-4636-88ad-76f0cde0cf35",
+      "local_file": "mobbin_visual_curated/CAUTION/04_Habit/numo__task-complete-xp__f1161529.webp",
+      "bytes": 41320
+    },
+    {
+      "classification": "CAUTION",
+      "category": "05_Streak",
+      "app_name": "deepstash",
+      "screen_title": "milestones-freezes",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/a754fe05-cda2-4dbb-a361-19a2a6f02ef4",
+      "local_file": "mobbin_visual_curated/CAUTION/05_Streak/deepstash__milestones-freezes__a754fe05.webp",
+      "bytes": 27732
+    },
+    {
+      "classification": "CAUTION",
+      "category": "05_Streak",
+      "app_name": "finch",
+      "screen_title": "streak-calendar",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/5e262abb-7fe5-4b9f-a978-7fd447fae4bd",
+      "local_file": "mobbin_visual_curated/CAUTION/05_Streak/finch__streak-calendar__5e262abb.webp",
+      "bytes": 28834
+    },
+    {
+      "classification": "CAUTION",
+      "category": "05_Streak",
+      "app_name": "finch",
+      "screen_title": "streak-repair-calendar",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/9d93ef4d-3f6b-4731-8c40-363be8286e6c",
+      "local_file": "mobbin_visual_curated/CAUTION/05_Streak/finch__streak-repair-calendar__9d93ef4d.webp",
+      "bytes": 28526
+    },
+    {
+      "classification": "CAUTION",
+      "category": "05_Streak",
+      "app_name": "numo",
+      "screen_title": "pause-preserve",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/cae1eb96-5ca5-4496-9dc4-9aa305c289ef",
+      "local_file": "mobbin_visual_curated/CAUTION/05_Streak/numo__pause-preserve__cae1eb96.webp",
+      "bytes": 29568
+    },
+    {
+      "classification": "CAUTION",
+      "category": "06_Character",
+      "app_name": "abode",
+      "screen_title": "pet-bars-care",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/d450f05c-bebb-4852-a443-c8f62468ff03",
+      "local_file": "mobbin_visual_curated/CAUTION/06_Character/abode__pet-bars-care__d450f05c.webp",
+      "bytes": 27014
+    },
+    {
+      "classification": "CAUTION",
+      "category": "06_Character",
+      "app_name": "replika",
+      "screen_title": "avatar-room-note",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/48299c2c-f8e9-4c15-8481-ff575ae672f0",
+      "local_file": "mobbin_visual_curated/CAUTION/06_Character/replika__avatar-room-note__48299c2c.webp",
+      "bytes": 31190
+    },
+    {
+      "classification": "CAUTION",
+      "category": "07_Rewards",
+      "app_name": "drop",
+      "screen_title": "bonus-checklist",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/51e0cc08-fc1d-4d42-a5eb-55426c3f2287",
+      "local_file": "mobbin_visual_curated/CAUTION/07_Rewards/drop__bonus-checklist__51e0cc08.webp",
+      "bytes": 30406
+    },
+    {
+      "classification": "CAUTION",
+      "category": "07_Rewards",
+      "app_name": "duolingo",
+      "screen_title": "daily-goal-chest",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/28f06e88-b3e9-4dbc-88f1-89592d1dc034",
+      "local_file": "mobbin_visual_curated/CAUTION/07_Rewards/duolingo__daily-goal-chest__28f06e88.webp",
+      "bytes": 13028
+    },
+    {
+      "classification": "CAUTION",
+      "category": "08_Shop_Gacha",
+      "app_name": "forest",
+      "screen_title": "earned-nonrandom-cosmetic",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/5026f9ce-4e0e-49a5-ae9e-d4d253ce1387",
+      "local_file": "mobbin_visual_curated/CAUTION/08_Shop_Gacha/forest__earned-nonrandom-cosmetic__5026f9ce.webp",
+      "bytes": 45464
+    },
+    {
+      "classification": "CAUTION",
+      "category": "08_Shop_Gacha",
+      "app_name": "stadium-live",
+      "screen_title": "cosmetic-clothing",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/8bb03e64-e316-4790-a38f-d26e6d2d58a2",
+      "local_file": "mobbin_visual_curated/CAUTION/08_Shop_Gacha/stadium-live__cosmetic-clothing__8bb03e64.webp",
+      "bytes": 37554
+    },
+    {
+      "classification": "CAUTION",
+      "category": "08_Shop_Gacha",
+      "app_name": "stadium-live",
+      "screen_title": "cosmetic-new",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/b7fba021-a2ca-465f-8524-e5bb186a3ac7",
+      "local_file": "mobbin_visual_curated/CAUTION/08_Shop_Gacha/stadium-live__cosmetic-new__b7fba021.webp",
+      "bytes": 33106
+    },
+    {
+      "classification": "CAUTION",
+      "category": "09_Leaderboard",
+      "app_name": "duolingo",
+      "screen_title": "weekly-club",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/0972a757-9ccb-4a00-8324-ef86f14f5f5e",
+      "local_file": "mobbin_visual_curated/CAUTION/09_Leaderboard/duolingo__weekly-club__0972a757.webp",
+      "bytes": 34142
+    },
+    {
+      "classification": "CAUTION",
+      "category": "09_Leaderboard",
+      "app_name": "strava",
+      "screen_title": "group-challenge",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/be87619c-0781-4eb3-8f78-4370b3e18b94",
+      "local_file": "mobbin_visual_curated/CAUTION/09_Leaderboard/strava__group-challenge__be87619c.webp",
+      "bytes": 55970
+    },
+    {
+      "classification": "CAUTION",
+      "category": "09_Leaderboard",
+      "app_name": "tempo",
+      "screen_title": "compete-friends",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/100bdd97-2a82-4fb5-adf3-bd5db8f2b1dc",
+      "local_file": "mobbin_visual_curated/CAUTION/09_Leaderboard/tempo__compete-friends__100bdd97.webp",
+      "bytes": 26064
+    },
+    {
+      "classification": "CAUTION",
+      "category": "10_Social_Invite",
+      "app_name": "instacart",
+      "screen_title": "referral-give-get",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/4a55ce4d-f2af-4db2-a2e5-8ec5f721b4ae",
+      "local_file": "mobbin_visual_curated/CAUTION/10_Social_Invite/instacart__referral-give-get__4a55ce4d.webp",
+      "bytes": 23094
+    },
+    {
+      "classification": "CAUTION",
+      "category": "10_Social_Invite",
+      "app_name": "slowly",
+      "screen_title": "invite-copy-link",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/49512573-e94c-4d53-b734-593fb21eee95",
+      "local_file": "mobbin_visual_curated/CAUTION/10_Social_Invite/slowly__invite-copy-link__49512573.webp",
+      "bytes": 42290
+    },
+    {
+      "classification": "CAUTION",
+      "category": "11_Accountability",
+      "app_name": "duolingo",
+      "screen_title": "friends-quest-nudge",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/b0512cc0-dd85-4b30-a1a4-5597a4cf1cc0",
+      "local_file": "mobbin_visual_curated/CAUTION/11_Accountability/duolingo__friends-quest-nudge__b0512cc0.webp",
+      "bytes": 38788
+    },
+    {
+      "classification": "CAUTION",
+      "category": "12_Checkin_Journal",
+      "app_name": "5-minute-journal",
+      "screen_title": "short-prompts-toggle",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/ecc4961e-6952-4c89-96b0-cf4e5f80eaeb",
+      "local_file": "mobbin_visual_curated/CAUTION/12_Checkin_Journal/5-minute-journal__short-prompts-toggle__ecc4961e.webp",
+      "bytes": 36004
+    },
+    {
+      "classification": "CAUTION",
+      "category": "12_Checkin_Journal",
+      "app_name": "calm",
+      "screen_title": "mental-note-add-tags",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/bccb543c-a033-4588-a428-ceabd078681f",
+      "local_file": "mobbin_visual_curated/CAUTION/12_Checkin_Journal/calm__mental-note-add-tags__bccb543c.webp",
+      "bytes": 20222
+    },
+    {
+      "classification": "CAUTION",
+      "category": "12_Checkin_Journal",
+      "app_name": "calm",
+      "screen_title": "mood-context-tags",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/40ba5ad3-03c7-4b81-ac40-6a2b447233fa",
+      "local_file": "mobbin_visual_curated/CAUTION/12_Checkin_Journal/calm__mood-context-tags__40ba5ad3.webp",
+      "bytes": 30984
+    },
+    {
+      "classification": "CAUTION",
+      "category": "14_Stats",
+      "app_name": "epsy",
+      "screen_title": "count-logging-trend",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/ae3e5f55-55c6-41dd-b2e1-0307770034ad",
+      "local_file": "mobbin_visual_curated/CAUTION/14_Stats/epsy__count-logging-trend__ae3e5f55.webp",
+      "bytes": 27400
+    },
+    {
+      "classification": "CAUTION",
+      "category": "17_Relapse_Recovery",
+      "app_name": "finch",
+      "screen_title": "gentle-restart-confirm",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/50df8ab5-8949-4b15-84a3-27f67dc18c1a",
+      "local_file": "mobbin_visual_curated/CAUTION/17_Relapse_Recovery/finch__gentle-restart-confirm__50df8ab5.webp",
+      "bytes": 21292
+    },
+    {
+      "classification": "CAUTION",
+      "category": "17_Relapse_Recovery",
+      "app_name": "finch",
+      "screen_title": "okay-to-miss-startover",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/d6e7a7b1-4b61-40b1-8ff7-1c602badec85",
+      "local_file": "mobbin_visual_curated/CAUTION/17_Relapse_Recovery/finch__okay-to-miss-startover__d6e7a7b1.webp",
+      "bytes": 21806
+    },
+    {
+      "classification": "CAUTION",
+      "category": "18_Home_Dashboard",
+      "app_name": "bloom",
+      "screen_title": "daily-self-care-home",
+      "source": "topup_this_round",
+      "mobbin_url": "https://mobbin.com/screens/1b17c919-dc12-4e39-ad3d-5da1d854bf69",
+      "local_file": "mobbin_visual_curated/CAUTION/18_Home_Dashboard/bloom__daily-self-care-home__1b17c919.webp",
+      "bytes": 32662
+    },
+    {
+      "classification": "CAUTION",
+      "category": "18_Home_Dashboard",
+      "app_name": "finch",
+      "screen_title": "character-goals-nav",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/e7f40efd-01a8-4f03-828e-31db0c35dbc2",
+      "local_file": "mobbin_visual_curated/CAUTION/18_Home_Dashboard/finch__character-goals-nav__e7f40efd.webp",
+      "bytes": 38956
+    },
+    {
+      "classification": "CAUTION",
+      "category": "19_Notification_Reminder",
+      "app_name": "coursera",
+      "screen_title": "perday-reset-all",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/35f13a63-b2f7-48dd-b4f1-0ea798c1961f",
+      "local_file": "mobbin_visual_curated/CAUTION/19_Notification_Reminder/coursera__perday-reset-all__35f13a63.webp",
+      "bytes": 26218
+    },
+    {
+      "classification": "CAUTION",
+      "category": "20_AppStore_Positioning",
+      "app_name": "alan",
+      "screen_title": "trust-safety-q",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/0c93d2c3-c1d8-488c-a663-25d10f2090fa",
+      "local_file": "mobbin_visual_curated/CAUTION/20_AppStore_Positioning/alan__trust-safety-q__0c93d2c3.webp",
+      "bytes": 31082
+    },
+    {
+      "classification": "CAUTION",
+      "category": "20_AppStore_Positioning",
+      "app_name": "thefork",
+      "screen_title": "introducing-feature",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/fcadab42-61f3-4de1-bbc3-32e1c147203c",
+      "local_file": "mobbin_visual_curated/CAUTION/20_AppStore_Positioning/thefork__introducing-feature__fcadab42.webp",
+      "bytes": 29270
+    },
+    {
+      "classification": "AVOID",
+      "category": "08_Shop_Gacha",
+      "app_name": "mimo",
+      "screen_title": "RISK-protection-sale",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/5ebe6ec1-6bb1-4726-a2c4-e9fc1b0d7111",
+      "local_file": "mobbin_visual_curated/AVOID/08_Shop_Gacha/mimo__RISK-protection-sale__5ebe6ec1.webp",
+      "bytes": 49254
+    },
+    {
+      "classification": "AVOID",
+      "category": "09_Leaderboard",
+      "app_name": "mimo",
+      "screen_title": "league-danger-note",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/1eafd07d-740e-4d5c-b4ca-e15cab3106fe",
+      "local_file": "mobbin_visual_curated/AVOID/09_Leaderboard/mimo__league-danger-note__1eafd07d.webp",
+      "bytes": 33954
+    },
+    {
+      "classification": "AVOID",
+      "category": "17_Relapse_Recovery",
+      "app_name": "duolingo",
+      "screen_title": "resets-to-zero-contrast",
+      "source": "original",
+      "mobbin_url": "https://mobbin.com/screens/1274e1c1-1986-4927-ab05-4702bcee7c36",
+      "local_file": "mobbin_visual_curated/AVOID/17_Relapse_Recovery/duolingo__resets-to-zero-contrast__1274e1c1.webp",
+      "bytes": 14618
+    }
+  ]
+}

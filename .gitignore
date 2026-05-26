@@ -1,0 +1,17 @@
+# local Claude/session state
+.claude/
+
+# Mobbin visual assets: internal reference only, do not publish
+*.webp
+*.png
+*.jpg
+*.jpeg
+*.gif
+
+# handoff archives
+*.zip
+*.tar.gz
+
+# OS/editor noise
+.DS_Store
+Thumbs.db
