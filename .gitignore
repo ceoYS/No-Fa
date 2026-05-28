@@ -1,6 +1,16 @@
 # local Claude/session state
 .claude/
 
+# Vite / Node build artifacts
+node_modules/
+dist/
+.vite/
+*.log
+npm-debug.log*
+.env
+.env.*
+!.env.example
+
 # Mobbin visual assets: internal reference only, do not publish
 *.webp
 *.png
@@ -22,3 +32,6 @@ handoff/claude-design-nof-visual-v1/
 
 # raw Mobbin downloaded images and local-only visual evidence
 references/mobbin_visual/
+
+# Claude Design bundled review artifacts - local only
+design_outputs/claude_design_v3/*.html

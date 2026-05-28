@@ -42,6 +42,8 @@ Korean NoFap App — Spec Kit 지도 (Spec Kit Index)
 - `FAILENDAR_TO_NOF_ADAPTATION.md` (Failendar 구조 → Ember Calendar/회복-우선 변환)
 - `CLAUDE_DESIGN_PATTERN_BRIEF_EMBER_CAT.md` (Ink & Ember 패턴·3화면 매핑)
 - `../handoff/claude-design-nof-visual-v3/README.md` (Claude Design v3 핸드오프. P0 비주얼 탐색)
+- PRD §0.5.8 제품 명료성 (자기통제/충동 보호/회복 앱으로 명료화. 펫·잔불은 보조 메타포)
+- PRD §0.5.9 My Discipline / 나의 규율 (사용자 정의 사적 자기통제 규율 — 비공개·비처벌·비감시·회복 우선)
 
 명확화:
 - **PRD는 "무엇을, 왜"를 정의한다.**
@@ -76,14 +78,16 @@ Korean NoFap App — Spec Kit 지도 (Spec Kit Index)
 펫 기반 회복 루프 + Ember Calendar 방향(PRD §0.5)을 다룰 때는 다음 순서로 읽는다.
 
 ```
-PRD.md (§0.5 방향 정렬)
-  → UX_RULES.md / COPY_POLICY.md / SCREEN_INVENTORY.md  (톤·카피·화면 범위)
+PRD.md (§0.5 방향 정렬, §0.5.8 제품 명료성, §0.5.9 My Discipline)
+  → UX_RULES.md / COPY_POLICY.md / SCREEN_INVENTORY.md  (톤·카피·화면 범위 + 규율 카피 규칙)
   → PET_CUSTOMIZATION_SPEC.md                            (펫 모듈·상태·MVP 범위)
   → FAILENDAR_TO_NOF_ADAPTATION.md                       (구조 차용/변환/거부)
   → handoff/claude-design-nof-visual-v3/README.md         (Claude Design v3 비주얼 탐색)
 ```
 
 > **이미지 정책:** 실제 고양이 이미지는 **Git에 커밋하지 않는다.** Claude Design 안에서 사용자가 직접 업로드해 제공한다(v3 README §4). 이 Spec Kit과 핸드오프에는 이미지 파일이 없다(텍스트 브리프만).
+
+> **My Discipline 정책(§0.5.9):** PRD, UX_RULES, COPY_POLICY, SCREEN_INVENTORY 및 후속 구현은 규율을 **비공개·자기정의·비처벌·비감시·회복 우선**으로 다룬다. 규율을 점수·랭킹·공개 약속·자동 공유 항목으로 환산하지 않는다.
 
 ## 4. 단계 게이트 지도 (Stage gate map)
 
