@@ -75,19 +75,42 @@ Korean NoFap App — Spec Kit 지도 (Spec Kit Index)
 
 ## 3.1 v0.3.1 방향 정렬 의존 순서 (Direction-alignment dependency order)
 
-펫 기반 회복 루프 + Ember Calendar 방향(PRD §0.5)을 다룰 때는 다음 순서로 읽는다.
+자기통제·충동 보호·회복(코어) + 펫·잔불(보상 층) 방향(PRD §0.5)을 다룰 때는 **PRD 결정이 먼저 Spec Kit으로 흐른 뒤 구현이 시작**된다. 다음 순서로 읽고, 위 단계가 갱신되면 아래 단계를 동기화한다.
 
 ```
-PRD.md (§0.5 방향 정렬, §0.5.8 제품 명료성, §0.5.9 My Discipline)
-  → UX_RULES.md / COPY_POLICY.md / SCREEN_INVENTORY.md  (톤·카피·화면 범위 + 규율 카피 규칙)
-  → PET_CUSTOMIZATION_SPEC.md                            (펫 모듈·상태·MVP 범위)
-  → FAILENDAR_TO_NOF_ADAPTATION.md                       (구조 차용/변환/거부)
-  → handoff/claude-design-nof-visual-v3/README.md         (Claude Design v3 비주얼 탐색)
+1) PRD.md
+   §0.5.1 코어 루프 / §0.5.3 Recovery Calendar / §0.5.3.1 Calendar P0 행동
+   §0.5.3.2 Calendar 점 enum / §0.5.7 P0 범위
+   §0.5.8 제품 명료성 / §0.5.8.1 사용자 화면 노출 금지 어휘표
+   §0.5.9 My Discipline / §0.5.9.1 5-state 모델 / §0.5.9.2 확인 입력 흐름
+   §0.5.10 정량 모델
+        ↓
+2) SCREEN_INVENTORY.md (화면 범위 + 화면별 5-state·캘린더 라벨·금지 카피)
+        ↓
+3) UX_RULES.md (확인 입력 모달리티 §10.5.1 / 캘린더 §10.7 / placeholder §10.8 / 정량 §10.6)
+        ↓
+4) COPY_POLICY.md (5-state·캘린더 라벨 §10.5·§10.6 / 단계·운영 어휘 금지 §4.1)
+        ↓
+5) PET_CUSTOMIZATION_SPEC.md (보상 층으로서의 펫 모듈·상태·MVP 범위)
+        ↓
+6) FAILENDAR_TO_NOF_ADAPTATION.md (구조 차용/변환/거부 — Calendar P0 결정과 동기화)
+        ↓
+7) handoff/claude-design-nof-visual-v3/README.md (비주얼 탐색)
+        ↓
+8) 구현 (P0 프로토타입·hardness·UI)
 ```
+
+규칙:
+
+- **PRD가 source-of-truth다.** PRD 결정 없이 하위 문서·구현이 단독으로 새 규칙을 만들지 않는다.
+- **Spec Kit이 갱신되면 구현은 동기화 전까지 시작하지 않는다.**
+- 펫·잔불은 §0.5.8 보조 메타포 — 제품 1차 카피로 단독 사용 금지.
 
 > **이미지 정책:** 실제 고양이 이미지는 **Git에 커밋하지 않는다.** Claude Design 안에서 사용자가 직접 업로드해 제공한다(v3 README §4). 이 Spec Kit과 핸드오프에는 이미지 파일이 없다(텍스트 브리프만).
 
-> **My Discipline 정책(§0.5.9):** PRD, UX_RULES, COPY_POLICY, SCREEN_INVENTORY 및 후속 구현은 규율을 **비공개·자기정의·비처벌·비감시·회복 우선**으로 다룬다. 규율을 점수·랭킹·공개 약속·자동 공유 항목으로 환산하지 않는다.
+> **My Discipline 정책(§0.5.9·§0.5.9.1·§0.5.9.2):** PRD, UX_RULES, COPY_POLICY, SCREEN_INVENTORY 및 후속 구현은 규율을 **비공개·자기정의·비처벌·비감시·회복 우선**으로 다룬다. 사용자 표시는 5-state(`지켰어요` / `확인 필요` / `흔들렸어요` / `회복 완료` / `오늘은 해당 없음`)로만, 확인 입력은 P0에서 사용자 수동만(자동 판정·자동 시간 리셋 없음). 규율을 점수·랭킹·공개 약속·자동 공유 항목으로 환산하지 않는다.
+
+> **Calendar 정책(§0.5.3.1·§0.5.3.2):** P0 캘린더는 최근 7일을 1차 표면으로 보여주며, 각 점은 탭 가능하다. 가짜 월 뷰 placeholder 금지. 사용자 라벨은 `지킨 날` / `회복한 날` / `확인 필요` / `기록 전`. 메타포 단독 라벨·단계 어휘 노출 금지.
 
 ## 4. 단계 게이트 지도 (Stage gate map)
 
