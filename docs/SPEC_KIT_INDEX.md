@@ -37,6 +37,12 @@ Korean NoFap App — Spec Kit 지도 (Spec Kit Index)
 추가 검증 문서:
 - `PREBUILD_DEMAND_VALIDATION_PLAN.md` (구현 전 수요 검증 게이트. PRD §22 실행 문서)
 
+방향 정렬 문서 (v0.3.1, PRD §0.5 기반 — 충돌 시 PRD가 우선):
+- `PET_CUSTOMIZATION_SPEC.md` (펫 모듈·상태·성장·간식·MVP 범위. CHARACTER_SYSTEM_SPEC §13 상속)
+- `FAILENDAR_TO_NOF_ADAPTATION.md` (Failendar 구조 → Ember Calendar/회복-우선 변환)
+- `CLAUDE_DESIGN_PATTERN_BRIEF_EMBER_CAT.md` (Ink & Ember 패턴·3화면 매핑)
+- `../handoff/claude-design-nof-visual-v3/README.md` (Claude Design v3 핸드오프. P0 비주얼 탐색)
+
 명확화:
 - **PRD는 "무엇을, 왜"를 정의한다.**
 - **Spec Kit은 "어떻게 추론하고 어떻게 검수하는가"를 정의한다.**
@@ -58,8 +64,26 @@ Korean NoFap App — Spec Kit 지도 (Spec Kit Index)
 | MOBBIN_BENCHMARK_PLAN.md | Collection 구조, 앱 후보, Missing App Rule, 수집 기준 | §15 |
 | DESIGN_DIRECTION.md | 시각 톤·브랜드 무드·캐릭터 방향·UI 분위기 | §5, §6 + UX_RULES |
 | PREBUILD_DEMAND_VALIDATION_PLAN.md | 구현 전 수요·차단·캐릭터·파트너 검증 | §22, §23, §27 |
+| PET_CUSTOMIZATION_SPEC.md | 펫(고양이) 커스터마이징·상태·성장·간식·방·MVP 범위 | §0.5, §11 |
+| FAILENDAR_TO_NOF_ADAPTATION.md | Failendar 구조 차용/변환/거부 → 펫 기반 회복 캘린더 | §0.5, §7 |
+| CLAUDE_DESIGN_PATTERN_BRIEF_EMBER_CAT.md | Ink & Ember 패턴·금지 패턴·화면별 매핑 | §0.5, §5, §11 |
+| handoff/claude-design-nof-visual-v3/README.md | Claude Design v3 핸드오프 (펫 + Ember Calendar P0 탐색) | §0.5 |
 
 ---
+
+## 3.1 v0.3.1 방향 정렬 의존 순서 (Direction-alignment dependency order)
+
+펫 기반 회복 루프 + Ember Calendar 방향(PRD §0.5)을 다룰 때는 다음 순서로 읽는다.
+
+```
+PRD.md (§0.5 방향 정렬)
+  → UX_RULES.md / COPY_POLICY.md / SCREEN_INVENTORY.md  (톤·카피·화면 범위)
+  → PET_CUSTOMIZATION_SPEC.md                            (펫 모듈·상태·MVP 범위)
+  → FAILENDAR_TO_NOF_ADAPTATION.md                       (구조 차용/변환/거부)
+  → handoff/claude-design-nof-visual-v3/README.md         (Claude Design v3 비주얼 탐색)
+```
+
+> **이미지 정책:** 실제 고양이 이미지는 **Git에 커밋하지 않는다.** Claude Design 안에서 사용자가 직접 업로드해 제공한다(v3 README §4). 이 Spec Kit과 핸드오프에는 이미지 파일이 없다(텍스트 브리프만).
 
 ## 4. 단계 게이트 지도 (Stage gate map)
 
