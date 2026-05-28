@@ -61,7 +61,7 @@ export default function RecoveryScreen({ onNavigate }) {
               <div className="recovery-step-num">{i + 1}</div>
               <div className="recovery-step-body">
                 <span className="recovery-step-title">{step}</span>
-                <span className="recovery-step-meta">선택 사항 · 비공개</span>
+                <span className="recovery-step-meta">선택 사항</span>
               </div>
             </div>
           ))}

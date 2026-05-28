@@ -137,7 +137,7 @@
 
 /* screen layout ----------------------------------------------------- */
 .screen {
-  padding: var(--sp-5) var(--sp-5) var(--sp-9);
+  padding: var(--sp-5) var(--sp-5) calc(var(--sp-9) + env(safe-area-inset-bottom, 0px));
   display: flex;
   flex-direction: column;
   gap: var(--sp-5);
@@ -162,6 +162,10 @@
   letter-spacing: -0.01em;
   line-height: var(--lh-tight);
   color: var(--text-primary);
+  /* Korean headings: keep manual <br /> intact, prefer wrapping on whole
+   * words so a long h1 does not split a noun mid-syllable. */
+  word-break: keep-all;
+  overflow-wrap: break-word;
 }
 
 .screen-subtitle {
@@ -303,7 +307,7 @@
 .pet-stage {
   position: relative;
   width: 100%;
-  aspect-ratio: 1 / 1;
+  aspect-ratio: 5 / 4;
   border-radius: var(--r-xl);
   background:
     radial-gradient(
@@ -355,11 +359,11 @@
 
 .pet-ember {
   position: absolute;
-  bottom: 18%;
+  bottom: 16%;
   left: 50%;
   transform: translateX(-50%);
-  width: 56px;
-  height: 56px;
+  width: 44px;
+  height: 44px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--ember-200), var(--ember-400) 55%, transparent 75%);
   filter: blur(0.5px);
@@ -384,15 +388,45 @@
   opacity: 0.6;
 }
 
-/* SVG cat silhouette wrapper */
+/* SVG cat silhouette wrapper (P0 placeholder — see EmberCat.jsx header) */
 .pet-cat-svg {
   position: absolute;
   bottom: 14%;
   left: 50%;
   transform: translateX(-50%);
-  width: 60%;
+  width: 44%;
   height: auto;
+  opacity: 0.78;
   filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+}
+
+/* Real cat image slot (used only when EmberCat receives imageSrc).
+ * Future asset paths live in /public/assets/pets/*.webp — none committed yet. */
+.pet-cat-img {
+  position: absolute;
+  bottom: 12%;
+  left: 50%;
+  transform: translateX(-50%);
+  width: 56%;
+  height: 70%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 8px 20px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
+.pet-stage--compact {
+  aspect-ratio: 16 / 9;
+}
+
+.pet-stage--compact .pet-cat-svg,
+.pet-stage--compact .pet-cat-img {
+  width: 34%;
+}
+
+.pet-stage--compact .pet-ember {
+  width: 34px;
+  height: 34px;
 }
 
 /* ember calendar mini strip ---------------------------------------- */
@@ -794,38 +828,63 @@
   line-height: var(--lh-snug);
 }
 
-/* abstain timer ----------------------------------------------------- */
-.abstain-title {
-  font-size: 22px;
-  line-height: 1.3;
-  font-weight: 600;
-  color: var(--text-primary);
+/* abstinence timer card -------------------------------------------- */
+.abstinence-timer-card {
+  background: linear-gradient(180deg, var(--bg-surface-raised), var(--bg-surface));
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-lg);
+  padding: var(--sp-5);
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
 }
 
-.abstain-num {
+.abstinence-timer-row {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-4);
+  flex-wrap: wrap;
+}
+
+.abstinence-timer-days {
+  font-size: 32px;
+  font-weight: 700;
   color: var(--text-ember);
   font-feature-settings: 'tnum' 1;
-  font-weight: 700;
+  letter-spacing: -0.01em;
+  line-height: 1;
+}
+
+.abstinence-timer-clock {
+  font-size: 26px;
+  font-weight: 600;
+  color: var(--text-primary);
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: 0.02em;
+  line-height: 1;
+}
+
+.abstinence-timer-help {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: var(--lh-snug);
 }
 
 /* protect card (blocked stimulus) ----------------------------------- */
-.protect-row {
+.protect-grid {
   display: grid;
-  grid-template-columns: 1fr 1px 1fr;
-  gap: var(--sp-4);
-  align-items: stretch;
-}
-
-.protect-row::before {
-  content: '';
-  grid-column: 2;
-  background: var(--border-soft);
+  grid-template-columns: 1fr 1fr;
+  gap: var(--sp-3);
 }
 
 .protect-cell {
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+  padding: var(--sp-4);
   display: flex;
   flex-direction: column;
-  gap: 4px;
+  gap: var(--sp-1);
 }
 
 .protect-value {
@@ -840,6 +899,13 @@
 .protect-label {
   font-size: var(--fs-small);
   color: var(--text-muted);
+}
+
+/* discipline summary on Home --------------------------------------- */
+.discipline-summary {
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  line-height: var(--lh-snug);
 }
 
 /* discipline (나의 규율) -------------------------------------------- */
@@ -885,4 +951,179 @@
   justify-content: space-between;
   gap: var(--sp-3);
   align-items: flex-start;
+}
+
+.rule-card-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: var(--sp-1);
+}
+
+/* discipline add/delete (P0.1 prototype controls) ------------------- */
+.btn-add {
+  padding: 6px var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  background: var(--accent-ember-soft);
+  color: var(--text-ember);
+  border: 1px solid rgba(245, 164, 90, 0.3);
+  transition: background var(--dur-fast) var(--ease-soft),
+    border-color var(--dur-fast) var(--ease-soft);
+}
+
+.btn-add:hover {
+  background: rgba(245, 164, 90, 0.18);
+  border-color: var(--ember-200);
+}
+
+.btn-delete {
+  padding: 4px var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  color: var(--text-quiet);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  transition: color var(--dur-fast) var(--ease-soft),
+    border-color var(--dur-fast) var(--ease-soft);
+}
+
+.btn-delete:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+}
+
+/* reward claim states ---------------------------------------------- */
+.reward-claim-btn {
+  cursor: pointer;
+  border: 1px solid rgba(106, 122, 94, 0.3);
+  transition: background var(--dur-fast) var(--ease-soft),
+    color var(--dur-fast) var(--ease-soft),
+    transform var(--dur-fast) var(--ease-soft);
+}
+
+.reward-claim-btn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+.reward-claim-btn:disabled {
+  cursor: default;
+  opacity: 0.9;
+}
+
+.pill-claimed {
+  background: var(--ink-700);
+  color: var(--text-quiet);
+  border-color: var(--border-soft);
+}
+
+.reward-row[data-claimed='true'] {
+  opacity: 0.72;
+}
+
+.reward-row[data-claimed='true'] > div > div:first-child {
+  color: var(--text-muted);
+}
+
+/* add/delete bottom sheet ------------------------------------------ */
+.sheet-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(5, 4, 3, 0.65);
+  backdrop-filter: blur(4px);
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  z-index: 20;
+  animation: sheet-fade var(--dur-base) var(--ease-soft);
+}
+
+@keyframes sheet-fade {
+  from { opacity: 0; }
+  to { opacity: 1; }
+}
+
+.sheet {
+  width: 100%;
+  background: var(--bg-surface-raised);
+  border-top: 1px solid var(--border-medium);
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  padding: var(--sp-3) var(--sp-5) calc(var(--sp-6) + env(safe-area-inset-bottom, 0px));
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+  animation: sheet-rise var(--dur-base) var(--ease-soft);
+}
+
+@keyframes sheet-rise {
+  from { transform: translateY(24px); opacity: 0; }
+  to { transform: translateY(0); opacity: 1; }
+}
+
+.sheet-compact {
+  gap: var(--sp-2);
+}
+
+.sheet-handle {
+  width: 36px;
+  height: 4px;
+  border-radius: 2px;
+  background: var(--ink-500);
+  margin: 0 auto var(--sp-1);
+  opacity: 0.6;
+}
+
+.sheet-title {
+  font-size: var(--fs-h2, 20px);
+  font-weight: 600;
+  color: var(--text-primary);
+  line-height: var(--lh-tight);
+  word-break: keep-all;
+}
+
+.sheet-help {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: var(--lh-snug);
+}
+
+.sheet-input {
+  width: 100%;
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  transition: border-color var(--dur-fast) var(--ease-soft);
+}
+
+.sheet-input::placeholder {
+  color: var(--text-quiet);
+}
+
+.sheet-input:focus {
+  outline: none;
+  border-color: var(--ember-300);
+}
+
+.sheet-chip-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.sheet-chip-grid .chip {
+  padding: var(--sp-2) var(--sp-3);
+  font-size: var(--fs-small);
+}
+
+.sheet-actions {
+  display: flex;
+  gap: var(--sp-3);
+  margin-top: var(--sp-2);
+}
+
+.sheet-actions .btn {
+  flex: 1;
 }

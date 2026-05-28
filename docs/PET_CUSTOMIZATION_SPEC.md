@@ -268,6 +268,25 @@ MVP에서는 너무 많이 만들지 않는다. 권장:
 
 ---
 
+## 13.5 P0 프로토타입 펫 자산 계약 (P0 prototype pet asset contract)
+
+P0 프로토타입의 시각 품질에 대한 명시적 계약. 이 절은 자산 누수·우발적 커밋·UX 잡음을 방지한다.
+
+- **현재 펫 그림은 SVG placeholder다.** `src/components/EmberCat.jsx`의 `CatSilhouette()`이 그것이며, 최종 시각이 아니다. 최종 시각 품질은 **사람 승인을 받은 압축 이미지 자산**(WebP)이 도착해야 결정된다.
+- **EmberCat은 자산 계약(asset contract)을 구현한다.** `imageSrc` prop을 받으면 해당 이미지를 `object-fit: contain` + `object-position: bottom center`로 렌더링하고, 없으면 SVG placeholder로 자동 폴백한다. 즉, 진짜 이미지가 들어와도 **화면 코드를 수정하지 않아도 된다.**
+- **이미지 자산은 이번 라운드에서 커밋하지 않는다.** `.gitignore`가 `*.webp`/`*.png`/`*.jpg`/`*.jpeg`/`*.gif`를 차단한다. 향후 자산은 별도 **자산 승인 단계**에서 의도적으로 추가한다(우발적 커밋 금지).
+- **예상 자산 경로 (승인 후 도입):**
+  - `/assets/pets/white_kitten_main.webp`
+  - `/assets/pets/black_guardian.webp`
+  - `/assets/pets/gray_mentor.webp`
+  - `/assets/pets/brown_loaf.webp`
+  - `/assets/rooms/ember_room_empty.webp`
+  - `/assets/rooms/ember_room_with_kitten.webp`
+- **placeholder 가드레일:** SVG placeholder가 보기 흉할 경우 펫 스테이지 비율·SVG 폭·opacity를 낮춰 시각적 지배를 줄인다. placeholder가 최종처럼 평가되지 않도록 한다(§13 검수 체크리스트 상속).
+- **승인 흐름:** §11의 character base sheet → variation sheet → state sheet 단계를 따른다. 임시 ChatGPT/Midjourney 출력만으로 자산을 정식 도입하지 않는다.
+
+이 계약 덕분에 진짜 자산이 도착해도 `EmberCat`을 사용하는 모든 화면(Home, Recovery, Reward 등)은 코드 수정 없이 자동으로 새 시각을 받는다.
+
 ## 14. Open decisions (사람 확정 필요)
 
 1. 고양이만 MVP로 갈지, **강아지도 초기에 열지.**

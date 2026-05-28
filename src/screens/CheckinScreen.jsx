@@ -39,7 +39,7 @@ export default function CheckinScreen({ onNavigate }) {
       </header>
 
       <p className="screen-subtitle">
-        자유로 적지 않아도 돼요. 답을 골라주세요. 비공개로 저장돼요.
+        자유로 적지 않아도 돼요. 답을 골라주세요. 공유하지 않는 한 기록은 밖으로 나가지 않아요.
       </p>
 
       <section className="card">

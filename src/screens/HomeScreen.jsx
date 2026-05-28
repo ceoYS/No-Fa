@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import EmberCat from '../components/EmberCat.jsx';
 import EmberCalendarStrip from '../components/EmberCalendarStrip.jsx';
 
@@ -6,12 +6,6 @@ const SAMPLE_WEEK = ['steady', 'steady', 'quiet', 'steady', 'steady', 'unmarked'
 
 const SEED_OFFSET_MS =
   12 * 86400 * 1000 + 3 * 3600 * 1000 + 24 * 60 * 1000 + 18 * 1000;
-
-const DISCIPLINE_PREVIEW = [
-  { id: 'night_phone', label: '밤 11시 이후 침대에서 휴대폰 보지 않기', status: '오늘 아직 지키는 중' },
-  { id: 'pause_first', label: '충동이 오면 5분 멈춤 먼저 누르기', status: '이번 주 4회 실천' },
-  { id: 'no_stim_search', label: '자극 검색하지 않기', status: '보호 모드 켜짐' },
-];
 
 function formatElapsed(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -25,7 +19,7 @@ function formatElapsed(ms) {
   return { days, hh, mm, ss };
 }
 
-export default function HomeScreen({ onNavigate }) {
+export default function HomeScreen({ onNavigate, rules = [] }) {
   const startRef = useRef(Date.now() - SEED_OFFSET_MS);
   const [now, setNow] = useState(Date.now());
 
@@ -36,23 +30,42 @@ export default function HomeScreen({ onNavigate }) {
 
   const { days, hh, mm, ss } = formatElapsed(now - startRef.current);
 
+  const { keepingCount, needsCheckCount, preview } = useMemo(() => {
+    const keeping = rules.filter((r) => r.status === '지키는 중' || r.status === '이번 주 실천');
+    const needsCheck = rules.filter((r) => r.status === '오늘 확인 필요');
+    return {
+      keepingCount: keeping.length,
+      needsCheckCount: needsCheck.length,
+      preview: rules.slice(0, 2),
+    };
+  }, [rules]);
+
   return (
     <div className="screen">
       <header className="screen-header">
         <div>
           <p className="screen-greeting">오늘도 지키는 중이에요</p>
-          <h1 className="screen-title abstain-title">
-            <span className="abstain-num">{days}</span>일{' '}
-            <span className="abstain-num">{hh}</span>시간{' '}
-            <span className="abstain-num">{mm}</span>분{' '}
-            <span className="abstain-num">{ss}</span>초째 절제 중
-          </h1>
+          <h1 className="screen-title">절제 시간</h1>
         </div>
       </header>
 
-      <p className="screen-subtitle">
-        작은 잔불은 아직 꺼지지 않았어요. 흔들려도 다시 이어갈 수 있어요.
-      </p>
+      <section
+        className="abstinence-timer-card"
+        aria-label="현재 절제 경과 시간"
+      >
+        <div className="abstinence-timer-row">
+          <span className="abstinence-timer-days">{days}일</span>
+          <span
+            className="abstinence-timer-clock"
+            aria-label={`${hh}시간 ${mm}분 ${ss}초`}
+          >
+            {hh}:{mm}:{ss}
+          </span>
+        </div>
+        <p className="abstinence-timer-help">
+          작은 잔불은 아직 꺼지지 않았어요. 흔들려도 다시 이어갈 수 있어요.
+        </p>
+      </section>
 
       <EmberCat tone="steady" label="잔불 곁의 흰 고양이" />
 
@@ -60,7 +73,7 @@ export default function HomeScreen({ onNavigate }) {
         <div className="card-row">
           <span className="card-label">절제 기록</span>
           <span className="text-muted" style={{ fontSize: 'var(--fs-small)' }}>
-            나만 보는 기록
+            최근 기록
           </span>
         </div>
         <div className="streak">
@@ -83,7 +96,7 @@ export default function HomeScreen({ onNavigate }) {
             보호 모드
           </span>
         </div>
-        <div className="protect-row">
+        <div className="protect-grid">
           <div className="protect-cell">
             <div className="protect-value">24</div>
             <div className="protect-label">이미지</div>
@@ -110,17 +123,39 @@ export default function HomeScreen({ onNavigate }) {
             규율 보기
           </button>
         </div>
-        <p className="screen-subtitle" style={{ marginTop: 0 }}>
-          내가 정한 기준을 오늘도 지키는 중이에요.
+        <p className="discipline-summary">
+          {rules.length === 0
+            ? '아직 정한 규율이 없어요. 규율을 추가해 보세요.'
+            : `오늘 ${rules.length}개 중 ${keepingCount}개를 지키는 중이에요.`}
         </p>
-        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-          {DISCIPLINE_PREVIEW.map((rule) => (
-            <div className="rule-row" key={rule.id}>
-              <span className="rule-label">{rule.label}</span>
-              <span className="pill pill-moss rule-status">{rule.status}</span>
-            </div>
-          ))}
+        {needsCheckCount > 0 ? (
+          <p className="hairline-note">{needsCheckCount}개는 오늘 확인이 필요해요.</p>
+        ) : null}
+        {preview.length > 0 ? (
+          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+            {preview.map((rule) => (
+              <div className="rule-row" key={rule.id}>
+                <span className="rule-label">{rule.label}</span>
+                <span className="pill pill-moss rule-status">{rule.status}</span>
+              </div>
+            ))}
+          </div>
+        ) : null}
+      </section>
+
+      <section className="card">
+        <div className="card-row">
+          <span className="card-label">오늘의 방 온기</span>
+          <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>
+            안정
+          </span>
         </div>
+        <p className="hairline-note">
+          규율 2개 유지 · 회복 행동 1회 · 체크인 완료
+        </p>
+        <p className="hairline-note text-quiet">
+          고양이는 편안히 쉬는 중이에요.
+        </p>
       </section>
 
       <section className="card">
