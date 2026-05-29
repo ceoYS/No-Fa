@@ -2,7 +2,7 @@ const TABS = [
   { id: 'home', label: '홈', icon: HomeIcon },
   { id: 'calendar', label: '기록', icon: CalendarIcon },
   { id: 'checkin', label: '체크인', icon: CheckIcon },
-  { id: 'recovery', label: '회복', icon: SparkIcon },
+  { id: 'recovery', label: '복기', icon: SparkIcon },
 ];
 
 export default function BottomNav({ value, onChange }) {

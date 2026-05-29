@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 
-export default function UrgeScreen({ onNavigate }) {
+export default function UrgeScreen({ onNavigate, onCrisisHeld }) {
   const [seconds, setSeconds] = useState(0);
   const [running, setRunning] = useState(false);
   const tickRef = useRef(null);
@@ -63,7 +63,7 @@ export default function UrgeScreen({ onNavigate }) {
           <button
             type="button"
             className="btn btn-primary btn-block"
-            onClick={() => onNavigate('reward')}
+            onClick={() => (onCrisisHeld ? onCrisisHeld() : onNavigate('reward'))}
           >
             오늘도 함께 버텼어요 · 마치기
           </button>

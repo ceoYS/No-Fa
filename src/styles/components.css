@@ -388,16 +388,87 @@
   opacity: 0.6;
 }
 
-/* SVG cat silhouette wrapper (P0 placeholder — see EmberCat.jsx header) */
-.pet-cat-svg {
+/* neutral "art pending" cat skeleton — shown until the approved white-kitten art
+ * is registered present in petAssets.js. Deliberately minimal: not a mascot. */
+.pet-cat-skeleton {
   position: absolute;
   bottom: 14%;
   left: 50%;
   transform: translateX(-50%);
   width: 44%;
-  height: auto;
-  opacity: 0.78;
-  filter: drop-shadow(0 6px 16px rgba(0, 0, 0, 0.5));
+  max-width: 180px;
+  aspect-ratio: 4 / 5;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  border-radius: var(--r-lg);
+  border: 1px dashed var(--border-medium);
+  background: linear-gradient(180deg, rgba(201, 194, 183, 0.06), rgba(201, 194, 183, 0.02));
+}
+
+.pet-cat-skeleton-mark {
+  width: 38%;
+  aspect-ratio: 1 / 1;
+  border-radius: 50%;
+  background: radial-gradient(circle at 50% 42%, rgba(245, 164, 90, 0.18), transparent 70%);
+  border: 1px solid var(--border-soft);
+}
+
+.pet-cat-skeleton-text {
+  font-size: var(--fs-micro);
+  color: var(--text-quiet);
+  letter-spacing: 0.02em;
+}
+
+/* pet motion — drives both real art and the skeleton; every keyframe preserves
+ * the translateX(-50%) centering. The pet is never harmed; sad-soft is a calm,
+ * gentle look, not illness/injury. */
+.pet-cat--idle { animation: pet-breathe 4.6s var(--ease-soft) infinite; }
+.pet-cat--happy { animation: pet-happy 0.9s var(--ease-soft); }
+.pet-cat--tap { animation: pet-tap 0.5s var(--ease-soft); }
+.pet-cat--wave { animation: pet-wave 1s var(--ease-soft); }
+.pet-cat--sleep { animation: pet-sleep 5.4s var(--ease-soft) infinite; }
+.pet-cat--sad-soft { animation: pet-sad 5s var(--ease-soft) infinite; opacity: 0.92; }
+
+@keyframes pet-breathe {
+  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+  50% { transform: translateX(-50%) translateY(-1.5%) scale(1.012); }
+}
+@keyframes pet-happy {
+  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+  30% { transform: translateX(-50%) translateY(-6%) scale(1.04); }
+  60% { transform: translateX(-50%) translateY(0) scale(1); }
+  80% { transform: translateX(-50%) translateY(-3%) scale(1.02); }
+}
+@keyframes pet-tap {
+  0%, 100% { transform: translateX(-50%) rotate(0deg) scale(1); }
+  40% { transform: translateX(-50%) rotate(-2deg) scale(1.02); }
+  70% { transform: translateX(-50%) rotate(1.5deg) scale(1.01); }
+}
+@keyframes pet-wave {
+  0%, 100% { transform: translateX(-50%) rotate(0deg); }
+  25% { transform: translateX(-50%) rotate(-3deg); }
+  75% { transform: translateX(-50%) rotate(3deg); }
+}
+@keyframes pet-sleep {
+  0%, 100% { transform: translateX(-50%) translateY(0) scale(1); }
+  50% { transform: translateX(-50%) translateY(0.6%) scale(0.992); }
+}
+@keyframes pet-sad {
+  0%, 100% { transform: translateX(-50%) translateY(0); }
+  50% { transform: translateX(-50%) translateY(0.8%); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .pet-cat--idle,
+  .pet-cat--happy,
+  .pet-cat--tap,
+  .pet-cat--wave,
+  .pet-cat--sleep,
+  .pet-cat--sad-soft {
+    animation: none;
+  }
 }
 
 /* Real cat image slot (used only when EmberCat receives imageSrc).
@@ -419,8 +490,8 @@
   aspect-ratio: 16 / 9;
 }
 
-.pet-stage--compact .pet-cat-svg,
-.pet-stage--compact .pet-cat-img {
+.pet-stage--compact .pet-cat-img,
+.pet-stage--compact .pet-cat-skeleton {
   width: 34%;
 }
 
@@ -443,6 +514,21 @@
   gap: 6px;
   padding: var(--sp-2) 0;
   border-radius: var(--r-md);
+  background: transparent;
+  border: 1px solid transparent;
+  width: 100%;
+  cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-soft),
+    border-color var(--dur-fast) var(--ease-soft);
+}
+
+.ember-strip-day[data-selected='true'] {
+  border-color: rgba(245, 164, 90, 0.35);
+}
+
+.ember-strip-day:focus-visible {
+  outline: 2px solid var(--ember-300);
+  outline-offset: 2px;
 }
 
 .ember-strip-label {
@@ -461,17 +547,22 @@
   transition: transform var(--dur-base) var(--ease-soft);
 }
 
-.ember-strip-day[data-tone='steady'] .ember-strip-dot {
+.ember-strip-day[data-tone='kept'] .ember-strip-dot {
   background: radial-gradient(circle, var(--ember-200), var(--ember-400) 70%);
   box-shadow: 0 0 12px var(--accent-ember-glow);
 }
 
-.ember-strip-day[data-tone='quiet'] .ember-strip-dot {
-  background: radial-gradient(circle, #8a6a4a, var(--ember-low) 70%);
-  opacity: 0.7;
+.ember-strip-day[data-tone='recovered'] .ember-strip-dot {
+  background: radial-gradient(circle, #cfe0c0, #8aa17a 72%);
+  box-shadow: 0 0 10px rgba(106, 122, 94, 0.4);
 }
 
-.ember-strip-day[data-tone='unmarked'] .ember-strip-dot {
+.ember-strip-day[data-tone='needs_check'] .ember-strip-dot {
+  background: radial-gradient(circle, #8a6a4a, var(--ember-low) 70%);
+  opacity: 0.75;
+}
+
+.ember-strip-day[data-tone='untracked'] .ember-strip-dot {
   background: transparent;
   border: 1px dashed var(--ink-400);
 }
@@ -604,51 +695,39 @@
   line-height: var(--lh-snug);
 }
 
-/* calendar (mini-strip emphasis, deferred month placeholder) -------- */
-.calendar-month {
-  display: grid;
-  grid-template-columns: repeat(7, 1fr);
-  gap: var(--sp-2);
-  padding: var(--sp-4);
-  background: var(--bg-surface);
-  border-radius: var(--r-lg);
+/* calendar (최근 기록 — tapped-day summary + legend) ----------------- */
+.calendar-summary {
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  line-height: var(--lh-snug);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--ink-700);
   border: 1px solid var(--border-soft);
-  position: relative;
+  border-radius: var(--r-md);
 }
 
-.calendar-day {
-  aspect-ratio: 1 / 1;
-  border-radius: var(--r-sm);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: var(--fs-small);
-  color: var(--text-quiet);
-  background: rgba(255, 255, 255, 0.015);
+.legend-dot {
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  display: inline-block;
 }
 
-.calendar-day[data-tone='steady'] {
-  background: rgba(245, 164, 90, 0.16);
-  color: var(--text-ember);
+.legend-dot[data-tone='kept'] {
+  background: radial-gradient(circle, #fcd49a, #f5a45a 70%);
 }
 
-.calendar-day[data-tone='quiet'] {
-  background: rgba(107, 74, 40, 0.18);
-  color: #b08966;
+.legend-dot[data-tone='recovered'] {
+  background: radial-gradient(circle, #cfe0c0, #8aa17a 72%);
 }
 
-.calendar-deferred {
-  position: absolute;
-  inset: 0;
-  border-radius: var(--r-lg);
-  background: linear-gradient(180deg, rgba(14, 10, 7, 0.45), rgba(14, 10, 7, 0.85));
-  display: flex;
-  align-items: flex-end;
-  justify-content: center;
-  padding: var(--sp-5);
-  color: var(--text-muted);
-  font-size: var(--fs-small);
-  text-align: center;
+.legend-dot[data-tone='needs_check'] {
+  background: radial-gradient(circle, #8a6a4a, #6b4a28 70%);
+}
+
+.legend-dot[data-tone='untracked'] {
+  background: transparent;
+  border: 1px dashed #4d4843;
 }
 
 /* recovery screen --------------------------------------------------- */
@@ -956,7 +1035,36 @@
 .rule-card-actions {
   display: flex;
   justify-content: flex-end;
+  align-items: center;
+  gap: var(--sp-2);
   margin-top: var(--sp-1);
+}
+
+/* tappable status pill (opens per-row 5-state sheet) */
+.rule-status-btn {
+  cursor: pointer;
+  border-style: solid;
+  transition: filter var(--dur-fast) var(--ease-soft);
+}
+
+.rule-status-btn:hover {
+  filter: brightness(1.08);
+}
+
+/* missed-row reflection CTA (복기하기) */
+.btn-recover {
+  padding: 4px var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  font-weight: 500;
+  color: var(--text-ember);
+  background: var(--accent-ember-soft);
+  border: 1px solid rgba(245, 164, 90, 0.3);
+  transition: background var(--dur-fast) var(--ease-soft);
+}
+
+.btn-recover:hover {
+  background: rgba(245, 164, 90, 0.18);
 }
 
 /* discipline add/delete (P0.1 prototype controls) ------------------- */
@@ -1126,4 +1234,745 @@
 
 .sheet-actions .btn {
   flex: 1;
+}
+
+/* per-row 5-state change sheet (나의 규율) -------------------------- */
+.status-option-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.status-option {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  text-align: left;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  transition: border-color var(--dur-fast) var(--ease-soft),
+    background var(--dur-fast) var(--ease-soft);
+}
+
+.status-option:hover {
+  border-color: var(--border-medium);
+}
+
+.status-option[data-selected='true'] {
+  border-color: var(--ember-300);
+  background: var(--accent-ember-soft);
+}
+
+.status-option-pill {
+  flex-shrink: 0;
+}
+
+.status-option-help {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: var(--lh-snug);
+}
+
+/* check-in last step — 오늘의 규율 점검 3-tap ----------------------- */
+.checkin-rule {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.checkin-tap-row {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: var(--sp-2);
+}
+
+.checkin-tap {
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  text-align: left;
+  transition: all var(--dur-fast) var(--ease-soft);
+}
+
+.checkin-tap:hover {
+  border-color: var(--border-medium);
+  color: var(--text-primary);
+}
+
+.checkin-tap[data-selected='true'] {
+  background: var(--accent-ember-soft);
+  border-color: var(--ember-300);
+  color: var(--text-ember);
+}
+
+/* abstinence timer meta row (hero — derived 최장 기록) -------------- */
+.abstinence-timer-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+/* post-action badges (복기 완료 / 회복 루틴 완료 / 다음 행동 작성 완료) ---- */
+.badge-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.badge {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  background: rgba(106, 122, 94, 0.14);
+  color: #c7d0bc;
+  border: 1px solid rgba(106, 122, 94, 0.3);
+}
+
+.rule-category {
+  margin-right: auto;
+  font-size: var(--fs-small);
+  color: var(--text-quiet);
+}
+
+/* records — range selector (최근 7/14/30일 · 이번 달) ------------------ */
+.range-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.range-chip {
+  padding: var(--sp-2) var(--sp-4);
+  font-size: var(--fs-small);
+}
+
+/* reflection diary inputs ------------------------------------------- */
+.reflect-input {
+  resize: none;
+  line-height: var(--lh-snug);
+  font-family: inherit;
+}
+
+.recovery-scene-card {
+  margin: 0;
+  overflow: hidden;
+  border-radius: var(--r-md);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+}
+
+.recovery-scene-img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  object-position: center 58%;
+}
+
+.recovery-scene-card figcaption {
+  padding: var(--sp-3) var(--sp-4);
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text-secondary);
+}
+
+.recovery-scene-card--text {
+  margin: 0;
+}
+
+/* records — day detail sheet (DayRecord) ---------------------------- */
+.day-detail-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.day-detail-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.day-detail-reflection {
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  line-height: var(--lh-snug);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-md);
+}
+
+/* =================================================================
+ * Pet-room reward layer (§0.6.9) — cosmetic only, clean emoji-token placeholders.
+ * The stage extends .pet-stage. The room background, cat and decor are approved
+ * art (see petAssets.js); when an asset is missing the resolver returns null and
+ * a clean neutral pending slot is shown — never emoji, SVG or blob furniture.
+ * The per-theme gradient below is only an ambient fallback tint behind that
+ * pending state; a present room asset (.room-img) covers it.
+ * ================================================================= */
+
+/* ambient theme tint — fallback only, shown behind the pending room slot */
+.pet-room[data-theme='empty'] {
+  background:
+    radial-gradient(circle at 50% 65%, rgba(245, 164, 90, 0.30), rgba(185, 107, 42, 0.16) 38%, transparent 72%),
+    linear-gradient(180deg, #110d0a 0%, #050302 100%);
+}
+
+.pet-room[data-theme='cozy'] {
+  background:
+    radial-gradient(circle at 50% 66%, rgba(214, 169, 140, 0.26), rgba(120, 80, 45, 0.18) 40%, transparent 74%),
+    linear-gradient(180deg, #1a120c 0%, #0a0604 100%);
+}
+
+.pet-room[data-theme='night'] {
+  background:
+    radial-gradient(circle at 50% 70%, rgba(120, 150, 200, 0.16), transparent 70%),
+    radial-gradient(circle at 60% 38%, rgba(245, 164, 90, 0.10), transparent 60%),
+    linear-gradient(180deg, #0b0e16 0%, #040407 100%);
+}
+
+/* room background image — covers the ambient tint when the asset is present */
+.room-img {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  z-index: 0;
+}
+
+.pet-room--scene {
+  aspect-ratio: 4 / 3;
+}
+
+.pet-room--scene .room-img {
+  object-fit: cover;
+}
+
+.pet-room--scene-reacting {
+  box-shadow:
+    0 0 0 1px rgba(245, 164, 90, 0.25),
+    0 18px 36px rgba(245, 164, 90, 0.16);
+}
+
+.pet-room--scene-reacting::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: 1;
+  pointer-events: none;
+  background: radial-gradient(circle at 52% 58%, rgba(255, 224, 177, 0.22), transparent 62%);
+  animation: scene-warm-pulse 1s var(--ease-soft);
+}
+
+.pet-room--scene-reacting .room-img {
+  animation: scene-image-warm 1s var(--ease-soft);
+}
+
+@keyframes scene-warm-pulse {
+  from { opacity: 0; }
+  35% { opacity: 1; }
+  to { opacity: 0; }
+}
+
+@keyframes scene-image-warm {
+  0%, 100% { filter: brightness(1); }
+  40% { filter: brightness(1.08) saturate(1.04); }
+}
+
+.pet-room-scene-tap {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: block;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+}
+
+.room-scene-note {
+  margin: calc(-1 * var(--sp-2)) 0 0;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+/* neutral "art pending" room slot — an honest unfinished state, not fake art */
+.room-pending {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.room-pending-text {
+  font-size: var(--fs-micro);
+  color: var(--text-quiet);
+  letter-spacing: 0.04em;
+  padding: 4px 10px;
+  border: 1px dashed var(--border-medium);
+  border-radius: var(--r-pill);
+  background: rgba(14, 10, 7, 0.35);
+}
+
+/* art-pending mode — ONE calm centered panel instead of a skeleton cat stacked
+ * with dashed decor slots (that reads as a broken editor). Shown until both the
+ * room background and cat art are approved. The ambient stage gradient stays
+ * behind it; no inner floor / ember / token clutter. */
+.pet-room-pending-panel {
+  position: absolute;
+  inset: 0;
+  z-index: 2;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+  padding: var(--sp-5) var(--sp-6);
+  text-align: center;
+}
+
+.pet-room-pending-title {
+  font-size: var(--fs-body);
+  font-weight: 600;
+  letter-spacing: 0.01em;
+  color: var(--text-secondary);
+}
+
+.pet-room-pending-copy {
+  max-width: 26ch;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text-quiet);
+}
+
+/* compact (Home preview): a single calm line — no subcopy, never dominates the timer */
+.pet-stage--compact .pet-room-pending-title {
+  font-size: var(--fs-small);
+}
+
+.pet-stage--compact .pet-room-pending-copy {
+  display: none;
+}
+
+/* tone overlays — applied as a filter so they never erase the theme bg */
+.pet-room.pet-stage--dim {
+  filter: brightness(0.82) saturate(0.85);
+}
+
+.pet-room.pet-stage--bright {
+  filter: saturate(1.05) brightness(1.03);
+}
+
+/* keep the cat above the room background + floor */
+.pet-room .pet-cat-img,
+.pet-room .pet-cat-skeleton {
+  z-index: 1;
+}
+
+/* editor stage — taller, roomier canvas for dragging */
+.pet-room--editor {
+  aspect-ratio: 1 / 1;
+  touch-action: none;
+}
+
+.pet-room--editor.pet-room--scene {
+  aspect-ratio: 4 / 3;
+  touch-action: manipulation;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .pet-room--scene-reacting::after,
+  .pet-room--scene-reacting .room-img {
+    animation: none;
+  }
+}
+
+/* placed decor token — real item art, or a clean neutral pending slot.
+ * No emoji, no glow blob, no floating label. */
+.room-token {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  width: 24%;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  z-index: 1;
+}
+
+button.room-token {
+  cursor: grab;
+  touch-action: none;
+}
+
+button.room-token:active {
+  cursor: grabbing;
+}
+
+.room-token-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  object-position: bottom center;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.45));
+  pointer-events: none;
+}
+
+.room-token-pending {
+  width: 78%;
+  height: 78%;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--border-medium);
+  background: linear-gradient(180deg, rgba(201, 194, 183, 0.07), rgba(201, 194, 183, 0.02));
+}
+
+.room-token.is-selected {
+  outline: 2px solid var(--ember-300);
+  outline-offset: 2px;
+  border-radius: var(--r-md);
+}
+
+/* floating drag ghost — follows the pointer, never intercepts it */
+.room-drag-ghost {
+  position: fixed;
+  transform: translate(-50%, -50%) scale(1.1);
+  width: 64px;
+  height: 64px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  pointer-events: none;
+  z-index: 60;
+}
+
+.room-drag-ghost-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 14px rgba(0, 0, 0, 0.5));
+}
+
+.room-drag-ghost-pending {
+  width: 70%;
+  height: 70%;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--border-medium);
+  background: rgba(201, 194, 183, 0.12);
+}
+
+/* room editor chrome — instruction + selected-token control + action row */
+.room-instruction {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: var(--lh-snug);
+  text-align: center;
+}
+
+.room-select-bar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md);
+  background: var(--accent-ember-soft);
+  border: 1px solid rgba(245, 164, 90, 0.22);
+}
+
+.room-select-name {
+  font-size: var(--fs-small);
+  color: var(--text-ember);
+}
+
+.room-select-actions {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.room-select-btn {
+  flex: 1;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: #1a0f06;
+  background: linear-gradient(180deg, var(--ember-300), var(--ember-400));
+  border: 1px solid transparent;
+}
+
+.room-select-btn--ghost {
+  background: transparent;
+  color: var(--text-secondary);
+  border: 1px solid var(--border-medium);
+  font-weight: 500;
+}
+
+.room-action-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.room-action-row .btn {
+  flex: 1;
+}
+
+/* 보관함 (inventory) — compact draggable thumbnails */
+.inv-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: var(--sp-3);
+}
+
+.inv-thumb {
+  position: relative;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--sp-1);
+  padding: var(--sp-3) var(--sp-2);
+  border-radius: var(--r-md);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  cursor: grab;
+  touch-action: none;
+  transition: border-color var(--dur-fast) var(--ease-soft);
+}
+
+.inv-thumb:hover {
+  border-color: var(--ember-200);
+}
+
+.inv-thumb:active {
+  cursor: grabbing;
+}
+
+/* not placeable until the item art is approved — readable, but not draggable */
+.inv-thumb[data-locked='true'] {
+  cursor: default;
+  opacity: 0.72;
+  touch-action: auto;
+}
+
+.inv-thumb[data-locked='true']:hover {
+  border-color: var(--border-soft);
+}
+
+.inv-thumb-img {
+  width: 40px;
+  height: 40px;
+  object-fit: contain;
+  filter: drop-shadow(0 4px 8px rgba(0, 0, 0, 0.4));
+}
+
+.inv-thumb-pending {
+  width: 40px;
+  height: 40px;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--border-medium);
+  background: rgba(201, 194, 183, 0.08);
+}
+
+.inv-thumb-name {
+  font-size: var(--fs-micro);
+  color: var(--text-secondary);
+  text-align: center;
+  line-height: var(--lh-snug);
+}
+
+.inv-thumb-badge {
+  position: absolute;
+  top: 4px;
+  right: 4px;
+  font-size: 9px;
+  color: var(--moss-200, #b9c8a8);
+  background: rgba(106, 122, 94, 0.22);
+  border-radius: var(--r-pill);
+  padding: 1px 6px;
+}
+
+.inv-thumb-status {
+  font-size: 9px;
+  color: var(--text-quiet);
+  background: rgba(201, 194, 183, 0.08);
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-pill);
+  padding: 1px 6px;
+}
+
+.feed-btn[data-empty='true'] {
+  opacity: 0.74;
+}
+
+.feed-btn[data-reacting='true'] {
+  animation: feed-button-warm 1s var(--ease-soft);
+}
+
+@keyframes feed-button-warm {
+  0%, 100% { transform: translateY(0); filter: brightness(1); }
+  40% { transform: translateY(-1px); filter: brightness(1.06); }
+}
+
+/* reward screen — disclaimer + catalogue rows ---------------------- */
+.reward-disclaimer {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  line-height: var(--lh-snug);
+  padding: var(--sp-3) var(--sp-4);
+  background: var(--accent-ember-soft);
+  border: 1px solid rgba(245, 164, 90, 0.22);
+  border-radius: var(--r-md);
+}
+
+/* 상점 (shop) — category tabs + tidy catalogue cards in a bottom sheet */
+.shop-tabs {
+  display: flex;
+  gap: var(--sp-2);
+  overflow-x: auto;
+  padding-bottom: var(--sp-1);
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.shop-tabs::-webkit-scrollbar {
+  display: none;
+}
+
+.shop-tab {
+  flex: 0 0 auto;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+  white-space: nowrap;
+  transition: all var(--dur-fast) var(--ease-soft);
+}
+
+.shop-tab[data-selected='true'] {
+  background: var(--accent-ember-soft);
+  border-color: var(--ember-300);
+  color: var(--text-ember);
+}
+
+.catalog-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  max-height: 46vh;
+  overflow-y: auto;
+}
+
+.catalog-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-3);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--ink-700);
+  border: 1px solid var(--border-soft);
+}
+
+.catalog-row[data-active='true'] {
+  border-color: var(--ember-300);
+  background: var(--accent-ember-soft);
+}
+
+.catalog-thumb {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  background: var(--ink-600);
+  border: 1px solid var(--border-soft);
+  overflow: hidden;
+}
+
+.catalog-thumb-img {
+  width: 30px;
+  height: 30px;
+  object-fit: contain;
+}
+
+.catalog-thumb-pending {
+  width: 28px;
+  height: 28px;
+  border-radius: var(--r-sm);
+  border: 1px dashed var(--border-medium);
+  background: rgba(201, 194, 183, 0.08);
+}
+
+.catalog-swatch {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+}
+
+.catalog-main {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+  flex: 1;
+}
+
+.catalog-name {
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  line-height: var(--lh-snug);
+}
+
+.catalog-blurb {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+  line-height: var(--lh-snug);
+}
+
+.catalog-side {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: var(--sp-2);
+  flex-shrink: 0;
+}
+
+.catalog-action {
+  padding: 6px var(--sp-3);
+  border-radius: var(--r-pill);
+  font-size: var(--fs-small);
+  font-weight: 600;
+  color: #1a0f06;
+  background: linear-gradient(180deg, var(--ember-300), var(--ember-400));
+  border: 1px solid transparent;
+  white-space: nowrap;
+  transition: filter var(--dur-fast) var(--ease-soft),
+    transform var(--dur-fast) var(--ease-soft);
+}
+
+.catalog-action:hover:not(:disabled) {
+  filter: brightness(1.06);
+  transform: translateY(-1px);
 }
