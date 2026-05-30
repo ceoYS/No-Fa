@@ -56,6 +56,8 @@ export default function RecoveryScreen({
       </header>
 
       {RECOVERY_SCENE_SRC ? (
+        // The header already carries the tone; the room scene here is calm
+        // ambiance, so it stays caption-less rather than echoing that line again.
         <figure className="recovery-scene-card">
           <img
             className="recovery-scene-img"
@@ -64,7 +66,6 @@ export default function RecoveryScreen({
             loading="lazy"
             decoding="async"
           />
-          <figcaption>{isRelapse ? '오늘을 한 번 복기해요' : '가볍게 돌아봐요'}</figcaption>
         </figure>
       ) : (
         <section className="card recovery-scene-card recovery-scene-card--text">
@@ -76,7 +77,7 @@ export default function RecoveryScreen({
       <p className="screen-subtitle">
         {isRelapse
           ? '기록은 우리가 걸어온 노력의 나이테예요. 무엇이 계기였는지 한 번만 돌아보면 다음이 쉬워져요.'
-          : '못 지킨 날도 기록이에요. 짧게 돌아보면 다음이 한결 가벼워져요. 길게 쓰지 않아도 돼요.'}
+          : '못 지킨 날도 기록이에요. 짧게 돌아보면 다음이 한결 가벼워져요.'}
       </p>
 
       {targetRule ? (
