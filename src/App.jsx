@@ -38,6 +38,28 @@ const SEED_OFFSET_MS = 12 * DAY_MS + 3 * 3600 * 1000 + 24 * 60 * 1000 + 18 * 100
 // a custom tag typed in the add sheet joins this list for the session.
 const SEED_CATEGORIES = ['밤 시간', '충동', '검색', 'SNS·숏폼', '수면', '외로움', '스트레스'];
 
+// Debug-only screen switcher (prototype tooling, not product UI). Visible while
+// developing (`npm run dev` → import.meta.env.DEV) and, on a built/review deploy,
+// only when a reviewer explicitly opts in via `?dev=1` (persisted to localStorage
+// so it survives in-app navigation). A plain production load never shows it.
+// BottomNav is the real navigation and is always present regardless.
+function debugNavEnabled() {
+  if (import.meta.env?.DEV) return true;
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dev') === '1') {
+      window.localStorage.setItem('nof_debug_nav', '1');
+      return true;
+    }
+    return window.localStorage.getItem('nof_debug_nav') === '1';
+  } catch {
+    return false;
+  }
+}
+
+const DEBUG_NAV = debugNavEnabled();
+
 // Discipline rules — P0.1 in-memory state lifted to App so Home / 최근 기록 /
 // 체크인 stay in sync. `status` holds the v2 internal enum (§0.6.2:
 // kept/missed/held/unrecorded); the UI renders the selectable label only, never
@@ -118,14 +140,17 @@ export default function App() {
     const runDays = Math.floor((now - abstinenceStartMs) / DAY_MS);
     setLongestDays((best) => Math.max(best, runDays));
     setAbstinenceStartMs(now);
-    setTodayRecord({
+    // A relapse resets the day's narrative but keeps any check-in already logged
+    // today — that 1-min check-in is a factual event, not erased by the restart.
+    setTodayRecord((prev) => ({
       abstinenceState: 'relapse',
       reflection: null,
       nextAction: null,
       triggers: [],
       failureReason: null,
       badges: { ...EMPTY_BADGES },
-    });
+      checkin: prev?.checkin ?? null,
+    }));
     setReflectionCtx({ scope: 'relapse' });
     setScreenId('recovery');
   };
@@ -156,6 +181,7 @@ export default function App() {
         reflected: true,
         nextActionWritten: nextWritten || (prev?.badges?.nextActionWritten ?? false),
       },
+      checkin: prev?.checkin ?? null,
     }));
     if (ruleId) {
       setRules((prev) =>
@@ -172,9 +198,28 @@ export default function App() {
   };
 
   // 오늘의 체크인 완료 (§0.6.9): the check-in includes the discipline check, so the
-  // grant folds in a small bonus per 위기였지만 버텼어요 rule.
-  const completeCheckin = () => {
+  // grant folds in a small bonus per 위기였지만 버텼어요 rule. The step-1 inputs
+  // (기분/충동/트리거) are persisted into today's record so 최근 기록 can show what
+  // was logged (§0.6.5). Persisting these fields does NOT affect reward eligibility
+  // — milestones unlock on streak day only (isMilestoneClaimable) — and adds no new
+  // grant: the shard grant below is the existing 체크인 reward, unchanged.
+  const completeCheckin = (checkin = {}) => {
     const s = summarizeRules(rules);
+    const completedAt = Date.now();
+    setTodayRecord((prev) => ({
+      abstinenceState: prev?.abstinenceState ?? 'clean',
+      reflection: prev?.reflection ?? null,
+      nextAction: prev?.nextAction ?? null,
+      triggers: prev?.triggers ?? [],
+      failureReason: prev?.failureReason ?? null,
+      badges: { ...EMPTY_BADGES, ...(prev?.badges ?? {}) },
+      checkin: {
+        moodLabel: checkin.moodLabel ?? null,
+        urge: typeof checkin.urge === 'number' ? checkin.urge : null,
+        triggers: Array.isArray(checkin.triggers) ? checkin.triggers : [],
+        completedAt,
+      },
+    }));
     earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 체크인');
     setScreenId('reward');
   };
@@ -256,7 +301,9 @@ export default function App() {
 
   return (
     <div className="app-shell">
-      <ScreenSwitcher screens={SCREENS} value={screenId} onChange={setScreenId} />
+      {DEBUG_NAV ? (
+        <ScreenSwitcher screens={SCREENS} value={screenId} onChange={setScreenId} />
+      ) : null}
       <div className="device-frame">
         <div className="device-status-bar">
           <span>9:41</span>

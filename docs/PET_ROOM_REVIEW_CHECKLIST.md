@@ -40,6 +40,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] Step 2: each rule shows the 3-state tap row; selecting writes status (verify
       it reflects on Home/Discipline).
 - [ ] 체크인 완료 button grants shards and lands on Pet Room.
+- [ ] **Persistence:** after 체크인 완료, open 기록 → tap **today** → the detail
+      sheet shows an **오늘의 체크인** block with the mood + 충동 N/5 (and trigger
+      chips if any were picked), matching exactly what you selected. Nothing vanishes.
 
 ## Calendar / 최근 기록
 
@@ -47,6 +50,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] Tapping a day opens the detail sheet with 절제 상태 / 규율 counts / 복기.
 - [ ] Relapse days render in a warm tone — **no red "fail" styling**.
 - [ ] Legend dots match the strip tones.
+- [ ] Today's detail sheet shows the **오늘의 체크인** block when a check-in was
+      completed today (기분 · 충동 N/5 · trigger chips). A day with **no** check-in
+      shows no such block — no empty "오늘의 체크인" header.
 
 ## Discipline (나의 규율)
 
@@ -112,8 +118,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
 3. Console tab open the whole time — **any red error is a finding**.
 4. Walk the flow in this order, screenshotting where noted:
    1. **홈** loads first. Watch the timer tick once (1s). _Screenshot: full Home._
-   2. Tap **오늘 규율 점검하기** → 체크인 step 1 → pick mood + urge → **다음** →
-      step 2 → **체크인 완료**. Lands on 고양이 방. _Screenshot: 고양이 방 top._
+   2. Tap **오늘 규율 점검하기** → 체크인 step 1 → pick a mood, **≥1 trigger**, and
+      an urge level → **다음** → step 2 → **체크인 완료**. Lands on 고양이 방.
+      _Screenshot: 고양이 방 top._ (Persistence is verified in step 6.)
    3. In 고양이 방: tap the room once (calm message), tap **간식 주기** twice
       (count drops 1 each), tap an already-**받음** reward (must do nothing).
       _Screenshot: 보상 받기 section showing 받기 / 받음 / N일째 states._
@@ -122,7 +129,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
    5. Back 홈 → **무너졌어요 · 다시 시작** → relapse reflection (required) →
       try **복기 마치고…** while 왜 그랬을까요 empty (must stay blocked) → type
       one line → finish. _Screenshot: relapse reflection with blocked button._
-   6. **기록** tab → tap a day → detail sheet opens → 닫기. _Screenshot: detail._
+   6. **기록** tab → tap **today's** cell → detail sheet shows the **오늘의 체크인**
+      block matching step 2 (기분 · 충동 N/5 · trigger chips) → 닫기.
+      _Screenshot: day detail with 오늘의 체크인._
    7. **나의 규율** → confirm there is **no delete control** of any kind.
 
 ## What to screenshot (attach to the review)
@@ -145,6 +154,10 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - Copy claiming the cat 기지개/꼬리/먹었/움직였 with no animation.
 - A 방 테마 tab visible inside 상점 while in scene mode.
 - A delete/삭제 affordance on 나의 규율.
+- The **오늘의 체크인** block missing from today's detail after 체크인 완료, or
+  showing a mood / urge / trigger that does not match what was selected (data dropped).
+- The prototype **화면 전환** panel ("NoF · P0 prototype") visible on a plain
+  production build (built `dist/` previewed without `?dev=1`).
 - Red console error on any screen, or layout overflowing the device frame.
 
 ## P0 blockers — must ALL pass before any merge to `main`
@@ -155,7 +168,31 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] Reward eligibility holds: ineligible/claimed reward never moves balances.
 - [ ] Scene mode: no drag, no token overlays, no `방에 있음`, no motion claim.
 - [ ] No fabricated live-user / social-proof number on Home.
+- [ ] Check-in step-1 inputs persist into today's record (오늘의 체크인 block in 기록).
+- [ ] Debug 화면 전환 switcher hidden on a production build (renders only in dev or
+      with `?dev=1`).
 - [ ] No red console error and no horizontal overflow on any screen at 390px.
+
+---
+
+## Debug switcher gating (review tooling)
+
+The left **화면 전환** panel (`ScreenSwitcher`, titled "NoF · P0 prototype") is
+debug-only — it jumps straight to any of the 7 screens for review. It must **not**
+appear on a plain production load. Gating lives in `App.jsx` (`debugNavEnabled()`).
+BottomNav is the real navigation and is always present.
+
+How to verify and how to drive it during review:
+
+- `npm run dev` → panel **is** visible (dev mode, `import.meta.env.DEV`). This is the
+  normal review setup; nothing extra to do.
+- `npm run build` then `npm run preview` (serves the built `dist/`) → open the URL
+  with **no params** → panel is **hidden**. Confirm BottomNav still switches screens.
+- Same preview URL with **`?dev=1`** appended → panel **reappears**, and the choice
+  is remembered for later in-app navigation (stored as `localStorage.nof_debug_nav`).
+- To turn it back off on a build: in the console run
+  `localStorage.removeItem('nof_debug_nav')`, then reload without `?dev=1`
+  (or clear site data).
 
 ---
 

@@ -30,6 +30,21 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
 
   const step1Ready = mood && urge !== null;
 
+  // Resolve the step-1 selections to human-readable labels and hand them up so the
+  // app can persist them into today's record. Resolving ids → labels here keeps the
+  // records/calendar layer from importing this screen's chip definitions.
+  const finishCheckin = () => {
+    if (!onCompleteCheckin) {
+      onNavigate('reward');
+      return;
+    }
+    const moodLabel = MOODS.find((m) => m.id === mood)?.label ?? null;
+    const triggerLabels = triggers
+      .map((id) => TRIGGERS.find((t) => t.id === id)?.label)
+      .filter(Boolean);
+    onCompleteCheckin({ moodLabel, urge, triggers: triggerLabels });
+  };
+
   return (
     <div className="screen">
       <header className="screen-header">
@@ -153,7 +168,7 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
             <button
               type="button"
               className="btn btn-primary btn-block"
-              onClick={() => (onCompleteCheckin ? onCompleteCheckin() : onNavigate('reward'))}
+              onClick={finishCheckin}
             >
               체크인 완료 · 방이 조금 더 따뜻해져요
             </button>

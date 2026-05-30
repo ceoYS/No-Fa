@@ -29,7 +29,7 @@ Status key: `FIXED` (this pass) · `HOLD` (risky — see note) · `MANUAL`
 
 | # | Pri | Issue | Status |
 |---|-----|-------|--------|
-| C1 | P1 | Step-1 captures mood / triggers / urge, but `onCompleteCheckin()` ignores all three — the inputs are dead (not persisted to the day record). A reviewer testing the flow sees data vanish. | HOLD — wiring inputs into the record is a state-model change (App `completeCheckin`), beyond a safe cosmetic fix; documented for the next functional pass. |
+| C1 | P1 | Step-1 captures mood / triggers / urge, but `onCompleteCheckin()` ignored all three — the inputs were dead (not persisted to the day record). A reviewer testing the flow saw data vanish. | FIXED — `CheckinScreen` resolves the selections to labels and passes them up; `App.completeCheckin` writes `todayRecord.checkin = { moodLabel, urge, triggers, completedAt }`; 최근 기록 day-detail shows an 오늘의 체크인 block. Reward eligibility untouched (streak-day gated) and no new grant added. |
 | C2 | P2 | Step-1 "다음" disabled state is inline `opacity:0.45; pointer-events:none` plus the `disabled` attr. Accessible, but the visual disabled cue is faint. | OPEN. |
 | C3 | P1 | No explicit empty state when `rules.length === 0` is handled (it is) — confirm the 체크인 완료 button still grants sensibly with zero rules. | MANUAL. |
 | C4 | P2 | "체크인 완료 · 방이 조금 더 따뜻해져요" — verify this is not a motion claim; it's a warmth metaphor, acceptable, but watch for over-promising visible change. | MANUAL. |
@@ -85,7 +85,7 @@ Status key: `FIXED` (this pass) · `HOLD` (risky — see note) · `MANUAL`
 
 | # | Pri | Issue | Status |
 |---|-----|-------|--------|
-| X1 | P2 | `ScreenSwitcher` debug aside ships in the bundle. Clearly labeled "프로토타입 · 최종 아님", fine for review, but must be gated behind a dev flag before production. | OPEN (HOLD removal — it's the review navigation). |
+| X1 | P2 | `ScreenSwitcher` debug aside shipped visible in every build. Clearly labeled "프로토타입 · 최종 아님", fine for review, but must not render on a plain production load. | FIXED — gated behind `debugNavEnabled()`: shown in dev (`import.meta.env.DEV`) and, on a built/review deploy, only with `?dev=1` (persisted to `localStorage.nof_debug_nav`). A plain production load hides it; BottomNav stays the real nav. Enable/disable steps in the review checklist. |
 | X2 | P1 | Scene-mode forbidden-token scan (기지개/꼬리/먹는/움직임/SVG cat/emoji furniture) must stay clean. Only benign hits are a CSS `align-items: stretch` and an explanatory `onDeleteRule` comment. | VERIFIED. |
 | X3 | P2 | No global error boundary — a render throw blanks the device frame. Acceptable for prototype; note for production. | OPEN. |
 | X4 | P2 | Empty states exist for rules (Home/Checkin/Discipline) and inventory; confirm each reads calmly with zero data. | MANUAL. |

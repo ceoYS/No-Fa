@@ -142,6 +142,27 @@ function DayDetailSheet({ day, onClose }) {
           )}
         </div>
 
+        {day.checkin ? (
+          <div className="day-detail-block">
+            <span className="card-label">오늘의 체크인</span>
+            <p className="discipline-summary">
+              {[
+                day.checkin.moodLabel ? `기분 ${day.checkin.moodLabel}` : null,
+                day.checkin.urge != null ? `충동 ${day.checkin.urge}/5` : null,
+              ]
+                .filter(Boolean)
+                .join(' · ') || '체크인을 남겼어요.'}
+            </p>
+            {day.checkin.triggers && day.checkin.triggers.length > 0 ? (
+              <div className="sheet-chip-grid">
+                {day.checkin.triggers.map((t) => (
+                  <span key={t} className="chip" data-selected="false">{t}</span>
+                ))}
+              </div>
+            ) : null}
+          </div>
+        ) : null}
+
         {day.failureReason ? (
           <div className="day-detail-block">
             <span className="card-label">그 날의 흐름</span>

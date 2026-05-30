@@ -112,6 +112,7 @@ function buildOneDay(offset, ctx) {
     reflection: null,
     nextAction: null,
     badges: emptyBadges(),
+    checkin: null,
   };
   const streakForDay = todayStreak - offset;
 
@@ -132,6 +133,7 @@ function buildOneDay(offset, ctx) {
       reflection: todayRecord?.reflection ?? null,
       nextAction: todayRecord?.nextAction ?? null,
       badges: { ...emptyBadges(), ...(todayRecord?.badges ?? {}) },
+      checkin: todayRecord?.checkin ?? null,
       state: todayDotState(rules, todayRecord),
     };
   }
