@@ -223,10 +223,14 @@ export default function PetRewardScreen({
         </div>
       ) : (
         <p className="room-instruction" aria-live="polite">
+          {/* Scene mode's persistent "완성된 방 이미지" caption lives in the stage's
+              room-scene-note; this region only surfaces dynamic tap/feed/reward
+              feedback so the same sentence never stacks twice. Kept mounted (empty
+              when idle) so it stays a stable live region and reserves its space. */}
           {stageReady
-            ? tapMsg ?? (sceneMode
-              ? '완성된 방 이미지로 고양이 방을 보여주고 있어요.'
-              : '아이템을 끌어서 방에 놓아보세요. 놓인 아이템은 다시 끌어 옮길 수 있어요.')
+            ? sceneMode
+              ? tapMsg ?? ''
+              : tapMsg ?? '아이템을 끌어서 방에 놓아보세요. 놓인 아이템은 다시 끌어 옮길 수 있어요.'
             : '승인된 고양이와 방 이미지를 연결하면 꾸미기를 시작할 수 있어요.'}
         </p>
       )}
