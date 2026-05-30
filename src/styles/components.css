@@ -1085,21 +1085,9 @@
   border-color: var(--ember-200);
 }
 
-.btn-delete {
-  padding: 4px var(--sp-3);
-  border-radius: var(--r-pill);
-  font-size: var(--fs-small);
-  color: var(--text-quiet);
-  background: transparent;
-  border: 1px solid var(--border-soft);
-  transition: color var(--dur-fast) var(--ease-soft),
-    border-color var(--dur-fast) var(--ease-soft);
-}
-
-.btn-delete:hover {
-  color: var(--text-secondary);
-  border-color: var(--border-medium);
-}
+/* No .btn-delete style: discipline rules are self-contracts with no delete
+   affordance (§0.6.2). The orphan delete-button style was removed so a
+   destructive control cannot be trivially styled into the screen. */
 
 /* reward claim states ---------------------------------------------- */
 .reward-claim-btn {

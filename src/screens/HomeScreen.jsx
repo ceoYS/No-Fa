@@ -180,7 +180,7 @@ export default function HomeScreen({
           <span className="card-label">함께 버티는 중</span>
           <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>동행</span>
         </div>
-        <p className="discipline-summary">지금 1,240명이 같이 버티고 있어요.</p>
+        <p className="discipline-summary">같은 목표로 하루를 버티는 사람들이 함께하고 있어요.</p>
         <p className="hairline-note">혼자가 아니에요. 같이 가는 사람들이 곁에 있어요.</p>
       </section>
 

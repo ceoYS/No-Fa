@@ -16,6 +16,7 @@ export default function BottomNav({ value, onChange }) {
             key={t.id}
             type="button"
             data-active={active}
+            aria-current={active ? 'page' : undefined}
             onClick={() => onChange(t.id)}
           >
             <Icon className="bottom-nav-icon" active={active} />
