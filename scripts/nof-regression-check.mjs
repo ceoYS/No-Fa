@@ -18,6 +18,9 @@
  *   8. The slip-reflection shard grant is once-per-calendar-day (no farm).
  *   9. The pet-room sheets are real dialogs (role/aria) and Esc-dismissible.
  *  10. A top-level ErrorBoundary wraps the app (no white-screen on a render throw).
+ *  11. Home is timer-first: abstinence timer hero + crisis/record hero CTAs.
+ *  12. The urge 대체 활동 opens a real alternative-action panel, not a home route.
+ *  13. The pet feed message is an honest hand-off (no cat-eating claim).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -131,7 +134,7 @@ check('scene mode keeps drag disabled until item sprites are ready', () => {
 // 6 — forbidden fake-motion / emoji-furniture / blob-cat tokens absent from source.
 check('no fake-motion / emoji-furniture / blob tokens in source', () => {
   const tokens = [
-    '기지개', '꼬리', '먹었', '먹는', '움직였', 'eating',
+    '기지개', '꼬리', '먹었', '먹는', '움직였', 'eating', '파도처럼',
     'pet-cat-svg', 'room-token-glow',
     '🐱', '🪑', '🧺', '🛏️', '🪔', '💡', '🛋️', '🟫', '🐟',
   ];
@@ -198,6 +201,41 @@ check('top-level ErrorBoundary wraps the app', () => {
     /getDerivedStateFromError/.test(read('src/components/ErrorBoundary.jsx')),
     'ErrorBoundary is not a real error boundary (no getDerivedStateFromError)',
   );
+});
+
+// 11 — Home must stay timer-first: the abstinence timer hero plus the crisis and
+// record hero CTAs sit above the secondary cards (the core loop is not buried).
+check('home is timer-first with crisis + record hero CTAs', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes('abstinence-timer-card'), 'Home timer hero (abstinence-timer-card) missing');
+  assert(home.includes('home-hero-actions'), 'Home hero CTA row (home-hero-actions) missing');
+  assert(
+    home.includes('지금 충동 멈추기') && home.includes("onNavigate('urge')"),
+    'Home crisis CTA (지금 충동 멈추기 → urge) missing',
+  );
+  assert(
+    home.includes('오늘 상태 남기기') && home.includes("onNavigate('checkin')"),
+    'Home record CTA (오늘 상태 남기기 → checkin) missing',
+  );
+});
+
+// 12 — the urge 대체 활동 must open a real in-screen alternative-action panel with
+// concrete actions, rather than silently routing home under that label.
+check('urge alternative-action panel is real (not a home route)', () => {
+  const urge = read('src/screens/UrgeScreen.jsx');
+  for (const label of ['물 한 잔 마시기', '휴대폰 내려놓기', '10번 천천히 숨쉬기', '자리에서 일어나기']) {
+    assert(urge.includes(label), `urge alternative action missing: ${label}`);
+  }
+  assert(urge.includes('대체 활동 해보기'), 'urge 대체 활동 해보기 entry missing');
+  assert(urge.includes("setView('alt')"), '대체 활동 does not open the alternative panel (no setView(alt))');
+});
+
+// 13 — the pet feed message must be an honest hand-off, never a cat-eating claim
+// (eating tokens are banned globally by check 6; this pins the positive copy).
+check('pet feed message is an honest hand-off (no eating claim)', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  assert(screen.includes('간식을 건넸어요'), 'feed hand-off message (간식을 건넸어요) missing');
+  assert(screen.includes('snack-toss-token'), 'snack hand-off token (snack-toss-token) missing');
 });
 
 let failed = 0;

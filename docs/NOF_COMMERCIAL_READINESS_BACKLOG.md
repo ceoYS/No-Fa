@@ -33,28 +33,62 @@ guardrail loosening.
     share the same once-per-day anti-farm shape; relapse-reflection stays ungated
     by design (self-limited by its timer reset).
 
+## Product refocus pass (timer-first core) — 5
+
+Re-centre the app on the real no-fap loop (live abstinence timer + 5-minute crisis
+delay) without loosening any guardrail.
+
+1. **Home timer-first.** Two hero CTAs sit directly under the abstinence timer —
+   primary `지금 충동 멈추기` (→ urge) and `오늘 상태 남기기` (→ 1분 기록). The buried
+   standalone 잠깐 멈춤 card and the generic 동행 social card are removed; the 규율
+   card drops its duplicate check-in button. Hero + 4 compact cards, not hero + 6.
+2. **Urge real alternative panel.** `대체 활동 해보기` no longer routes home; it opens
+   an in-screen panel of 4 concrete actions (물 한 잔 / 휴대폰 내려놓기 / 10번 숨쉬기 /
+   자리에서 일어나기). Completing one returns to the breath timer with a calm note and
+   grants nothing — only the once-per-day `crisisHeld` 마치기 earns.
+3. **Calmer urge copy.** The forbidden `파도처럼 약해질 수 있어요` is gone from Home and
+   Urge, replaced with `5분만 지나도 강도는 조금 내려갈 수 있어요`. `파도처럼` is now a
+   banned token in `check:nof`.
+4. **Check-in as secondary logging.** Reframed to `1분 기록` / `오늘 상태를 남겨요` with
+   `패턴을 보기 위한 개인 기록이에요. 밖으로 공유되지 않아요.` Persistence + once-per-day
+   reward guard untouched.
+5. **Honest snack hand-off.** Feed shows an emoji-free ember token rising from the
+   button toward the scene + `간식을 건넸어요. 고양이가 기분 좋아 보여요.` No eating /
+   motion claim; drag stays disabled (`spriteReady:false`). `check:nof` 10 → 13.
+
 ---
 
 ## Home (홈)
 
 | Pri | Track | Item | Status |
 |---|---|---|---|
+| P1 | source | Timer-first: abstinence timer hero + `지금 충동 멈추기` / `오늘 상태 남기기` hero CTAs above secondary cards; standalone crisis card + 동행 filler removed (hero + 4 cards). | FIXED✓ |
 | P1 | source | `warmthBand()` only ever returns 잔잔함/안정; copy implies a spectrum that never reaches a warm high even on a clean streak. | OPEN |
-| P1 | source | Fabricated live-user metric removed — 함께 버티는 중 card is count-free. | VERIFIED |
+| P1 | source | Generic 동행/social card removed entirely (no backend to honor it); no fabricated metric remains. | FIXED✓ |
 | P1 | browser | Relapse preview tone + copy stay dim/gentle, never a motion claim. | MANUAL |
-| P2 | browser | 7-card scroll flattens hierarchy; 규율 편집 / 전체 보기 text buttons likely <44px touch. | MANUAL |
+| P2 | browser | 규율 편집 / 전체 보기 text buttons likely <44px touch. | MANUAL |
 | P2 | source | Timer clock updates each 1s but is not a live region (no SR spam). | VERIFIED |
 
 ## Check-in (체크인)
 
 | Pri | Track | Item | Status |
 |---|---|---|---|
+| P1 | source | Reframed as secondary logging (`1분 기록` / `오늘 상태를 남겨요`) with `패턴을 보기 위한 개인 기록이에요. 밖으로 공유되지 않아요.` — no longer reads as the main mechanic. | FIXED✓ |
 | P1 | source | Step-1 mood/urge/triggers persist into today's record. | FIXED |
 | P1 | source | Repeat 체크인 완료 grants shards once-per-calendar-day (`checkinRewardDay`). | FIXED |
 | P1 | source | `특별히 없음` trigger is mutually exclusive — no "없음 + 스트레스" lands in the record. | FIXED✓ |
 | P1 | source | mood / trigger / urge controls expose `aria-pressed`. | FIXED✓ |
 | P2 | source | Re-entry does not prefill the saved mood/urge; re-check-in starts blank. | OPEN |
 | P2 | browser | Disabled 다음 visual cue is faint. | MANUAL |
+
+## Urge / 잠깐 멈춤 (crisis loop)
+
+| Pri | Track | Item | Status |
+|---|---|---|---|
+| P0 | source | `대체 활동 해보기` opens a real in-screen alternative-action panel (4 concrete actions), not a silent home route under a misleading label. | FIXED✓ |
+| P1 | source | Completing an alternative returns to the breath timer with a calm note and grants no shards (only once-per-day `crisisHeld` 마치기 earns). | FIXED✓ |
+| P1 | source | Calm copy: forbidden `파도처럼` removed; `5분만 지나도 강도는 조금 내려갈 수 있어요`. Pinned by `check:nof`. | FIXED✓ |
+| P1 | browser | Breath ring + 5-minute count-up read calmly; no shame copy. | MANUAL |
 
 ## Calendar / Records (최근 기록)
 
@@ -93,6 +127,7 @@ guardrail loosening.
 | P0 | source | Reward eligibility guard (`isMilestoneClaimable`) in both screen + App. | VERIFIED |
 | P0 | source | sceneMode honesty: no drag, no overlay, no `방에 있음`, no motion claim. | VERIFIED |
 | P1 | source | 보관함 / 상점 are real dialogs (`role`/`aria-modal`/`aria-label`) + Esc-dismissible. | FIXED✓ |
+| P1 | source | Snack feed shows an emoji-free ember hand-off token rising toward the scene + `간식을 건넸어요. 고양이가 기분 좋아 보여요.` — no eating/motion claim; reduced-motion respected. | FIXED✓ |
 | P1 | source | Feed decrements, never negative; sound silent fallback, gesture-gated. | VERIFIED |
 | P1 | browser | Three reward states (받기 / 받음 / N일째) visually distinct on device. | MANUAL |
 | P1 | browser | Feed at 0 snacks: `aria-disabled` but clickable (intentional feedback). | OPEN |
@@ -156,7 +191,7 @@ guardrail loosening.
 
 | Pri | Track | Item | Status |
 |---|---|---|---|
-| P1 | source | `check:nof` expanded 6 → 10 (crisis/slip once-per-day, pet-room dialogs, ErrorBoundary). | FIXED✓ |
+| P1 | source | `check:nof` expanded 6 → 13 (crisis/slip once-per-day, pet-room dialogs, ErrorBoundary, home timer-first, urge alt-panel, feed hand-off + `파도처럼` ban). | FIXED✓ |
 | P1 | source | Tripwire greps clean (only benign CSS `stretch` + `onDeleteRule` comment). | VERIFIED |
 | P2 | source | No unit/e2e runner; static checks only (acceptable for prototype). | OPEN |
 

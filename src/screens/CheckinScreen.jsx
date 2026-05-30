@@ -56,8 +56,8 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
     <div className="screen">
       <header className="screen-header">
         <div>
-          <p className="screen-greeting">오늘 어땠어요?</p>
-          <h1 className="screen-title">1분 체크인</h1>
+          <p className="screen-greeting">오늘 상태를 남겨요</p>
+          <h1 className="screen-title">1분 기록</h1>
         </div>
         <span className="pill">{step} / 2</span>
       </header>
@@ -65,7 +65,7 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
       {step === 1 ? (
         <>
           <p className="screen-subtitle">
-            자유로 적지 않아도 돼요. 답을 골라주세요. 공유하지 않는 한 기록은 밖으로 나가지 않아요.
+            패턴을 보기 위한 개인 기록이에요. 밖으로 공유되지 않아요. 답을 골라주면 돼요.
           </p>
 
           <section className="card">

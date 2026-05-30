@@ -24,9 +24,14 @@ the expected behavior is exactly what you see. Anything else is a finding.
 
 ## Home (홈)
 
-- [ ] Timer hero shows elapsed days + `HH:MM:SS` ticking every second.
+- [ ] Timer hero shows elapsed days + `HH:MM:SS` ticking every second, and is the
+      visually dominant element on first paint.
+- [ ] Directly under the timer: **지금 충동 멈추기** (primary → 잠깐 멈춤) and
+      **오늘 상태 남기기** (→ 1분 기록) hero CTAs. No card sits between them and the timer.
 - [ ] 최장 N일 pill reads a sensible value (≥ current run).
-- [ ] 규율 점검 card: counts match Discipline screen (지키는 중 / 못 지킴 / 안 고름).
+- [ ] 규율 점검 card: counts match Discipline screen (지키는 중 / 못 지킴 / 안 고름);
+      it is an at-a-glance card now (no duplicate check-in button on it).
+- [ ] **No 동행 / social card** and **no live-user number** anywhere on Home.
 - [ ] 고양이의 방 preview is the **finished room scene image** — no pasted cat
       overlay, no dashed decor slots, no emoji furniture.
 - [ ] Pet preview after a relapse (다시 시작) reads the dimmed tone + gentle copy
@@ -49,11 +54,14 @@ the expected behavior is exactly what you see. Anything else is a finding.
 
 ## Urge / 잠깐 멈춤
 
-- [ ] 홈 → **못 참을 것 같아요** → **5분 같이 버티기** starts a 00:00 timer that ticks.
+- [ ] 홈 → **지금 충동 멈추기** → **5분 같이 버티기** starts a 00:00 timer that ticks.
+- [ ] Subtitle/hint read calmly (`5분만 지나도 강도는 조금 내려갈 수 있어요`) — **no `파도처럼`** copy.
 - [ ] **No crisis farm:** note the 잔불 조각 balance. Tap **5분 같이 버티기** then immediately
       **오늘도 함께 버텼어요 · 마치기** → on 고양이 방 the balance rises once. Repeat the loop
       (홈 → 멈춤 → 마치기): the balance does **not** rise again today.
-- [ ] **대체 활동 해보기** returns to 홈 without granting shards.
+- [ ] **대체 활동 해보기** opens an in-screen panel of 4 actions (물 한 잔 마시기 / 휴대폰
+      내려놓기 / 10번 천천히 숨쉬기 / 자리에서 일어나기) — it does **not** jump to 홈. Tapping
+      one returns to the breath timer with a calm note and grants **no** shards.
 
 ## Calendar / 최근 기록
 
@@ -99,6 +107,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
       not a bounce). It must NOT claim the cat stretched / ate / waved / moved.
 - [ ] 간식 주기:
   - [ ] With snacks > 0: count decreases by exactly 1 per tap; warm message shows.
+  - [ ] On a successful feed a small ember token rises from the button toward the
+        scene and fades; copy reads `간식을 건넸어요. 고양이가 기분 좋아 보여요.` — it must
+        NOT claim the cat 먹었/ate or moved. (Token is suppressed under reduced-motion.)
   - [ ] At 0 snacks: button reads empty/disabled state; shows
         "보유한 간식이 없어요…"; count never goes negative.
 - [ ] 아이템 보관함 sheet: owned items are **collection cards**, each marked
@@ -121,6 +132,8 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] No emoji used as furniture / cat / mascot anywhere.
 - [ ] No SVG/CSS-blob cat figure rendered in the room.
 - [ ] No copy implies cat motion that has no animation asset (기지개/꼬리/먹는 등).
+- [ ] No `파도처럼` over-promise copy anywhere (Home / Urge).
+- [ ] **대체 활동 해보기** never silently routes to 홈 (it must open the alt-action panel).
 - [ ] No drag-to-place is active while scene mode is on.
 - [ ] No discipline rule deletion path exists.
 
@@ -133,8 +146,8 @@ the expected behavior is exactly what you see. Anything else is a finding.
 3. Console tab open the whole time — **any red error is a finding**.
 4. Walk the flow in this order, screenshotting where noted:
    1. **홈** loads first. Watch the timer tick once (1s). _Screenshot: full Home._
-   2. Tap **오늘 규율 점검하기** → 체크인 step 1 → pick a mood, **≥1 trigger**, and
-      an urge level → **다음** → step 2 → **체크인 완료**. Lands on 고양이 방.
+   2. Tap **오늘 상태 남기기** (home hero) → 1분 기록 step 1 → pick a mood, **≥1 trigger**,
+      and an urge level → **다음** → step 2 → **체크인 완료**. Lands on 고양이 방.
       _Screenshot: 고양이 방 top._ **Note the 잔불 조각 balance pill** (top-right).
       (Persistence + no-farm are verified in step 6.)
    3. In 고양이 방: tap the room once (calm message), tap **간식 주기** twice
@@ -154,7 +167,7 @@ the expected behavior is exactly what you see. Anything else is a finding.
 
 ## What to screenshot (attach to the review)
 
-- Home full scroll (hierarchy + no fabricated metric in 함께 버티는 중 card).
+- Home (timer hero dominant + 지금 충동 멈추기 / 오늘 상태 남기기 hero CTAs; no 동행 card).
 - 고양이 방 stage (single finished scene image, no pasted cat/tokens).
 - 보상 받기 with all three reward states visible.
 - 보관함 + 상점 sheets (scene-mode honesty).
@@ -163,8 +176,12 @@ the expected behavior is exactly what you see. Anything else is a finding.
 
 ## Fail examples (if you see any of these, it FAILS)
 
-- A specific live-user number like "1,240명" in the 함께 버티는 중 card. _(Should
-  read count-free: "같은 목표로 하루를 버티는 사람들이 함께하고 있어요.")_
+- Any 동행 / social card or a live-user number (e.g. "1,240명") on Home — that card
+  was removed entirely; Home is timer hero + two hero CTAs + compact cards.
+- **대체 활동 해보기** jumping straight to 홈 instead of opening the alternative-action
+  panel, or any `파도처럼` copy on Home / Urge.
+- 간식 주기 claiming the cat 먹었/ate, or showing a snack token but no honest
+  `간식을 건넸어요…` copy.
 - Tapping a **받음** reward bumps shards/snacks a second time, or shows a warm
   message.
 - 간식 주기 at 0 snacks decrements below zero, or throws.
@@ -194,7 +211,10 @@ the expected behavior is exactly what you see. Anything else is a finding.
       never re-grants 잔불 조각.
 - [ ] Debug 화면 전환 switcher hidden on a production build (renders only in dev or
       with `?dev=1`).
-- [ ] `npm run check:nof` passes (10 source-level reward / scene-mode / a11y invariants).
+- [ ] Home is timer-first: abstinence timer hero + `지금 충동 멈추기` / `오늘 상태 남기기`
+      hero CTAs above the secondary cards; `대체 활동 해보기` opens a real panel, not 홈.
+- [ ] `npm run check:nof` passes (13 source-level reward / scene-mode / a11y /
+      product-priority invariants).
 - [ ] A forced render error shows the calm **잠시 문제가 생겼어요** fallback with a
       다시 불러오기 button — never a blank white device frame.
 - [ ] No red console error and no horizontal overflow on any screen at 390px.

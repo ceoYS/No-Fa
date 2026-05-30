@@ -44,7 +44,7 @@ const TAP_MESSAGES = [
   '오늘의 절제를 조용히 기억했어요.',
 ];
 
-const SCENE_FEED_MESSAGE = '간식을 주자 고양이가 가까이 온 것 같아요.';
+const SCENE_FEED_MESSAGE = '간식을 건넸어요. 고양이가 기분 좋아 보여요.';
 const SCENE_REWARD_MESSAGE = '오늘의 절제를 조용히 기억했어요.';
 const NO_SNACK_MESSAGE = '보유한 간식이 없어요. 오늘의 보상으로 다시 받을 수 있어요.';
 
@@ -70,12 +70,16 @@ export default function PetRewardScreen({
   const editorRef = useRef(null);
   const motionTimer = useRef(null);
   const sceneReactionTimer = useRef(null);
+  const snackTossTimer = useRef(null);
   const tapCount = useRef(0);
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // 'inventory' | 'shop' | null
   const [catMotion, setCatMotion] = useState('idle');
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
+  // A small snack token that rises from the feed button toward the scene on a
+  // successful feed. Purely a hand-off cue — never a consume or motion claim.
+  const [snackToss, setSnackToss] = useState(false);
   // Gesture-gated cat audio; silent fallback while the .mp3 files are pending.
   const { play: playSound, muted, toggleMuted } = usePetSound();
   // Esc closes whichever sheet (보관함 / 상점) is open — keyboard dismiss parity.
@@ -84,7 +88,15 @@ export default function PetRewardScreen({
   useEffect(() => () => {
     clearTimeout(motionTimer.current);
     clearTimeout(sceneReactionTimer.current);
+    clearTimeout(snackTossTimer.current);
   }, []);
+
+  // Fire the snack hand-off token, then clear it so it can replay on the next feed.
+  const triggerSnackToss = (ms = 900) => {
+    setSnackToss(true);
+    clearTimeout(snackTossTimer.current);
+    snackTossTimer.current = setTimeout(() => setSnackToss(false), ms);
+  };
 
   // Briefly play a motion state, then settle back to idle. Fixed, never random.
   const triggerMotion = (state, ms = 1400) => {
@@ -133,6 +145,9 @@ export default function PetRewardScreen({
     onFeedSnack?.();
     // Soft purr on a successful feed (gesture-triggered, silent if asset absent).
     playSound('purr');
+    // Visual hand-off cue — a snack token rises toward the scene (a delivery, not
+    // a feeding motion).
+    triggerSnackToss();
     if (sceneMode) {
       setTapMsg(SCENE_FEED_MESSAGE);
       triggerSceneReaction();
@@ -263,16 +278,19 @@ export default function PetRewardScreen({
         <p className="hairline-note" aria-live="polite">
           {feedCardMessage}
         </p>
-        <button
-          type="button"
-          className="btn btn-primary btn-block feed-btn"
-          onClick={handleFeed}
-          data-empty={snackCount <= 0}
-          data-reacting={sceneReacting && tapMsg === SCENE_FEED_MESSAGE}
-          aria-disabled={snackCount <= 0}
-        >
-          간식 주기
-        </button>
+        <div className="feed-btn-wrap">
+          <span className="snack-toss-token" data-active={snackToss} aria-hidden="true" />
+          <button
+            type="button"
+            className="btn btn-primary btn-block feed-btn"
+            onClick={handleFeed}
+            data-empty={snackCount <= 0}
+            data-reacting={sceneReacting && tapMsg === SCENE_FEED_MESSAGE}
+            aria-disabled={snackCount <= 0}
+          >
+            간식 주기
+          </button>
+        </div>
       </section>
 
       <section className="card">

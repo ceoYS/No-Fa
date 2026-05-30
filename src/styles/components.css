@@ -1869,6 +1869,47 @@ button.room-token:active {
   40% { transform: translateY(-1px); filter: brightness(1.06); }
 }
 
+/* snack hand-off token — a small ember dot rising from the feed button toward the
+   scene on a successful feed. A delivery cue only; not a feeding animation. */
+.feed-btn-wrap {
+  position: relative;
+}
+
+.snack-toss-token {
+  position: absolute;
+  left: 50%;
+  top: -2px;
+  width: 12px;
+  height: 12px;
+  margin-left: -6px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ember-200), var(--ember-400) 70%);
+  box-shadow: 0 0 10px var(--accent-ember-glow);
+  opacity: 0;
+  pointer-events: none;
+}
+
+.snack-toss-token[data-active='true'] {
+  animation: snack-toss 900ms var(--ease-soft);
+}
+
+@keyframes snack-toss {
+  0% { opacity: 0; transform: translateY(8px) scale(0.6); }
+  25% { opacity: 0.95; }
+  100% { opacity: 0; transform: translateY(-76px) scale(1); }
+}
+
+/* home hero — timer-first CTA pair sits tight under the abstinence timer. */
+.home-hero-actions {
+  margin-top: calc(-1 * var(--sp-2));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .snack-toss-token[data-active='true'] {
+    animation: none;
+  }
+}
+
 /* reward screen — disclaimer + catalogue rows ---------------------- */
 .reward-disclaimer {
   font-size: var(--fs-small);

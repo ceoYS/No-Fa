@@ -81,6 +81,23 @@ export default function HomeScreen({
         </p>
       </section>
 
+      <div className="home-hero-actions stack" style={{ '--gap': 'var(--sp-2)' }}>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={() => onNavigate('urge')}
+        >
+          지금 충동 멈추기
+        </button>
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          onClick={() => onNavigate('checkin')}
+        >
+          오늘 상태 남기기
+        </button>
+      </div>
+
       <section className="card">
         <div className="card-row">
           <span className="card-label">오늘의 규율 점검</span>
@@ -106,13 +123,6 @@ export default function HomeScreen({
         {summary.unrecorded > 0 ? (
           <p className="hairline-note">아직 고르지 않은 규율 {summary.unrecorded}개가 있어요.</p>
         ) : null}
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
-          onClick={() => onNavigate('checkin')}
-        >
-          오늘 규율 점검하기
-        </button>
       </section>
 
       <section className="card">
@@ -140,21 +150,6 @@ export default function HomeScreen({
 
       <section className="card">
         <div className="card-row">
-          <span className="card-label">못 참을 것 같다면</span>
-          <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>잠깐 멈춤</span>
-        </div>
-        <p className="hairline-note">충동이 강할 때는 5분만 같이 버텨봐요. 파도처럼 약해질 수 있어요.</p>
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
-          onClick={() => onNavigate('urge')}
-        >
-          못 참을 것 같아요
-        </button>
-      </section>
-
-      <section className="card">
-        <div className="card-row">
           <span className="card-label">최근 기록</span>
           <button
             type="button"
@@ -173,15 +168,6 @@ export default function HomeScreen({
         <p className="hairline-note" aria-live="polite">
           {daySummary(recentDays[selectedDay])}
         </p>
-      </section>
-
-      <section className="card">
-        <div className="card-row">
-          <span className="card-label">함께 버티는 중</span>
-          <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>동행</span>
-        </div>
-        <p className="discipline-summary">같은 목표로 하루를 버티는 사람들이 함께하고 있어요.</p>
-        <p className="hairline-note">혼자가 아니에요. 같이 가는 사람들이 곁에 있어요.</p>
       </section>
 
       <section className="card">
