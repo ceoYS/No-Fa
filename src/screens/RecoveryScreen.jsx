@@ -108,6 +108,7 @@ export default function RecoveryScreen({
               type="button"
               className="chip"
               data-selected={triggers.includes(c)}
+              aria-pressed={triggers.includes(c)}
               onClick={() => toggleTrigger(c)}
             >
               {c}

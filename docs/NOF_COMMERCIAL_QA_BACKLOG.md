@@ -61,6 +61,13 @@ Status key: `FIXED` (this pass) · `HOLD` (risky — see note) · `MANUAL`
 | V2 | P1 | Scene image is intentionally caption-less (header carries tone). Confirm no duplicate caption and `alt=""` (decorative). Verified in source. | VERIFIED. |
 | V3 | P2 | Free-text fields cap at 200 chars with no counter; a reviewer hitting the cap gets no feedback. | OPEN. |
 | V4 | P1 | "조금 이따 할게요" on a *required* relapse reflection still navigates home — confirm the timer was already reset so skipping doesn't dodge the record. | MANUAL (logic: timer reset happens in `relapse()` before this screen — OK). |
+| V5 | P1 | Slip-reflection shard farm: `completeReflection` granted `slipReflection` on **every** finish, and the Home **오늘 복기하기** (ruleId null, empty finish allowed) had no `reflected` gate — so it could be looped to farm 잔불 조각. Economy-honesty risk. | FIXED — slip grant gated to once per calendar day via `slipReflectionDay` + `dayKey()`; relapse-reflection grant stays ungated (self-limited by the timer reset in `relapse()`). Badges still record every reflection; only the shard grant is rate-limited. Pinned by `check:nof`. |
+
+## Urge / 잠깐 멈춤
+
+| # | Pri | Issue | Status |
+|---|-----|-------|--------|
+| U1 | P1 | Crisis-held shard farm: `crisisHeld` granted `EARN.crisisHeld` (4) on **every** 마치기 press, and the 마치기 button appears the instant the timer starts — so start→immediately-finish could be looped to farm 잔불 조각 with no real 5-minute hold. Economy-honesty risk. | FIXED — grant gated to once per calendar day via `crisisRewardDay` + `dayKey()`. A genuine second crisis the same day still shows the calm flow + message, just no re-grant. Snack feed / milestone eligibility untouched; copy unchanged. Pinned by `check:nof`. |
 
 ## Pet Room (고양이 방)
 
@@ -90,4 +97,6 @@ Status key: `FIXED` (this pass) · `HOLD` (risky — see note) · `MANUAL`
 | X2 | P1 | Scene-mode forbidden-token scan (기지개/꼬리/먹는/움직임/SVG cat/emoji furniture) must stay clean. Only benign hits are a CSS `align-items: stretch` and an explanatory `onDeleteRule` comment. | VERIFIED. |
 | X3 | P2 | No global error boundary — a render throw blanks the device frame. Acceptable for prototype; note for production. | OPEN. |
 | X4 | P2 | Empty states exist for rules (Home/Checkin/Discipline) and inventory; confirm each reads calmly with zero data. | MANUAL. |
-| X5 | P1 | Source-level regression guard (`npm run check:nof` → `scripts/nof-regression-check.mjs`): pins the commercial invariants a passing build won't catch — reward claim guard present in App **and** screen, `isMilestoneClaimable` gating, check-in once-per-day grant, no discipline delete affordance, scene-mode drag disabled until `spriteReady`, and no fake-motion/emoji-furniture/blob tokens. | ADDED — 6/6 checks pass; dependency-free node script wired as an npm script for a pre-review run. |
+| X5 | P1 | Source-level regression guard (`npm run check:nof` → `scripts/nof-regression-check.mjs`): pins the commercial invariants a passing build won't catch — reward claim guard present in App **and** screen, `isMilestoneClaimable` gating, check-in once-per-day grant, no discipline delete affordance, scene-mode drag disabled until `spriteReady`, no fake-motion/emoji-furniture/blob tokens, plus crisis-held once-per-day, slip-reflection once-per-day, pet-room sheets are dialogs, and a top-level ErrorBoundary. | EXPANDED — 10/10 checks pass; dependency-free node script wired as an npm script for a pre-review run. |
+| X6 | P1 | Keyboard / SR a11y gaps: modal sheets were pointer-dismiss only, and toggle controls (mood/trigger/urge, calendar range, recovery triggers, add-rule categories) signalled selection by `data-selected` colour only. | FIXED — `useDismissOnEscape` makes pet-room/calendar/discipline sheets Esc-dismissible; toggle controls now carry `aria-pressed`; urge cells carry `aria-label`. Full focus-trap/return on dialogs remains a later pass (browser-manual). |
+| X7 | P1 | No error boundary — a render throw blanks the device frame to white. | FIXED — top-level `ErrorBoundary` wraps `<App/>` in `main.jsx` with a calm, honest fallback (no false "records survive" claim; dev-only console log) + a 다시 불러오기 action. |

@@ -1,5 +1,6 @@
 import { useMemo, useState } from 'react';
 import EmberCalendarStrip from '../components/EmberCalendarStrip.jsx';
+import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import { BADGE_LABEL, listBadges } from '../constants/discipline.js';
 import {
   buildDayRecords,
@@ -36,6 +37,8 @@ export default function CalendarScreen({
   );
   const [selected, setSelected] = useState(days.length - 1);
 
+  useDismissOnEscape(detail !== null, () => setDetail(null));
+
   const openDay = (i) => {
     setSelected(i);
     setDetail(days[i] ?? null);
@@ -62,6 +65,7 @@ export default function CalendarScreen({
             type="button"
             className="chip range-chip"
             data-selected={rangeId === opt.id}
+            aria-pressed={rangeId === opt.id}
             onClick={() => {
               setRangeId(opt.id);
               setSelected(rangeDays(opt.id, now) - 1);
@@ -74,7 +78,12 @@ export default function CalendarScreen({
 
       <section className="card">
         <span className="card-label">{RANGE_OPTIONS.find((o) => o.id === rangeId)?.label}</span>
-        <EmberCalendarStrip days={days} selectedIndex={selected} onSelectDay={openDay} />
+        <EmberCalendarStrip
+          days={days}
+          selectedIndex={selected}
+          onSelectDay={openDay}
+          label={`${RANGE_OPTIONS.find((o) => o.id === rangeId)?.label ?? '최근'} 기록`}
+        />
 
         <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
           {CALENDAR_LEGEND.map((state) => (

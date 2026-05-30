@@ -9,14 +9,19 @@ import { CALENDAR_LABEL } from '../constants/recentDays.js';
  *
  * `days`: array of { label, state, isToday } (see buildDayRecords).
  */
-export default function EmberCalendarStrip({ days, selectedIndex = null, onSelectDay }) {
+export default function EmberCalendarStrip({
+  days,
+  selectedIndex = null,
+  onSelectDay,
+  label = '최근 7일 기록',
+}) {
   const interactive = typeof onSelectDay === 'function';
 
   return (
     <div
       className="ember-strip"
       role={interactive ? 'group' : 'list'}
-      aria-label="최근 7일 기록"
+      aria-label={label}
     >
       {days.map((day, i) => {
         const selected = i === selectedIndex;

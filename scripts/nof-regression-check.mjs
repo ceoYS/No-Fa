@@ -14,6 +14,10 @@
  *   4. No discipline delete affordance exists (only explanatory comments allowed).
  *   5. Scene mode keeps drag disabled until transparent item sprites are approved.
  *   6. No fake-motion copy / emoji furniture / blob-cat tokens leak into source.
+ *   7. The crisis-held (잠깐 멈춤) shard grant is once-per-calendar-day (no farm).
+ *   8. The slip-reflection shard grant is once-per-calendar-day (no farm).
+ *   9. The pet-room sheets are real dialogs (role/aria) and Esc-dismissible.
+ *  10. A top-level ErrorBoundary wraps the app (no white-screen on a render throw).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -143,6 +147,57 @@ check('no fake-motion / emoji-furniture / blob tokens in source', () => {
     });
   }
   assert(offenders.length === 0, `forbidden token(s): ${offenders.join('; ')}`);
+});
+
+// 7 — the crisis-held grant must be gated to once per calendar day.
+check('crisis-held reward is granted once per calendar day (no farm)', () => {
+  const app = read('src/App.jsx');
+  assert(app.includes('crisisRewardDay'), 'no crisisRewardDay guard state in App.jsx');
+  const m = app.match(/const crisisHeld = \(\) => \{[\s\S]*?setScreenId\('reward'\);\s*\};/);
+  assert(m, 'crisisHeld function not found');
+  const body = m[0];
+  assert(
+    /if \(crisisRewardDay !== todayKey\) \{\s*earn\(EARN\.crisisHeld/.test(body),
+    'crisisHeld earn() is not gated behind the once-per-day guard',
+  );
+  assert(/setCrisisRewardDay\(todayKey\);/.test(body), 'crisisHeld never records the grant day');
+});
+
+// 8 — the slip-reflection grant must be gated to once per calendar day, while the
+// relapse-reflection grant stays present (it is self-gated by the timer reset).
+check('slip-reflection reward is granted once per calendar day (no farm)', () => {
+  const app = read('src/App.jsx');
+  assert(app.includes('slipReflectionDay'), 'no slipReflectionDay guard state in App.jsx');
+  const m = app.match(/const completeReflection = \(\{[\s\S]*?setScreenId\('reward'\);\s*\};/);
+  assert(m, 'completeReflection function not found');
+  const body = m[0];
+  assert(/earn\(EARN\.relapseReflection/.test(body), 'relapse-reflection grant missing');
+  assert(
+    /else if \(slipReflectionDay !== todayKey\) \{[\s\S]*?earn\(EARN\.slipReflection/.test(body),
+    'slip-reflection earn() is not gated behind the once-per-day guard',
+  );
+  assert(/setSlipReflectionDay\(todayKey\);/.test(body), 'slip reflection never records the grant day');
+});
+
+// 9 — the pet-room sheets must be real dialogs and dismissible by keyboard.
+check('pet-room sheets are dialogs and Esc-dismissible', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const dialogs = (screen.match(/role="dialog"/g) || []).length;
+  assert(dialogs >= 2, `expected ≥2 role="dialog" sheets, found ${dialogs}`);
+  assert(screen.includes('aria-label="아이템 보관함"'), 'inventory sheet missing dialog aria-label');
+  assert(screen.includes('aria-label="상점"'), 'shop sheet missing dialog aria-label');
+  assert(screen.includes('useDismissOnEscape('), 'pet-room sheets are not Esc-dismissible');
+});
+
+// 10 — a top-level ErrorBoundary must wrap the app (no white-screen crash).
+check('top-level ErrorBoundary wraps the app', () => {
+  const main = read('src/main.jsx');
+  assert(/import ErrorBoundary from/.test(main), 'main.jsx does not import ErrorBoundary');
+  assert(/<ErrorBoundary>[\s\S]*<App \/>[\s\S]*<\/ErrorBoundary>/.test(main), 'App is not wrapped by ErrorBoundary');
+  assert(
+    /getDerivedStateFromError/.test(read('src/components/ErrorBoundary.jsx')),
+    'ErrorBoundary is not a real error boundary (no getDerivedStateFromError)',
+  );
 });
 
 let failed = 0;

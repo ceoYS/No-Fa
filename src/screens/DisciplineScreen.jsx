@@ -1,4 +1,5 @@
 import { useMemo, useState } from 'react';
+import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import {
   STATUS_LABEL,
   STATUS_PILL,
@@ -30,6 +31,12 @@ export default function DisciplineScreen({
 }) {
   const [addOpen, setAddOpen] = useState(false);
   const [statusEditId, setStatusEditId] = useState(null);
+
+  // Esc dismisses whichever sheet (규율 추가 / 상태 변경) is open.
+  useDismissOnEscape(addOpen || statusEditId !== null, () => {
+    setAddOpen(false);
+    setStatusEditId(null);
+  });
 
   const summary = useMemo(() => summarizeRules(rules), [rules]);
 
@@ -244,6 +251,7 @@ function AddRuleSheet({ categories, onAddCategory, onCancel, onSubmit }) {
               type="button"
               className="chip"
               data-selected={category === c && !customOpen}
+              aria-pressed={category === c && !customOpen}
               onClick={() => {
                 setCustomOpen(false);
                 setCategory((cur) => (cur === c ? null : c));
@@ -256,6 +264,7 @@ function AddRuleSheet({ categories, onAddCategory, onCancel, onSubmit }) {
             type="button"
             className="chip"
             data-selected={customOpen}
+            aria-pressed={customOpen}
             onClick={() => {
               setCustomOpen((v) => !v);
               setCategory(null);

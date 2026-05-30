@@ -47,6 +47,14 @@ the expected behavior is exactly what you see. Anything else is a finding.
       체크인, change a mood/urge, press 체크인 완료 again — the saved record updates,
       but the 잔불 조각 balance does **not** rise a second time today.
 
+## Urge / 잠깐 멈춤
+
+- [ ] 홈 → **못 참을 것 같아요** → **5분 같이 버티기** starts a 00:00 timer that ticks.
+- [ ] **No crisis farm:** note the 잔불 조각 balance. Tap **5분 같이 버티기** then immediately
+      **오늘도 함께 버텼어요 · 마치기** → on 고양이 방 the balance rises once. Repeat the loop
+      (홈 → 멈춤 → 마치기): the balance does **not** rise again today.
+- [ ] **대체 활동 해보기** returns to 홈 without granting shards.
+
 ## Calendar / 최근 기록
 
 - [ ] Range chips (7d / etc.) switch the strip; selected day updates.
@@ -72,6 +80,10 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] relapse scope: 왜 그랬을까요? is effectively required (finish disabled until
       a why is written).
 - [ ] slip scope: finish is allowed with empty fields (light, optional).
+- [ ] **No reflection farm:** note the 잔불 조각 balance, then from 홈 tap **오늘 복기하기**
+      → **복기 마치기** (empty is allowed) twice. The balance rises at most **once** today —
+      the second finish records the reflection but grants no extra shards.
+- [ ] Esc (hardware keyboard) dismisses the open day-detail / 규율 / 보관함 / 상점 sheet.
 - [ ] All copy is gentle — no 실패/위반/벌 wording.
 
 ## Pet Room (고양이 방) — primary scene-mode surface
@@ -177,11 +189,14 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] Scene mode: no drag, no token overlays, no `방에 있음`, no motion claim.
 - [ ] No fabricated live-user / social-proof number on Home.
 - [ ] Check-in step-1 inputs persist into today's record (오늘의 체크인 block in 기록).
-- [ ] Check-in shard grant is once-per-day: re-submitting 체크인 완료 the same day
-      updates the record but never re-grants 잔불 조각.
+- [ ] Check-in / crisis / reflection shard grants are each once-per-day: re-pressing
+      체크인 완료 · 잠깐 멈춤 마치기 · 복기 마치기 the same day updates the record but
+      never re-grants 잔불 조각.
 - [ ] Debug 화면 전환 switcher hidden on a production build (renders only in dev or
       with `?dev=1`).
-- [ ] `npm run check:nof` passes (source-level reward / scene-mode invariants).
+- [ ] `npm run check:nof` passes (10 source-level reward / scene-mode / a11y invariants).
+- [ ] A forced render error shows the calm **잠시 문제가 생겼어요** fallback with a
+      다시 불러오기 button — never a blank white device frame.
 - [ ] No red console error and no horizontal overflow on any screen at 390px.
 
 ---

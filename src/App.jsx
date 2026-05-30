@@ -107,6 +107,13 @@ export default function App() {
   // Calendar-day key of the last check-in shard grant, so the daily check-in
   // reward is given once per day even if the user re-opens/re-submits the check-in.
   const [checkinRewardDay, setCheckinRewardDay] = useState(null);
+  // Same once-per-calendar-day guard for the other repeatable shard grants: the
+  // 잠깐 멈춤 "버텼어요" finish and the general 오늘 복기하기. Without these, both
+  // could be re-pressed in a loop to farm 잔불 조각. Relapse reflection needs no
+  // day-guard — it follows a timer reset (relapse() zeroes the streak), so it is
+  // self-limiting and can't be farmed.
+  const [crisisRewardDay, setCrisisRewardDay] = useState(null);
+  const [slipReflectionDay, setSlipReflectionDay] = useState(null);
   // Last grant, for a calm "방금 받았어요" note: { kind:'shards'|'snack', amount, reason }.
   const [lastEarn, setLastEarn] = useState(null);
 
@@ -204,7 +211,19 @@ export default function App() {
         ),
       );
     }
-    earn(scope === 'relapse' ? EARN.relapseReflection : EARN.slipReflection, '복기 완료');
+    const todayKey = dayKey(Date.now());
+    if (scope === 'relapse') {
+      // Relapse reflection follows a timer reset (relapse() set the streak to 0),
+      // so it is naturally once-per-relapse and needs no day-guard.
+      earn(EARN.relapseReflection, '복기 완료');
+    } else if (slipReflectionDay !== todayKey) {
+      // Slip reflection — including the always-available 오늘 복기하기 (ruleId null)
+      // — is gated to once per calendar day so re-pressing 복기 마치기 can't farm
+      // 잔불 조각. The badges above still record every reflection; only the shard
+      // grant is rate-limited.
+      earn(EARN.slipReflection, '복기 완료');
+      setSlipReflectionDay(todayKey);
+    }
     setReflectionCtx(null);
     setScreenId('reward');
   };
@@ -243,9 +262,16 @@ export default function App() {
     setScreenId('reward');
   };
 
-  // 잠깐 멈춤을 끝까지 버팀 (crisis resisted, §0.6.9).
+  // 잠깐 멈춤을 끝까지 버팀 (crisis resisted, §0.6.9). The shard grant is gated to
+  // once per calendar day so starting the timer and immediately pressing 마치기
+  // over and over can't farm 잔불 조각 (mirrors checkinRewardDay). A genuine second
+  // crisis the same day still shows the calm flow and message, just no re-grant.
   const crisisHeld = () => {
-    earn(EARN.crisisHeld, '위기였지만 버텼어요');
+    const todayKey = dayKey(Date.now());
+    if (crisisRewardDay !== todayKey) {
+      earn(EARN.crisisHeld, '위기였지만 버텼어요');
+      setCrisisRewardDay(todayKey);
+    }
     setScreenId('reward');
   };
 

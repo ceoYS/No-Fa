@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
 import usePetSound from '../hooks/usePetSound.js';
+import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import {
   isItemSpriteReady,
   resolveItemAsset,
@@ -77,6 +78,8 @@ export default function PetRewardScreen({
   const [sceneReacting, setSceneReacting] = useState(false);
   // Gesture-gated cat audio; silent fallback while the .mp3 files are pending.
   const { play: playSound, muted, toggleMuted } = usePetSound();
+  // Esc closes whichever sheet (보관함 / 상점) is open — keyboard dismiss parity.
+  useDismissOnEscape(sheet !== null, () => setSheet(null));
 
   useEffect(() => () => {
     clearTimeout(motionTimer.current);
@@ -362,7 +365,13 @@ function InventorySheet({ ownedDecor, placedIds, sceneMode, onStartDrag, onClose
   const anyPlaceable = !sceneMode && ownedDecor.some((it) => isItemSpriteReady(it.assetId));
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="아이템 보관함"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-handle" />
         <div>
           <h2 className="sheet-title">아이템 보관함</h2>
@@ -435,7 +444,13 @@ function ShopSheet({
 
   return (
     <div className="sheet-backdrop" onClick={onClose}>
-      <div className="sheet" onClick={(e) => e.stopPropagation()}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="상점"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-handle" />
         <div className="row-between">
           <h2 className="sheet-title">상점</h2>

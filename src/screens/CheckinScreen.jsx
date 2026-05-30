@@ -25,8 +25,15 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
   const [triggers, setTriggers] = useState([]);
   const [urge, setUrge] = useState(null);
 
+  // '특별히 없음'(none) is mutually exclusive: picking it clears the others, and
+  // picking any real trigger clears 'none'. Keeps the saved record honest — no
+  // "특별히 없음 + 스트레스" contradiction lands in today's check-in.
   const toggleTrigger = (id) =>
-    setTriggers((t) => (t.includes(id) ? t.filter((x) => x !== id) : [...t, id]));
+    setTriggers((t) => {
+      if (t.includes(id)) return t.filter((x) => x !== id);
+      if (id === 'none') return ['none'];
+      return [...t.filter((x) => x !== 'none'), id];
+    });
 
   const step1Ready = mood && urge !== null;
 
@@ -70,6 +77,7 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
                   type="button"
                   className="chip"
                   data-selected={mood === m.id}
+                  aria-pressed={mood === m.id}
                   onClick={() => setMood(m.id)}
                 >
                   <span className="chip-emoji">{m.emoji}</span>
@@ -88,6 +96,7 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
                   type="button"
                   className="chip"
                   data-selected={triggers.includes(t.id)}
+                  aria-pressed={triggers.includes(t.id)}
                   onClick={() => toggleTrigger(t.id)}
                 >
                   <span>{t.label}</span>
@@ -110,6 +119,8 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
                   type="button"
                   className="scale-cell"
                   data-selected={urge === n}
+                  aria-pressed={urge === n}
+                  aria-label={`충동 강도 ${n}`}
                   onClick={() => setUrge(n)}
                 >
                   {n}
