@@ -1133,6 +1133,44 @@
   color: var(--text-muted);
 }
 
+/* locked upcoming milestone — honest "not yet" row, not hidden, not alarming */
+.reward-row[data-locked='true'] {
+  opacity: 0.78;
+}
+
+.reward-row[data-locked='true'] .reward-claim-btn {
+  border-style: dashed;
+}
+
+/* pet-room header side cluster — sound toggle + 잔불 조각 balance */
+.room-header-side {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+
+.sound-toggle {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  background: transparent;
+  border: 1px solid var(--border-soft);
+  border-radius: var(--r-pill);
+  padding: 3px 10px;
+  cursor: pointer;
+  transition: color var(--dur-fast) var(--ease-soft),
+    border-color var(--dur-fast) var(--ease-soft);
+}
+
+.sound-toggle:hover {
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+}
+
+.sound-toggle[aria-pressed='true'] {
+  color: var(--text-quiet);
+  opacity: 0.85;
+}
+
 /* add/delete bottom sheet ------------------------------------------ */
 .sheet-backdrop {
   position: absolute;
@@ -1457,6 +1495,16 @@
 
 .pet-room--scene .room-img {
   object-fit: cover;
+  /* Honest scene-level motion only — a slow ambient "breathing" of the whole
+   * finished room image. This is NOT cat movement; the cat cannot move
+   * independently without a transparent sprite. Kept very subtle and calm. */
+  transform-origin: 52% 60%;
+  animation: scene-breathe 9s var(--ease-soft) infinite;
+}
+
+@keyframes scene-breathe {
+  0%, 100% { transform: scale(1); filter: brightness(1); }
+  50% { transform: scale(1.012); filter: brightness(1.03); }
 }
 
 .pet-room--scene-reacting {
@@ -1598,8 +1646,10 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
+  .pet-room--scene .room-img,
   .pet-room--scene-reacting::after,
-  .pet-room--scene-reacting .room-img {
+  .pet-room--scene-reacting .room-img,
+  .feed-btn[data-reacting='true'] {
     animation: none;
   }
 }

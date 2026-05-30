@@ -25,12 +25,10 @@ export default function DisciplineScreen({
   categories = [],
   onAddRule,
   onAddCategory,
-  onDeleteRule,
   onSetRuleStatus,
   onStartSlipReflection,
 }) {
   const [addOpen, setAddOpen] = useState(false);
-  const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   const [statusEditId, setStatusEditId] = useState(null);
 
   const summary = useMemo(() => summarizeRules(rules), [rules]);
@@ -116,14 +114,6 @@ export default function DisciplineScreen({
                       </button>
                     ) : null}
                     {rule.category ? <span className="rule-category">{rule.category}</span> : null}
-                    <button
-                      type="button"
-                      className="btn-delete"
-                      aria-label={`${rule.label} 규율 삭제`}
-                      onClick={() => setConfirmDeleteId(rule.id)}
-                    >
-                      삭제
-                    </button>
                   </div>
                 </div>
               );
@@ -138,6 +128,7 @@ export default function DisciplineScreen({
           <li className="hairline-note">· 상태 칩을 누르면 지켰어요 · 위기였지만 버텼어요 · 못 지켰어요 중에서 고를 수 있어요.</li>
           <li className="hairline-note">· 못 지킨 날은 가볍게 복기하면 “복기 완료” 같은 표시가 붙어요.</li>
           <li className="hairline-note">· 규율 카테고리는 직접 추가할 수 있어요. 편집·알림 연동은 다음 단계에서 준비하고 있어요.</li>
+          <li className="hairline-note">· 규율은 나와의 약속이라 유지돼요. 삭제는 아직 지원하지 않고, 수정 기능은 다음 단계에서 다듬을게요.</li>
         </ul>
       </section>
 
@@ -169,17 +160,6 @@ export default function DisciplineScreen({
             const id = statusEditId;
             setStatusEditId(null);
             onSetRuleStatus?.(id, status);
-          }}
-        />
-      ) : null}
-
-      {confirmDeleteId ? (
-        <ConfirmDeleteSheet
-          rule={rules.find((r) => r.id === confirmDeleteId)}
-          onCancel={() => setConfirmDeleteId(null)}
-          onConfirm={() => {
-            onDeleteRule?.(confirmDeleteId);
-            setConfirmDeleteId(null);
           }}
         />
       ) : null}
@@ -306,32 +286,6 @@ function AddRuleSheet({ categories, onAddCategory, onCancel, onSubmit }) {
             onClick={submit}
           >
             추가하기
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function ConfirmDeleteSheet({ rule, onCancel, onConfirm }) {
-  return (
-    <div
-      className="sheet-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label="규율 삭제 확인"
-    >
-      <div className="sheet sheet-compact">
-        <div className="sheet-handle" aria-hidden="true" />
-        <h2 className="sheet-title">이 규율을 삭제할까요?</h2>
-        {rule ? <p className="sheet-help">“{rule.label}”</p> : null}
-        <p className="hairline-note">삭제해도 언제든 다시 추가할 수 있어요.</p>
-        <div className="sheet-actions">
-          <button type="button" className="btn btn-ghost" onClick={onCancel}>
-            취소
-          </button>
-          <button type="button" className="btn btn-primary" onClick={onConfirm}>
-            삭제하기
           </button>
         </div>
       </div>

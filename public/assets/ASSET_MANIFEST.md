@@ -45,3 +45,23 @@ Extract at the repository root so `public/assets/...` lands directly in place.
 ## MISSING
 
 - None hard-missing in this corrected pack. Some assets are approximations or cropped derivatives as noted above.
+
+## Transparent sprite assets still required
+
+The current pet-room runs in **scene mode** (one finished room image, no pasted
+overlays) because the items above are opaque crops, not alpha sprites. The
+following interactions stay intentionally disabled until **transparent (alpha)
+sprite assets** are dropped in and marked `spriteReady` in `src/constants/petAssets.js`:
+
+- draggable items (direct placement in the room)
+- independent cat movement (cat positioned/animated separately from the room)
+- feeding animation (cat reacting to a snack)
+- cat state sprites: stretch / wave / eating
+
+## Optional audio assets (pet sound)
+
+Soft, gesture-gated cat audio is wired but silent until these files exist
+(silent fallback, no error if absent):
+
+- public/assets/sounds/cat_meow_soft.mp3 — played on scene tap
+- public/assets/sounds/cat_purr_soft.mp3 — played on 간식 주기

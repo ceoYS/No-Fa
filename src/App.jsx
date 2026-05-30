@@ -9,7 +9,7 @@ import DisciplineScreen from './screens/DisciplineScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import ScreenSwitcher from './components/ScreenSwitcher.jsx';
 import { EMPTY_BADGES, summarizeRules } from './constants/discipline.js';
-import { EARN, MILESTONE_BY_ID, SEED_SHARDS } from './constants/rewards.js';
+import { EARN, MILESTONE_BY_ID, SEED_SHARDS, isMilestoneClaimable } from './constants/rewards.js';
 import {
   DEFAULT_OWNED,
   DEFAULT_PLACEMENTS,
@@ -89,10 +89,9 @@ export default function App() {
     ]);
   };
 
-  const deleteRule = (id) => {
-    setRules((prev) => prev.filter((r) => r.id !== id));
-  };
-
+  // Discipline rules are self-contracts (§0.6.2): deletion is intentionally NOT
+  // wired in this prototype. No destructive delete action is passed to the screen;
+  // editing/archiving is a later, non-destructive phase (§0.5.9).
   const setRuleStatus = (id, status) => {
     setRules((prev) => prev.map((r) => (r.id === id ? { ...r, status } : r)));
   };
@@ -189,9 +188,11 @@ export default function App() {
   // 보상 받기 (§0.6.9): claim a reached milestone exactly once. Shards bump the
   // balance; a snack milestone fills the inventory so 받기 visibly stocks snacks.
   const claimReward = (rewardId) => {
-    if (claimedRewardIds.includes(rewardId)) return;
     const m = MILESTONE_BY_ID[rewardId];
-    if (!m) return;
+    // Honest eligibility (§0.6.9): a reward changes the balance ONLY when real
+    // abstinence progress has reached its milestone day and it hasn't been claimed
+    // before. Opening the room or re-pressing 받기 must never grant a free snack.
+    if (!isMilestoneClaimable(m, streakDays, claimedRewardIds)) return;
     if (m.kind === 'snack') {
       setInventory((inv) => ({ ...inv, snack: (inv.snack ?? 0) + m.amount }));
       setLastEarn({ kind: 'snack', amount: m.amount, reason: m.label });
@@ -267,7 +268,6 @@ export default function App() {
             onNavigate={setScreenId}
             rules={rules}
             onAddRule={addRule}
-            onDeleteRule={deleteRule}
             onSetRuleStatus={setRuleStatus}
             categories={categories}
             onAddCategory={addCategory}

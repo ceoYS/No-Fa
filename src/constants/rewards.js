@@ -44,6 +44,22 @@ export function earnableMilestones(streakDays = 0, claimedIds = []) {
   return MILESTONES.filter((m) => streakDays >= m.day && !claimedIds.includes(m.id));
 }
 
+// Single source of claim eligibility (§0.6.9). A reward unlocks ONLY through real
+// abstinence progress — the streak must have reached the milestone day — and each
+// reward is claimable at most once. Opening the room or re-pressing 받기 grants
+// nothing: this is the guard the screen *and* the App action both consult, so the
+// snack/shard balance can never move for an ineligible or already-claimed reward.
+export function isMilestoneClaimable(milestone, streakDays = 0, claimedIds = []) {
+  if (!milestone) return false;
+  return streakDays >= milestone.day && !claimedIds.includes(milestone.id);
+}
+
+// The next locked milestone (reached none of it yet) — used to show an honest
+// "아직 열리지 않은" row instead of hiding future rewards entirely.
+export function nextLockedMilestone(streakDays = 0) {
+  return MILESTONES.find((m) => streakDays < m.day) ?? null;
+}
+
 export function milestoneReward(kind, amount) {
   return kind === 'snack' ? `간식 ${amount}개` : `${RESOURCE.name} ${amount}${RESOURCE.unit}`;
 }

@@ -9,6 +9,10 @@
  *   held        위기였지만 버텼어요     충동/위기 있었으나 버텨낸 성취
  *   unrecorded  (라벨 없음, 기본값)     아직 안 고름 — 미선택 3버튼으로만 표시, 칩 렌더 금지
  *
+ * Discipline rules are self-contracts; deletion is intentionally disabled in this
+ * prototype. The screen exposes no destructive delete affordance and App passes no
+ * onDeleteRule handler. Non-destructive editing/archiving is a later phase (§0.5.9).
+ *
  * Removed vs v1 (§0.6.2): 해당 없음 · 상황 없음 · 확인 필요(visible) · 흔들렸어요 ·
  * directly-selectable 회복 완료. `recovered`/`not_applicable` enums are gone;
  * recovery now surfaces as the `reflected` / `routineDone` badges below.

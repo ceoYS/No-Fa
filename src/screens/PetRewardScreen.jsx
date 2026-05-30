@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
+import usePetSound from '../hooks/usePetSound.js';
 import {
   isItemSpriteReady,
   resolveItemAsset,
@@ -11,6 +12,8 @@ import {
   REWARD_DISCLAIMER,
   MILESTONES,
   milestoneReward,
+  isMilestoneClaimable,
+  nextLockedMilestone,
 } from '../constants/rewards.js';
 import {
   DECOR_ITEMS,
@@ -72,6 +75,8 @@ export default function PetRewardScreen({
   const [catMotion, setCatMotion] = useState('idle');
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
+  // Gesture-gated cat audio; silent fallback while the .mp3 files are pending.
+  const { play: playSound, muted, toggleMuted } = usePetSound();
 
   useEffect(() => () => {
     clearTimeout(motionTimer.current);
@@ -87,6 +92,7 @@ export default function PetRewardScreen({
 
   const snackCount = inventory.snack ?? 0;
   const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
+  const lockedNext = nextLockedMilestone(streakDays);
   const placedIds = new Set(placements.map((p) => p.itemId));
   const ownedDecor = DECOR_ITEMS.filter((it) => ownedItems.includes(it.id));
   const selectedItem = selectedId ? ITEM_BY_ID[selectedId] : null;
@@ -122,6 +128,8 @@ export default function PetRewardScreen({
       return;
     }
     onFeedSnack?.();
+    // Soft purr on a successful feed (gesture-triggered, silent if asset absent).
+    playSound('purr');
     if (sceneMode) {
       setTapMsg(SCENE_FEED_MESSAGE);
       triggerSceneReaction();
@@ -133,6 +141,8 @@ export default function PetRewardScreen({
   const handleCatTap = () => {
     setTapMsg(TAP_MESSAGES[tapCount.current % TAP_MESSAGES.length]);
     tapCount.current += 1;
+    // Soft meow on tap (gesture-triggered, silent if asset absent).
+    playSound('meow');
     if (sceneMode) {
       triggerSceneReaction();
       return;
@@ -141,6 +151,10 @@ export default function PetRewardScreen({
   };
 
   const handleClaim = (id) => {
+    const milestone = MILESTONES.find((m) => m.id === id);
+    // Only react when the claim is actually eligible — re-pressing an already
+    // claimed or not-yet-reached reward must give no warm feedback and no grant.
+    if (!isMilestoneClaimable(milestone, streakDays, claimedRewardIds)) return;
     onClaimReward?.(id);
     if (sceneMode) {
       setTapMsg(SCENE_REWARD_MESSAGE);
@@ -157,7 +171,19 @@ export default function PetRewardScreen({
           <p className="screen-greeting">오늘의 절제가 만든 방</p>
           <h1 className="screen-title">고양이 방</h1>
         </div>
-        <span className="pill pill-ember">{RESOURCE.name} {emberShards}{RESOURCE.unit}</span>
+        <div className="room-header-side">
+          <button
+            type="button"
+            className="sound-toggle"
+            onClick={toggleMuted}
+            aria-pressed={muted}
+            aria-label={muted ? '고양이 소리 켜기' : '고양이 소리 끄기'}
+            title={muted ? '소리 꺼짐' : '소리 켜짐'}
+          >
+            {muted ? '소리 꺼짐' : '소리 켜짐'}
+          </button>
+          <span className="pill pill-ember">{RESOURCE.name} {emberShards}{RESOURCE.unit}</span>
+        </div>
       </header>
 
       <PetRoomEditor
@@ -244,34 +270,49 @@ export default function PetRewardScreen({
 
       <section className="card">
         <span className="card-label">오늘의 보상 받기</span>
-        {reachedMilestones.length === 0 ? (
-          <p className="hairline-note">
-            아직 받을 보상이 없어요. 절제를 이어가면 새 보상이 도착해요.
-          </p>
-        ) : (
-          <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
-            {reachedMilestones.map((m) => {
-              const claimed = claimedRewardIds.includes(m.id);
-              return (
-                <div className="row-between reward-row" data-claimed={claimed} key={m.id}>
-                  <div>
-                    <div style={{ color: 'var(--text-primary)' }}>{m.label} 달성</div>
-                    <div className="hairline-note">{milestoneReward(m.kind, m.amount)}</div>
+        <p className="hairline-note">오늘의 절제를 채우면 받을 수 있어요.</p>
+        <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
+          {reachedMilestones.map((m) => {
+            const claimed = claimedRewardIds.includes(m.id);
+            return (
+              <div className="row-between reward-row" data-claimed={claimed} key={m.id}>
+                <div>
+                  <div style={{ color: 'var(--text-primary)' }}>{m.label} 달성</div>
+                  <div className="hairline-note">
+                    {claimed ? '이미 받은 보상이에요.' : milestoneReward(m.kind, m.amount)}
                   </div>
-                  <button
-                    type="button"
-                    className={`pill ${claimed ? 'pill-claimed' : 'pill-moss'} reward-claim-btn`}
-                    onClick={() => handleClaim(m.id)}
-                    disabled={claimed}
-                    aria-pressed={claimed}
-                  >
-                    {claimed ? '받음' : '받기'}
-                  </button>
                 </div>
-              );
-            })}
-          </div>
-        )}
+                <button
+                  type="button"
+                  className={`pill ${claimed ? 'pill-claimed' : 'pill-moss'} reward-claim-btn`}
+                  onClick={() => handleClaim(m.id)}
+                  disabled={claimed}
+                  aria-pressed={claimed}
+                >
+                  {claimed ? '받음' : '받기'}
+                </button>
+              </div>
+            );
+          })}
+
+          {lockedNext ? (
+            <div className="row-between reward-row" data-locked="true" key={lockedNext.id}>
+              <div>
+                <div style={{ color: 'var(--text-secondary)' }}>{lockedNext.label} 달성</div>
+                <div className="hairline-note">
+                  아직 받을 수 없어요. 오늘을 채우면 열려요.
+                </div>
+              </div>
+              <span className="pill reward-claim-btn" aria-disabled="true" style={{ opacity: 0.55 }}>
+                {lockedNext.day}일째
+              </span>
+            </div>
+          ) : null}
+
+          {reachedMilestones.length === 0 && !lockedNext ? (
+            <p className="hairline-note">절제를 이어가면 새 보상이 도착해요.</p>
+          ) : null}
+        </div>
       </section>
 
       <p className="reward-disclaimer">{REWARD_DISCLAIMER}</p>
