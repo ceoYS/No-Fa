@@ -33,6 +33,7 @@ Status key: `FIXED` (this pass) · `HOLD` (risky — see note) · `MANUAL`
 | C2 | P2 | Step-1 "다음" disabled state is inline `opacity:0.45; pointer-events:none` plus the `disabled` attr. Accessible, but the visual disabled cue is faint. | OPEN. |
 | C3 | P1 | No explicit empty state when `rules.length === 0` is handled (it is) — confirm the 체크인 완료 button still grants sensibly with zero rules. | MANUAL. |
 | C4 | P2 | "체크인 완료 · 방이 조금 더 따뜻해져요" — verify this is not a motion claim; it's a warmth metaphor, acceptable, but watch for over-promising visible change. | MANUAL. |
+| C5 | P1 | Repeat-checkin shard farm: `completeCheckin` called `earn()` on **every** tap, so re-opening 체크인 and pressing 체크인 완료 again re-granted 잔불 조각 — an unbounded farm of the daily reward. Economy-honesty risk in a commercial review. | FIXED — grant gated to once per calendar day via `checkinRewardDay` + `dayKey()`. The first valid check-in of the day grants the existing 체크인 shards; later same-day re-check-ins still persist 기분/충동/트리거 but never re-grant. Milestone eligibility (streak-day, `isMilestoneClaimable`) and snack feed untouched; copy unchanged. Guarded by `npm run check:nof`. |
 
 ## Calendar / Records (최근 기록)
 
@@ -89,3 +90,4 @@ Status key: `FIXED` (this pass) · `HOLD` (risky — see note) · `MANUAL`
 | X2 | P1 | Scene-mode forbidden-token scan (기지개/꼬리/먹는/움직임/SVG cat/emoji furniture) must stay clean. Only benign hits are a CSS `align-items: stretch` and an explanatory `onDeleteRule` comment. | VERIFIED. |
 | X3 | P2 | No global error boundary — a render throw blanks the device frame. Acceptable for prototype; note for production. | OPEN. |
 | X4 | P2 | Empty states exist for rules (Home/Checkin/Discipline) and inventory; confirm each reads calmly with zero data. | MANUAL. |
+| X5 | P1 | Source-level regression guard (`npm run check:nof` → `scripts/nof-regression-check.mjs`): pins the commercial invariants a passing build won't catch — reward claim guard present in App **and** screen, `isMilestoneClaimable` gating, check-in once-per-day grant, no discipline delete affordance, scene-mode drag disabled until `spriteReady`, and no fake-motion/emoji-furniture/blob tokens. | ADDED — 6/6 checks pass; dependency-free node script wired as an npm script for a pre-review run. |

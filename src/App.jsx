@@ -30,6 +30,15 @@ const SCREENS = [
 
 const DAY_MS = 86400000;
 
+// Local calendar-day key (midnight ms). Used to grant the daily check-in reward
+// at most once per day: re-opening/re-submitting the check-in later the same day
+// updates the saved fields but must not re-grant 잔불 조각 (no farming the shards).
+function dayKey(ms) {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
+
 // Seed the abstinence run ~12 days in so the timer hero reads a real elapsed
 // value on first paint. relapse() resets this to now (§0.6.3).
 const SEED_OFFSET_MS = 12 * DAY_MS + 3 * 3600 * 1000 + 24 * 60 * 1000 + 18 * 1000;
@@ -95,6 +104,9 @@ export default function App() {
   const [activeRoomTheme, setActiveRoomTheme] = useState(DEFAULT_THEME);
   const [petCareState, setPetCareState] = useState({ fedCount: 0, reaction: null });
   const [claimedRewardIds, setClaimedRewardIds] = useState([]);
+  // Calendar-day key of the last check-in shard grant, so the daily check-in
+  // reward is given once per day even if the user re-opens/re-submits the check-in.
+  const [checkinRewardDay, setCheckinRewardDay] = useState(null);
   // Last grant, for a calm "방금 받았어요" note: { kind:'shards'|'snack', amount, reason }.
   const [lastEarn, setLastEarn] = useState(null);
 
@@ -201,11 +213,15 @@ export default function App() {
   // grant folds in a small bonus per 위기였지만 버텼어요 rule. The step-1 inputs
   // (기분/충동/트리거) are persisted into today's record so 최근 기록 can show what
   // was logged (§0.6.5). Persisting these fields does NOT affect reward eligibility
-  // — milestones unlock on streak day only (isMilestoneClaimable) — and adds no new
-  // grant: the shard grant below is the existing 체크인 reward, unchanged.
+  // — milestones unlock on streak day only (isMilestoneClaimable). The shard grant
+  // is the existing 체크인 reward, gated to ONCE PER CALENDAR DAY (checkinRewardDay):
+  // a later re-check-in the same day re-saves the fields but never re-grants — so
+  // re-tapping 체크인 완료 can't farm 잔불 조각.
   const completeCheckin = (checkin = {}) => {
     const s = summarizeRules(rules);
-    const completedAt = Date.now();
+    const now = Date.now();
+    const todayKey = dayKey(now);
+    const rewardAlreadyGivenToday = checkinRewardDay === todayKey;
     setTodayRecord((prev) => ({
       abstinenceState: prev?.abstinenceState ?? 'clean',
       reflection: prev?.reflection ?? null,
@@ -217,10 +233,13 @@ export default function App() {
         moodLabel: checkin.moodLabel ?? null,
         urge: typeof checkin.urge === 'number' ? checkin.urge : null,
         triggers: Array.isArray(checkin.triggers) ? checkin.triggers : [],
-        completedAt,
+        completedAt: now,
       },
     }));
-    earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 체크인');
+    if (!rewardAlreadyGivenToday) {
+      earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 체크인');
+      setCheckinRewardDay(todayKey);
+    }
     setScreenId('reward');
   };
 

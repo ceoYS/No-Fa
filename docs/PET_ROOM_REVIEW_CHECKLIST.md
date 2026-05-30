@@ -43,6 +43,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] **Persistence:** after 체크인 완료, open 기록 → tap **today** → the detail
       sheet shows an **오늘의 체크인** block with the mood + 충동 N/5 (and trigger
       chips if any were picked), matching exactly what you selected. Nothing vanishes.
+- [ ] **No shard farm:** note the 잔불 조각 balance right after 체크인 완료. Re-enter
+      체크인, change a mood/urge, press 체크인 완료 again — the saved record updates,
+      but the 잔불 조각 balance does **not** rise a second time today.
 
 ## Calendar / 최근 기록
 
@@ -120,7 +123,8 @@ the expected behavior is exactly what you see. Anything else is a finding.
    1. **홈** loads first. Watch the timer tick once (1s). _Screenshot: full Home._
    2. Tap **오늘 규율 점검하기** → 체크인 step 1 → pick a mood, **≥1 trigger**, and
       an urge level → **다음** → step 2 → **체크인 완료**. Lands on 고양이 방.
-      _Screenshot: 고양이 방 top._ (Persistence is verified in step 6.)
+      _Screenshot: 고양이 방 top._ **Note the 잔불 조각 balance pill** (top-right).
+      (Persistence + no-farm are verified in step 6.)
    3. In 고양이 방: tap the room once (calm message), tap **간식 주기** twice
       (count drops 1 each), tap an already-**받음** reward (must do nothing).
       _Screenshot: 보상 받기 section showing 받기 / 받음 / N일째 states._
@@ -131,7 +135,9 @@ the expected behavior is exactly what you see. Anything else is a finding.
       one line → finish. _Screenshot: relapse reflection with blocked button._
    6. **기록** tab → tap **today's** cell → detail sheet shows the **오늘의 체크인**
       block matching step 2 (기분 · 충동 N/5 · trigger chips) → 닫기.
-      _Screenshot: day detail with 오늘의 체크인._
+      _Screenshot: day detail with 오늘의 체크인._ Then **체크인** tab → change the
+      urge → **체크인 완료** → on 고양이 방 confirm the 잔불 조각 balance is **unchanged**
+      from step 2 (no second grant), while re-opening 기록 shows the **updated** urge.
    7. **나의 규율** → confirm there is **no delete control** of any kind.
 
 ## What to screenshot (attach to the review)
@@ -156,6 +162,8 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - A delete/삭제 affordance on 나의 규율.
 - The **오늘의 체크인** block missing from today's detail after 체크인 완료, or
   showing a mood / urge / trigger that does not match what was selected (data dropped).
+- Re-pressing **체크인 완료** a second time the same day raises the 잔불 조각 balance
+  again (the daily check-in reward must grant once per day only).
 - The prototype **화면 전환** panel ("NoF · P0 prototype") visible on a plain
   production build (built `dist/` previewed without `?dev=1`).
 - Red console error on any screen, or layout overflowing the device frame.
@@ -169,8 +177,11 @@ the expected behavior is exactly what you see. Anything else is a finding.
 - [ ] Scene mode: no drag, no token overlays, no `방에 있음`, no motion claim.
 - [ ] No fabricated live-user / social-proof number on Home.
 - [ ] Check-in step-1 inputs persist into today's record (오늘의 체크인 block in 기록).
+- [ ] Check-in shard grant is once-per-day: re-submitting 체크인 완료 the same day
+      updates the record but never re-grants 잔불 조각.
 - [ ] Debug 화면 전환 switcher hidden on a production build (renders only in dev or
       with `?dev=1`).
+- [ ] `npm run check:nof` passes (source-level reward / scene-mode invariants).
 - [ ] No red console error and no horizontal overflow on any screen at 390px.
 
 ---
