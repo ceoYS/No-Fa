@@ -105,5 +105,60 @@ the expected behavior is exactly what you see. Anything else is a finding.
 
 ---
 
+## Exact browser steps (do these in order)
+
+1. Terminal: `npm run dev` → open the printed `localhost` URL.
+2. DevTools (F12) → toggle device toolbar → set width **390px** (iPhone 12/13).
+3. Console tab open the whole time — **any red error is a finding**.
+4. Walk the flow in this order, screenshotting where noted:
+   1. **홈** loads first. Watch the timer tick once (1s). _Screenshot: full Home._
+   2. Tap **오늘 규율 점검하기** → 체크인 step 1 → pick mood + urge → **다음** →
+      step 2 → **체크인 완료**. Lands on 고양이 방. _Screenshot: 고양이 방 top._
+   3. In 고양이 방: tap the room once (calm message), tap **간식 주기** twice
+      (count drops 1 each), tap an already-**받음** reward (must do nothing).
+      _Screenshot: 보상 받기 section showing 받기 / 받음 / N일째 states._
+   4. Open **상점** → confirm 방 테마 tab absent; open **아이템 보관함** →
+      confirm cards read 배치 준비 중, no 방에 있음. _Screenshot: each sheet._
+   5. Back 홈 → **무너졌어요 · 다시 시작** → relapse reflection (required) →
+      try **복기 마치고…** while 왜 그랬을까요 empty (must stay blocked) → type
+      one line → finish. _Screenshot: relapse reflection with blocked button._
+   6. **기록** tab → tap a day → detail sheet opens → 닫기. _Screenshot: detail._
+   7. **나의 규율** → confirm there is **no delete control** of any kind.
+
+## What to screenshot (attach to the review)
+
+- Home full scroll (hierarchy + no fabricated metric in 함께 버티는 중 card).
+- 고양이 방 stage (single finished scene image, no pasted cat/tokens).
+- 보상 받기 with all three reward states visible.
+- 보관함 + 상점 sheets (scene-mode honesty).
+- Relapse reflection with the finish button visibly disabled.
+- BottomNav with the active tab highlighted.
+
+## Fail examples (if you see any of these, it FAILS)
+
+- A specific live-user number like "1,240명" in the 함께 버티는 중 card. _(Should
+  read count-free: "같은 목표로 하루를 버티는 사람들이 함께하고 있어요.")_
+- Tapping a **받음** reward bumps shards/snacks a second time, or shows a warm
+  message.
+- 간식 주기 at 0 snacks decrements below zero, or throws.
+- Any `방에 있음` badge or draggable token while the scene image is showing.
+- Copy claiming the cat 기지개/꼬리/먹었/움직였 with no animation.
+- A 방 테마 tab visible inside 상점 while in scene mode.
+- A delete/삭제 affordance on 나의 규율.
+- Red console error on any screen, or layout overflowing the device frame.
+
+## P0 blockers — must ALL pass before any merge to `main`
+
+- [ ] `npm run build` succeeds.
+- [ ] Forbidden-token scan clean (only the benign CSS `stretch` / comment hits).
+- [ ] No discipline delete path (no button, sheet, handler, or prop).
+- [ ] Reward eligibility holds: ineligible/claimed reward never moves balances.
+- [ ] Scene mode: no drag, no token overlays, no `방에 있음`, no motion claim.
+- [ ] No fabricated live-user / social-proof number on Home.
+- [ ] No red console error and no horizontal overflow on any screen at 390px.
+
+---
+
 _Source-level invariants behind these checks live in_
-`docs/NOF_SCENE_MODE_GUARDRAILS.md`.
+`docs/NOF_SCENE_MODE_GUARDRAILS.md`. _Full issue list:_
+`docs/NOF_COMMERCIAL_QA_BACKLOG.md`.
