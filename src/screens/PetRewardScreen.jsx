@@ -180,7 +180,7 @@ export default function PetRewardScreen({
             aria-label={muted ? '고양이 소리 켜기' : '고양이 소리 끄기'}
             title={muted ? '소리 꺼짐' : '소리 켜짐'}
           >
-            {muted ? '소리 꺼짐' : '소리 켜짐'}
+            {muted ? '무음' : '소리'}
           </button>
           <span className="pill pill-ember">{RESOURCE.name} {emberShards}{RESOURCE.unit}</span>
         </div>

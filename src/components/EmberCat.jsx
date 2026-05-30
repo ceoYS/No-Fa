@@ -2,10 +2,12 @@
  * EmberCat — pet stage component (asset-first).
  *
  * The mascot is the approved premium white-kitten art (PRD §0.5,
- * PET_CUSTOMIZATION_SPEC §10). No art is committed yet, so resolveCatAsset()
- * returns null and CatFigure renders a clean neutral "art pending" skeleton —
- * never a fake SVG/emoji mascot. The moment the approved .webp frames are
- * registered present in petAssets.js, the same code paints real art.
+ * PET_CUSTOMIZATION_SPEC §10). The .webp frames are now registered present in
+ * petAssets.js, so resolveCatAsset() returns a real path and CatFigure paints
+ * the art directly; if an entry is ever unavailable it returns null and the same
+ * code renders a clean neutral "art pending" skeleton — never a fake SVG/emoji
+ * mascot. Note these frames are full illustrations (spriteReady:false), so the
+ * room stages use scene mode rather than pasting this figure as an overlay.
  *
  * Motion: pass `motionState` to drive both the frame (resolveCatAsset) and a CSS
  * hook class. The pet is never harmed — `sad_soft` is a soft, calm look (a dimmed
