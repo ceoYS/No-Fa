@@ -396,3 +396,35 @@ contradicts the locked spec:
   spec. Behaviour-vs-structure separation from the domain review still holds: do the
   state-model + reflection + records behaviour first, defer the `domains/` physical
   move to its own commit.
+
+---
+
+## 15. 멀티 금욕 카운터 구현 로그 (counter-management 라운드)
+
+이전 라운드는 단일 타이머만 키웠다. 이번 라운드는 핵심 누락이던 **다중 금욕 카운터**를
+구현한다 (counter-management / abstinence-timer / counter-reset-flow 벤치마크는 참고만 —
+픽셀·HTML 복제 금지, Ink & Ember 정체성 유지).
+
+- **데이터 모델 (App.jsx):** 단일 `abstinenceStartMs`/`longestDays` 상태를 제거하고
+  `counters: [{ id, name, startMs, targetDays, longestDays, status, history }]` + `selectedCounterId`로 교체.
+  기본 카운터 4개(`금딸`, `SNS 줄이기`, `야식 끊기`, `음주 줄이기`)를 `makeDefaultCounters()`로 시드.
+  기존 화면 호환을 위해 `abstinenceStartMs`/`longestDays`/`streakDays`는 **선택 카운터에서 파생**해 그대로 prop 전달.
+  영속화는 추가하지 않음(앱이 도메인 상태를 저장하지 않는 현 패턴 유지 — 디버그 플래그만 localStorage).
+- **추가/편집/선택:** `addCounter`(이름·시작일·시작시간·목표일수 → startMs 합성, 미래 시각 now로 클램프, 추가 후 자동 선택),
+  `editCounter`(같은 필드 수정), `selectCounter`(히어로 타이머 전환). 모두 비파괴적. 이번 라운드 **카운터 삭제 없음**.
+- **홈 (HomeScreen.jsx):** 히어로에 선택 카운터 **이름** 표시. 위기 CTA는 `못 참을 것 같아요`로 변경.
+  히어로/CTA 아래 **카운터 카드 목록**(이름·`N일 hh:mm`·목표 미니 진행바·`보는 중` 선택 상태) 추가, 탭하면 선택 전환.
+  `+ 카운터 추가` / `선택 카운터 편집` 시트(`role="dialog"`, Esc 닫힘) 추가.
+- **다시 시작:** `relapse()`를 **선택 카운터로만 스코프** — 해당 카운터만 startMs 리셋, longest/history 보존,
+  다른 카운터는 불변. 홈에서 전체 리셋 불가. 확인 시트 유지(`기록은 끝이 아니라 다음 시작점이에요.`), 액션 `취소` / `기록하고 다시 시작`.
+- **잠깐 멈춤 (UrgeScreen.jsx):** 5분 타이머를 실동작 카운트다운(05:00→00:00)으로 전환. 진행바 + 시작/멈춤·다시 이어가기/마치기.
+  선택 카운터 이름을 부제에 노출. 마치기는 게이트된 `onCrisisHeld`만 호출(홈/보상 직행 없음). 대체 활동 패널은 홈으로 라우팅하지 않음(유지).
+- **규율:** 카운터 시스템과 분리 유지 — 규율은 보조 약속, 절제 시간과 혼동 금지(기존 보조 카드 유지).
+- **펫 룸:** 이번 라운드 변경 없음. 에셋 상태만 보고 — 투명 스프라이트 미승인이라 드래그 비활성 유지(`spriteReady` 전부 false),
+  사운드는 `usePetSound`의 `meow`/`purr`가 미커밋 빈 src placeholder라 `play()`가 무음 no-op → UI에 사운드 주장 노출 없음(정직 게이트).
+- **CSS:** Ink & Ember 유지. `.timer-hero-name`, `.home-counters`, `.counter-card`(+선택 상태), `.counter-mini-progress`,
+  `.counter-card-meta`, 시트 폼 `.field-label`/`.field-row`/`.field-col` 추가.
+- **회귀(check:nof):** check 6에서 `meow`/`purr`는 정직 placeholder라 밴 제외 명시. check 15~18 추가
+  (기본 카운터 다수 / 추가·편집 UI / 선택 가능한 카운터 목록 / relapse 선택 카운터 스코프).
+- **검증:** `npm run build` 통과(CSS 40.46 kB), `npm run check:nof` 18/18 통과,
+  금지 토큰 스캔 기존 예외만(usePetSound meow/purr 빈 placeholder, `align-items: stretch`).
