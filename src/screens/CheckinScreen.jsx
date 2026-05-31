@@ -56,7 +56,7 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
     <div className="screen">
       <header className="screen-header">
         <div>
-          <p className="screen-greeting">오늘 상태를 남겨요</p>
+          <p className="screen-greeting">오늘 상태 남기기</p>
           <h1 className="screen-title">1분 기록</h1>
         </div>
         <span className="pill">{step} / 2</span>
@@ -181,8 +181,11 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
               className="btn btn-primary btn-block"
               onClick={finishCheckin}
             >
-              체크인 완료 · 방이 조금 더 따뜻해져요
+              오늘 기록 마치기
             </button>
+            <p className="hairline-note" style={{ textAlign: 'center' }}>
+              오늘을 기록하면 잔불이 조금 더 따뜻해져요.
+            </p>
             <button
               type="button"
               className="btn btn-ghost btn-block"

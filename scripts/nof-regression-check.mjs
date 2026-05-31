@@ -21,6 +21,7 @@
  *  11. Home is timer-first: abstinence timer hero + crisis/record hero CTAs.
  *  12. The urge 대체 활동 opens a real alternative-action panel, not a home route.
  *  13. The pet feed message is an honest hand-off (no cat-eating claim).
+ *  14. Home relapse/restart requires a confirmation step (never an instant reset).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -236,6 +237,24 @@ check('pet feed message is an honest hand-off (no eating claim)', () => {
   const screen = read('src/screens/PetRewardScreen.jsx');
   assert(screen.includes('간식을 건넸어요'), 'feed hand-off message (간식을 건넸어요) missing');
   assert(screen.includes('snack-toss-token'), 'snack hand-off token (snack-toss-token) missing');
+});
+
+// 14 — relapse/restart on Home must pass through a confirmation step. The visible
+// 다시 시작 button only opens a confirm dialog; the real reset (onRelapse) is called
+// solely from that dialog — never a direct inline onClick that would reset instantly.
+check('home relapse restart requires confirmation (never instant reset)', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(
+    home.includes('기록은 끝이 아니라 다음 시작점이에요'),
+    'required restart copy (기록은 끝이 아니라 다음 시작점이에요) missing on Home',
+  );
+  assert(home.includes('aria-label="다시 시작 확인"'), 'restart confirmation dialog (aria-label) missing');
+  assert(home.includes('useDismissOnEscape('), 'restart confirm sheet is not Esc-dismissible');
+  assert(home.includes('setConfirmRestart(true)'), 'restart CTA does not open the confirm sheet');
+  assert(
+    !/onClick=\{\(\)\s*=>\s*onRelapse/.test(home),
+    'restart CTA calls onRelapse directly — it must go through the confirm sheet',
+  );
 });
 
 let failed = 0;

@@ -44,7 +44,7 @@ const TAP_MESSAGES = [
   '오늘의 절제를 조용히 기억했어요.',
 ];
 
-const SCENE_FEED_MESSAGE = '간식을 건넸어요. 고양이가 기분 좋아 보여요.';
+const SCENE_FEED_MESSAGE = '간식을 건넸어요. 고양이 곁에 살며시 놓아두었어요.';
 const SCENE_REWARD_MESSAGE = '오늘의 절제를 조용히 기억했어요.';
 const NO_SNACK_MESSAGE = '보유한 간식이 없어요. 오늘의 보상으로 다시 받을 수 있어요.';
 
@@ -119,7 +119,7 @@ export default function PetRewardScreen({
   const feedCardMessage =
     tapMsg === NO_SNACK_MESSAGE
       ? NO_SNACK_MESSAGE
-      : petCareState.reaction ?? '간식을 주면 고양이가 기분 좋아 보여요.';
+      : petCareState.reaction ?? '간식을 주면 고양이 곁에 살며시 놓아둘 수 있어요.';
 
   const triggerSceneReaction = (ms = 1000) => {
     setSceneReacting(true);

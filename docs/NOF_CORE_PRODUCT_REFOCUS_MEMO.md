@@ -238,6 +238,38 @@ user-editable tag set:**
 | **Urge (충동 멈추기)** | **Keep** | Feeds `위기였지만 버텼어요` + coping log. |
 | **Calendar/Records** | **Keep, upgrade** | Make functional: day-detail + range selector (§3). |
 | **PetReward** | **Keep, demote** | Support layer; defer claim-model wiring (domain-review flag E). |
+
+---
+
+## 10. 구현 반영 로그 (2026-05-31, branch: wip/pet-room-scene-mode)
+
+이 메모(§1–§9)를 근거로 P0 프로토타입에 타이머 퍼스트 리팩터를 반영했다. 카피·문구는
+설계 의도를 옮긴 것이며, 디자인 레퍼런스(standalone HTML)나 벤치마크 스크린샷을
+픽셀/마크업 복제하지 않았다.
+
+- **홈 (HomeScreen.jsx)** — 타이머 퍼스트 재구성.
+  - `절제 경과 시간` 히어로를 가운데 정렬 대형 블록으로 승격(일수 64px + hh:mm:ss).
+    다음 목표일까지 진행 바(`nextLockedMilestone`)와 `최장 {bestDays}일`을 보조로 표시.
+  - 위기 대응 CTA(`지금 충동 멈추기` → urge)를 히어로 바로 아래 대형 1차 버튼으로,
+    `오늘 상태 남기기`(→ checkin)는 보조 버튼으로.
+  - 규율 / 최근 기록 / 고양이 방을 `오늘의 흐름` 보조 영역으로 묶어 시각적으로 한 단계
+    강등(대시보드 스택 느낌 축소).
+- **재발/리셋 (HomeScreen.jsx)** — 즉시 리셋 제거(§6 mandatory-but-calm). `무너졌어요 ·
+  다시 시작`은 확인 시트(role="dialog", aria-modal)를 열 뿐이고, 실제 `onRelapse()`는
+  시트의 `네, 다시 시작할게요`에서만 호출. 시트는 이번/최장 기록 요약 + `기록은 끝이
+  아니라 다음 시작점이에요.` 카피를 보여주고 Esc로 닫힌다. 확인 후 App이 reflection으로 라우팅.
+- **잠깐 멈춤 (UrgeScreen.jsx)** — 5분 지연 도구로 명확화. 5분 목표 진행 바(progressbar)
+  추가, `선택을 5분만 늦추는 시간` 카피. 대체 활동 패널은 홈으로 보내지 않고 호흡
+  타이머로 복귀(유지).
+- **체크인 (CheckinScreen.jsx)** — `오늘 상태 남기기 / 1분 기록` 보조 패턴 로깅으로
+  포지셔닝. 마무리 버튼을 `오늘 기록 마치기`로 바꾸고 보상 문구는 보조 노트로 강등
+  (보상=부산물).
+- **고양이 방 (PetRewardScreen.jsx)** — sceneMode 정직성 유지. 간식 핸드오프 문구를
+  전달/배치 표현(`고양이 곁에 살며시 놓아두었어요`)으로 개선. 가짜 먹기/움직임 주장 없음.
+- **CSS (components.css)** — 타이머 히어로 / 위기 CTA(`btn-lg`) / 보조 영역 / 재발 확인
+  시트 / 5분 진행 바 스타일 추가. Ink & Ember 다크/앰버 아이덴티티 유지.
+- **회귀 체크 (scripts/nof-regression-check.mjs)** — 인바리언트 #14 추가: 홈 재발/리셋은
+  확인 단계를 반드시 거친다(즉시 리셋 금지 + 필수 카피 존재 + onRelapse 직접 호출 금지).
 | **Ranking/Social** | **New (teaser only)** | P0 visible teaser (§10). |
 
 Net: no screen is deleted; two are **repurposed** (Recovery → reflection; Check-in
