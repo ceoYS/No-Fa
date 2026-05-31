@@ -22,6 +22,10 @@
  *  12. The urge 대체 활동 opens a real alternative-action panel, not a home route.
  *  13. The pet feed message is an honest hand-off (no cat-eating claim).
  *  14. Home relapse/restart requires a confirmation step (never an instant reset).
+ *  15. Multiple default abstinence counters exist (multi-counter data model).
+ *  16. Home exposes add + edit counter UI (name / start date / time / target).
+ *  17. Home renders a selectable counter list (tap selects → hero updates).
+ *  18. relapse() is scoped to the selected counter (never resets all counters).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -134,6 +138,10 @@ check('scene mode keeps drag disabled until item sprites are ready', () => {
 
 // 6 — forbidden fake-motion / emoji-furniture / blob-cat tokens absent from source.
 check('no fake-motion / emoji-furniture / blob tokens in source', () => {
+  // Note: 'meow'/'purr' are NOT banned — they exist only as honest empty-string
+  // audio placeholders in usePetSound.js, gated by hasPetSound() so no sound claim
+  // reaches the UI until a real source is wired. Banning them would punish the
+  // honesty gate. Fake *motion* copy is what we forbid here.
   const tokens = [
     '기지개', '꼬리', '먹었', '먹는', '움직였', 'eating', '파도처럼',
     'pet-cat-svg', 'room-token-glow',
@@ -211,8 +219,8 @@ check('home is timer-first with crisis + record hero CTAs', () => {
   assert(home.includes('abstinence-timer-card'), 'Home timer hero (abstinence-timer-card) missing');
   assert(home.includes('home-hero-actions'), 'Home hero CTA row (home-hero-actions) missing');
   assert(
-    home.includes('지금 충동 멈추기') && home.includes("onNavigate('urge')"),
-    'Home crisis CTA (지금 충동 멈추기 → urge) missing',
+    home.includes('못 참을 것 같아요') && home.includes("onNavigate('urge')"),
+    'Home crisis CTA (못 참을 것 같아요 → urge) missing',
   );
   assert(
     home.includes('오늘 상태 남기기') && home.includes("onNavigate('checkin')"),
@@ -255,6 +263,62 @@ check('home relapse restart requires confirmation (never instant reset)', () => 
     !/onClick=\{\(\)\s*=>\s*onRelapse/.test(home),
     'restart CTA calls onRelapse directly — it must go through the confirm sheet',
   );
+});
+
+// 15 — the multi-counter data model must seed multiple default counters with the
+// required prototype shape ({ id, name, startMs, targetDays, longestDays, ... }).
+check('multiple default abstinence counters exist', () => {
+  const app = read('src/App.jsx');
+  assert(/function makeDefaultCounters\(/.test(app), 'makeDefaultCounters() seed factory missing');
+  for (const name of ['금딸', 'SNS 줄이기', '야식 끊기', '음주 줄이기']) {
+    assert(app.includes(name), `default counter missing: ${name}`);
+  }
+  for (const field of ['startMs', 'targetDays', 'longestDays']) {
+    assert(app.includes(field), `counter model field missing: ${field}`);
+  }
+  assert(app.includes('selectedCounterId'), 'no selectedCounterId state in App.jsx');
+});
+
+// 16 — Home must expose add + edit counter UI covering all four fields.
+check('home exposes add + edit counter UI (name/date/time/target)', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(/function AddCounterSheet\(/.test(home), 'AddCounterSheet missing');
+  assert(/function EditCounterSheet\(/.test(home), 'EditCounterSheet missing');
+  assert(home.includes('+ 카운터 추가'), 'add-counter entry (+ 카운터 추가) missing');
+  assert(home.includes('type="date"') && home.includes('type="time"'), 'start date/time inputs missing');
+  assert(home.includes('목표 일수'), 'target-days field (목표 일수) missing');
+  assert(
+    home.includes('onAddCounter') && home.includes('onEditCounter'),
+    'add/edit counter handlers not wired',
+  );
+});
+
+// 17 — Home must render a selectable counter list (cards) that changes selection.
+check('home renders a selectable counter list', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes('counter-card'), 'counter card markup (counter-card) missing');
+  assert(home.includes('counters.map('), 'Home does not iterate counters into a list');
+  assert(home.includes('onSelectCounter'), 'counter selection handler (onSelectCounter) not wired');
+  const app = read('src/App.jsx');
+  assert(
+    /const selectCounter = \(id\) =>/.test(app) && app.includes('setSelectedCounterId('),
+    'App selectCounter() does not change the selected counter',
+  );
+});
+
+// 18 — relapse must restart ONLY the selected counter; it must never reset all
+// counters. The scoped guard (skip non-selected ids) is the key invariant.
+check('relapse is scoped to the selected counter (no reset-all)', () => {
+  const app = read('src/App.jsx');
+  const m = app.match(/const relapse = \(\) => \{[\s\S]*?setScreenId\('recovery'\);\s*\};/);
+  assert(m, 'relapse function not found');
+  const body = m[0];
+  assert(body.includes('setCounters('), 'relapse no longer updates the counters list');
+  assert(
+    /if \(c\.id !== selectedCounterId\) return c;/.test(body),
+    'relapse is not scoped to the selected counter (missing id guard) — could reset all',
+  );
+  assert(body.includes('startMs: now'), 'relapse does not restart the selected counter start');
 });
 
 let failed = 0;

@@ -17,6 +17,24 @@ function formatElapsed(ms) {
   return { days, hh, mm, ss };
 }
 
+// <input type="date"> / <input type="time"> helpers for the add/edit counter
+// sheets (counter-management benchmark — name / 시작 일 / 시작 시간 / 목표 일수).
+const pad2 = (n) => String(n).padStart(2, '0');
+function msToDateValue(ms) {
+  const d = new Date(ms);
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+}
+function msToTimeValue(ms) {
+  const d = new Date(ms);
+  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
+}
+function dateTimeToMs(dateStr, timeStr) {
+  if (!dateStr) return NaN;
+  const t = timeStr && timeStr.length >= 4 ? timeStr : '00:00';
+  const ms = new Date(`${dateStr}T${t}`).getTime();
+  return Number.isFinite(ms) ? ms : NaN;
+}
+
 // Room Warmth band (§0.5.10 D) — shown as a word, never a number. A light inline
 // derivation; the full warmth index lands with the domains/ refactor.
 function warmthBand(summary, relapsed) {
@@ -30,6 +48,12 @@ export default function HomeScreen({
   rules = [],
   abstinenceStartMs = Date.now(),
   longestDays = 0,
+  counters = [],
+  selectedCounterId = null,
+  selectedCounterName = '',
+  onSelectCounter,
+  onAddCounter,
+  onEditCounter,
   onRelapse,
   onStartSlipReflection,
   todayRecord = null,
@@ -42,6 +66,14 @@ export default function HomeScreen({
   // 확인 시트를 열 뿐, 실제 onRelapse()는 시트에서 한 번 더 확인해야 호출된다.
   const [confirmRestart, setConfirmRestart] = useState(false);
   useDismissOnEscape(confirmRestart, () => setConfirmRestart(false));
+  // 카운터 추가 / 편집 시트 (counter-management). Esc로 닫힌다.
+  const [addCounterOpen, setAddCounterOpen] = useState(false);
+  const [editCounterOpen, setEditCounterOpen] = useState(false);
+  useDismissOnEscape(addCounterOpen || editCounterOpen, () => {
+    setAddCounterOpen(false);
+    setEditCounterOpen(false);
+  });
+  const selectedCounter = counters.find((c) => c.id === selectedCounterId) ?? counters[0] ?? null;
 
   useEffect(() => {
     const id = window.setInterval(() => setNow(Date.now()), 1000);
@@ -85,6 +117,7 @@ export default function HomeScreen({
       {/* 1) 절제 경과 시간 히어로 — 첫 화면에서 가장 크게 보이는 핵심 정보 */}
       <section className="abstinence-timer-card timer-hero" aria-label="현재 절제 경과 시간">
         <p className="timer-hero-eyebrow">마지막 시작 이후 이어가는 중</p>
+        <h2 className="timer-hero-name">{selectedCounterName || '절제'}</h2>
         <div className="timer-hero-days">
           <span className="timer-hero-days-num">{days}</span>
           <span className="timer-hero-days-unit">일</span>
@@ -122,7 +155,7 @@ export default function HomeScreen({
             className="btn btn-primary btn-block btn-lg"
             onClick={() => onNavigate('urge')}
           >
-            지금 충동 멈추기
+            못 참을 것 같아요
           </button>
           <button
             type="button"
@@ -158,7 +191,61 @@ export default function HomeScreen({
         </div>
       </section>
 
-      {/* 4) 보조 영역 — 규율 / 최근 기록 / 고양이 방은 한 단계 아래로 묶는다 */}
+      {/* 4) 금욕 카운터 목록 — 여러 절제를 한눈에. 카드를 누르면 히어로 타이머가 바뀐다 */}
+      <section className="home-counters">
+        <div className="card-row">
+          <p className="section-eyebrow">금욕 카운터</p>
+          <button type="button" className="btn-add" onClick={() => setAddCounterOpen(true)}>
+            + 카운터 추가
+          </button>
+        </div>
+        <div className="counter-list">
+          {counters.map((c) => {
+            const el = formatElapsed(now - c.startMs);
+            const pct = c.targetDays > 0 ? Math.min(100, Math.round((el.days / c.targetDays) * 100)) : 0;
+            const selected = c.id === (selectedCounter?.id ?? selectedCounterId);
+            return (
+              <button
+                key={c.id}
+                type="button"
+                className="counter-card"
+                data-selected={selected}
+                aria-pressed={selected}
+                aria-label={`${c.name} — ${el.days}일 ${el.hh}:${el.mm}${selected ? ', 지금 보는 중' : ''}`}
+                onClick={() => onSelectCounter?.(c.id)}
+              >
+                <div className="counter-card-head">
+                  <span className="counter-card-name">{c.name}</span>
+                  {selected ? (
+                    <span className="pill pill-ember counter-card-flag">보는 중</span>
+                  ) : null}
+                </div>
+                <div className="counter-card-time">
+                  {el.days}일 {el.hh}:{el.mm}
+                </div>
+                <div className="counter-mini-progress" aria-hidden="true">
+                  <span className="counter-mini-progress-fill" style={{ width: `${pct}%` }} />
+                </div>
+                <div className="counter-card-meta">
+                  <span className="hairline-note">목표 {c.targetDays}일</span>
+                  <span className="hairline-note">최장 {Math.max(c.longestDays ?? 0, el.days)}일</span>
+                </div>
+              </button>
+            );
+          })}
+        </div>
+        {selectedCounter ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => setEditCounterOpen(true)}
+          >
+            ‘{selectedCounter.name}’ 카운터 편집
+          </button>
+        ) : null}
+      </section>
+
+      {/* 5) 보조 영역 — 규율 / 최근 기록 / 고양이 방은 한 단계 아래로 묶는다 */}
       <div className="home-secondary stack" style={{ '--gap': 'var(--sp-3)' }}>
         <p className="section-eyebrow">오늘의 흐름</p>
 
@@ -253,7 +340,8 @@ export default function HomeScreen({
             <div className="sheet-handle" />
             <h2 className="sheet-title">정말 다시 시작할까요?</h2>
             <p className="sheet-help">
-              지금 멈추면 절제 시간이 0으로 돌아가요. 무너진 순간을 탓하지 않아요.
+              {selectedCounterName ? `‘${selectedCounterName}’ ` : ''}절제 시간만 0으로 돌아가요. 다른
+              카운터는 그대로 이어가요. 무너진 순간을 탓하지 않아요.
             </p>
 
             <div className="restart-summary">
@@ -273,15 +361,209 @@ export default function HomeScreen({
 
             <div className="sheet-actions">
               <button type="button" className="btn btn-ghost" onClick={() => setConfirmRestart(false)}>
-                아직은 괜찮아요
+                취소
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmRelapse}>
-                네, 다시 시작할게요
+                기록하고 다시 시작
               </button>
             </div>
           </div>
         </div>
       ) : null}
+
+      {addCounterOpen ? (
+        <AddCounterSheet
+          onCancel={() => setAddCounterOpen(false)}
+          onSubmit={(payload) => {
+            onAddCounter?.(payload);
+            setAddCounterOpen(false);
+          }}
+        />
+      ) : null}
+
+      {editCounterOpen && selectedCounter ? (
+        <EditCounterSheet
+          counter={selectedCounter}
+          onCancel={() => setEditCounterOpen(false)}
+          onSubmit={(payload) => {
+            onEditCounter?.(selectedCounter.id, payload);
+            setEditCounterOpen(false);
+          }}
+        />
+      ) : null}
+    </div>
+  );
+}
+
+// 카운터 추가 시트 (counter-management): 이름 / 시작 일 / 시작 시간 / 목표 일수.
+// 시작 시각은 날짜+시간 입력을 합쳐 startMs로 만든다. 미래 시각은 App에서 now로 클램프.
+function AddCounterSheet({ onCancel, onSubmit }) {
+  const now = Date.now();
+  const [name, setName] = useState('');
+  const [date, setDate] = useState(msToDateValue(now));
+  const [time, setTime] = useState(msToTimeValue(now));
+  const [target, setTarget] = useState('30');
+  const ready = name.trim().length > 0 && !!date;
+
+  const submit = () => {
+    onSubmit({ name, startMs: dateTimeToMs(date, time), targetDays: parseInt(target, 10) });
+  };
+
+  return (
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="카운터 추가">
+      <div className="sheet">
+        <div className="sheet-handle" aria-hidden="true" />
+        <h2 className="sheet-title">새 카운터 추가</h2>
+        <p className="sheet-help">새로 이어갈 절제를 하나 추가해요.</p>
+
+        <label className="field-label" htmlFor="add-counter-name">이름</label>
+        <input
+          id="add-counter-name"
+          type="text"
+          className="sheet-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          placeholder="예: 금딸, SNS 줄이기"
+          maxLength={40}
+          autoFocus
+        />
+
+        <div className="field-row">
+          <div className="field-col">
+            <label className="field-label" htmlFor="add-counter-date">시작 일</label>
+            <input
+              id="add-counter-date"
+              type="date"
+              className="sheet-input"
+              value={date}
+              max={msToDateValue(now)}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="field-col">
+            <label className="field-label" htmlFor="add-counter-time">시작 시간</label>
+            <input
+              id="add-counter-time"
+              type="time"
+              className="sheet-input"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <label className="field-label" htmlFor="add-counter-target">목표 일수</label>
+        <input
+          id="add-counter-target"
+          type="number"
+          min="1"
+          max="3650"
+          className="sheet-input"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+        />
+
+        <div className="sheet-actions">
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+            취소
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!ready}
+            style={ready ? undefined : { opacity: 0.45, pointerEvents: 'none' }}
+            onClick={submit}
+          >
+            추가하기
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// 카운터 편집 시트 (counter-management): 같은 필드를 선택한 카운터 값으로 채워
+// 수정한다. 저장/취소만 제공하며, 이번 라운드에는 카운터 삭제가 없다.
+function EditCounterSheet({ counter, onCancel, onSubmit }) {
+  const [name, setName] = useState(counter?.name ?? '');
+  const [date, setDate] = useState(msToDateValue(counter?.startMs ?? Date.now()));
+  const [time, setTime] = useState(msToTimeValue(counter?.startMs ?? Date.now()));
+  const [target, setTarget] = useState(String(counter?.targetDays ?? 30));
+  if (!counter) return null;
+  const ready = name.trim().length > 0 && !!date;
+
+  const submit = () => {
+    onSubmit({ name, startMs: dateTimeToMs(date, time), targetDays: parseInt(target, 10) });
+  };
+
+  return (
+    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="카운터 편집">
+      <div className="sheet">
+        <div className="sheet-handle" aria-hidden="true" />
+        <h2 className="sheet-title">카운터 편집</h2>
+        <p className="sheet-help">시작 시각을 바로잡거나 이름·목표를 바꿀 수 있어요.</p>
+
+        <label className="field-label" htmlFor="edit-counter-name">이름</label>
+        <input
+          id="edit-counter-name"
+          type="text"
+          className="sheet-input"
+          value={name}
+          onChange={(e) => setName(e.target.value)}
+          maxLength={40}
+          autoFocus
+        />
+
+        <div className="field-row">
+          <div className="field-col">
+            <label className="field-label" htmlFor="edit-counter-date">시작 일</label>
+            <input
+              id="edit-counter-date"
+              type="date"
+              className="sheet-input"
+              value={date}
+              max={msToDateValue(Date.now())}
+              onChange={(e) => setDate(e.target.value)}
+            />
+          </div>
+          <div className="field-col">
+            <label className="field-label" htmlFor="edit-counter-time">시작 시간</label>
+            <input
+              id="edit-counter-time"
+              type="time"
+              className="sheet-input"
+              value={time}
+              onChange={(e) => setTime(e.target.value)}
+            />
+          </div>
+        </div>
+
+        <label className="field-label" htmlFor="edit-counter-target">목표 일수</label>
+        <input
+          id="edit-counter-target"
+          type="number"
+          min="1"
+          max="3650"
+          className="sheet-input"
+          value={target}
+          onChange={(e) => setTarget(e.target.value)}
+        />
+
+        <div className="sheet-actions">
+          <button type="button" className="btn btn-ghost" onClick={onCancel}>
+            취소
+          </button>
+          <button
+            type="button"
+            className="btn btn-primary"
+            disabled={!ready}
+            style={ready ? undefined : { opacity: 0.45, pointerEvents: 'none' }}
+            onClick={submit}
+          >
+            저장
+          </button>
+        </div>
+      </div>
     </div>
   );
 }

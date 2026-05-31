@@ -42,6 +42,22 @@ function dayKey(ms) {
 // Seed the abstinence run ~12 days in so the timer hero reads a real elapsed
 // value on first paint. relapse() resets this to now (§0.6.3).
 const SEED_OFFSET_MS = 12 * DAY_MS + 3 * 3600 * 1000 + 24 * 60 * 1000 + 18 * 1000;
+const HOUR_MS = 3600 * 1000;
+const MIN_MS = 60 * 1000;
+
+// Multi abstinence-counter seed (counter-management benchmark). Each counter is an
+// independent abstinence run with its own start, target and longest record. Offsets
+// are relative to load time so every hero/card reads a real elapsed value on first
+// paint. relapse() restarts ONLY the selected counter — never all of them.
+function makeDefaultCounters() {
+  const now = Date.now();
+  return [
+    { id: 'c_nofap', name: '금딸', startMs: now - SEED_OFFSET_MS, targetDays: 30, longestDays: 27, status: 'active', history: [] },
+    { id: 'c_sns', name: 'SNS 줄이기', startMs: now - (4 * DAY_MS + 6 * HOUR_MS + 12 * MIN_MS), targetDays: 14, longestDays: 9, status: 'active', history: [] },
+    { id: 'c_latenight', name: '야식 끊기', startMs: now - (2 * DAY_MS + 18 * HOUR_MS + 5 * MIN_MS), targetDays: 21, longestDays: 6, status: 'active', history: [] },
+    { id: 'c_alcohol', name: '음주 줄이기', startMs: now - (6 * DAY_MS + 1 * HOUR_MS + 40 * MIN_MS), targetDays: 30, longestDays: 12, status: 'active', history: [] },
+  ];
+}
 
 // Editable category tags (§0.6.7). The seed list is a suggestion, not fixed;
 // a custom tag typed in the add sheet joins this list for the session.
@@ -87,8 +103,10 @@ export default function App() {
   const [screenId, setScreenId] = useState('home');
   const [rules, setRules] = useState(INITIAL_RULES);
   const [categories, setCategories] = useState(SEED_CATEGORIES);
-  const [abstinenceStartMs, setAbstinenceStartMs] = useState(Date.now() - SEED_OFFSET_MS);
-  const [longestDays, setLongestDays] = useState(27);
+  // Multi-counter state (counter-management). In-memory like the rest of the
+  // prototype (the app persists only the debug-nav flag, not domain state).
+  const [counters, setCounters] = useState(makeDefaultCounters);
+  const [selectedCounterId, setSelectedCounterId] = useState('c_nofap');
   // Drives the reflection diary: { scope: 'relapse' | 'slip', ruleId? } | null.
   const [reflectionCtx, setReflectionCtx] = useState(null);
   // Today's DayRecord fields written by the reflection diary (§0.6.5/§0.6.6).
@@ -119,6 +137,13 @@ export default function App() {
 
   const current = SCREENS.find((s) => s.id === screenId) ?? SCREENS[0];
   const Screen = current.Component;
+  // The selected counter drives the Home hero, the Urge target and every legacy
+  // abstinence prop (streakDays / abstinenceStartMs / longestDays), so dependent
+  // screens keep working unchanged. Falls back to the first counter defensively.
+  const selectedCounter =
+    counters.find((c) => c.id === selectedCounterId) ?? counters[0] ?? null;
+  const abstinenceStartMs = selectedCounter?.startMs ?? Date.now();
+  const longestDays = selectedCounter?.longestDays ?? 0;
   const streakDays = Math.max(0, Math.floor((Date.now() - abstinenceStartMs) / DAY_MS));
 
   const addRule = ({ label, category }) => {
@@ -144,6 +169,46 @@ export default function App() {
     return tag;
   };
 
+  // Multi-counter management (counter-management benchmark). Add / edit / select
+  // are non-destructive. This round intentionally ships NO counter delete; a future
+  // archive would flip `status` only (the row stays in state, recoverable).
+  const addCounter = ({ name, startMs, targetDays } = {}) => {
+    const trimmed = (name ?? '').trim();
+    if (!trimmed) return;
+    const id = `c_${Date.now()}`;
+    const start = Number.isFinite(startMs) ? Math.min(startMs, Date.now()) : Date.now();
+    setCounters((prev) => [
+      ...prev,
+      {
+        id,
+        name: trimmed,
+        startMs: start,
+        targetDays: Number.isFinite(targetDays) && targetDays > 0 ? targetDays : 30,
+        longestDays: 0,
+        status: 'active',
+        history: [],
+      },
+    ]);
+    setSelectedCounterId(id);
+  };
+
+  const editCounter = (id, { name, startMs, targetDays } = {}) => {
+    setCounters((prev) =>
+      prev.map((c) => {
+        if (c.id !== id) return c;
+        const next = { ...c };
+        if (typeof name === 'string' && name.trim()) next.name = name.trim();
+        if (Number.isFinite(startMs)) next.startMs = Math.min(startMs, Date.now());
+        if (Number.isFinite(targetDays) && targetDays > 0) next.targetDays = targetDays;
+        return next;
+      }),
+    );
+  };
+
+  const selectCounter = (id) => {
+    if (counters.some((c) => c.id === id)) setSelectedCounterId(id);
+  };
+
   // Grant the earned resource (잔불 조각). Fixed amounts only — never random.
   const earn = (amount, reason) => {
     if (!amount) return;
@@ -156,9 +221,21 @@ export default function App() {
   // reflection. The pet dims briefly but is never harmed (§0.6.9).
   const relapse = () => {
     const now = Date.now();
-    const runDays = Math.floor((now - abstinenceStartMs) / DAY_MS);
-    setLongestDays((best) => Math.max(best, runDays));
-    setAbstinenceStartMs(now);
+    // Scoped reset (counter-management): ONLY the selected counter restarts. Its
+    // run length is archived into longestDays if it beat the prior best, and pushed
+    // to history. Other counters are never touched — Home cannot reset all at once.
+    setCounters((prev) =>
+      prev.map((c) => {
+        if (c.id !== selectedCounterId) return c;
+        const runDays = Math.floor((now - c.startMs) / DAY_MS);
+        return {
+          ...c,
+          startMs: now,
+          longestDays: Math.max(c.longestDays ?? 0, runDays),
+          history: [...(c.history ?? []), { endedMs: now, runDays }],
+        };
+      }),
+    );
     // A relapse resets the day's narrative but keeps any check-in already logged
     // today — that 1-min check-in is a factual event, not erased by the restart.
     setTodayRecord((prev) => ({
@@ -366,6 +443,12 @@ export default function App() {
             abstinenceStartMs={abstinenceStartMs}
             longestDays={longestDays}
             streakDays={streakDays}
+            counters={counters}
+            selectedCounterId={selectedCounterId}
+            selectedCounterName={selectedCounter?.name ?? ''}
+            onSelectCounter={selectCounter}
+            onAddCounter={addCounter}
+            onEditCounter={editCounter}
             onRelapse={relapse}
             onStartSlipReflection={startSlipReflection}
             onCompleteReflection={completeReflection}

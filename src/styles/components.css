@@ -2237,3 +2237,112 @@ button.room-token:active {
   line-height: var(--lh-snug);
   padding: var(--sp-1) 0;
 }
+
+/* =================================================================
+ * Home — multi abstinence-counter list (counter-management benchmark). Each card
+ * is a selectable summary of one counter; the selected one drives the hero timer.
+ * Ink & Ember identity preserved (ember accent for the active card + progress).
+ * ================================================================= */
+
+/* selected-counter name above the hero timer. */
+.timer-hero-name {
+  font-size: var(--fs-h2);
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: center;
+}
+
+.home-counters {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.counter-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.counter-card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  width: 100%;
+  text-align: left;
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-raised);
+  transition: border-color var(--dur-fast) var(--ease-soft),
+    background var(--dur-fast) var(--ease-soft);
+}
+
+.counter-card[data-selected='true'] {
+  border-color: var(--accent-ember);
+  background: var(--bg-surface-strong);
+}
+
+.counter-card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+.counter-card-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.counter-card-flag {
+  font-size: var(--fs-small);
+}
+
+.counter-card-time {
+  font-size: var(--fs-h2);
+  font-weight: 700;
+  font-feature-settings: 'tnum' 1;
+  color: var(--text-primary);
+}
+
+.counter-mini-progress {
+  width: 100%;
+  height: 4px;
+  border-radius: var(--r-pill);
+  background: var(--ink-700);
+  overflow: hidden;
+}
+
+.counter-mini-progress-fill {
+  display: block;
+  height: 100%;
+  background: linear-gradient(90deg, var(--ember-300), var(--ember-400));
+  border-radius: inherit;
+}
+
+.counter-card-meta {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+}
+
+/* add/edit counter sheet form fields (counter-management). */
+.field-label {
+  display: block;
+  font-size: var(--fs-small);
+  color: var(--text-quiet);
+  margin-top: var(--sp-2);
+  margin-bottom: var(--sp-1);
+}
+
+.field-row {
+  display: flex;
+  gap: var(--sp-2);
+}
+
+.field-col {
+  flex: 1 1 0;
+  min-width: 0;
+}

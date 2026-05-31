@@ -11,28 +11,50 @@ const ALT_ACTIONS = [
   { id: 'stand', label: '자리에서 일어나기' },
 ];
 
-// 잠깐 멈춤은 "5분 지연 도구"다 (refocus memo §2 — 충동 멈추기). 타이머는 5분을
-// 목표로 카운트 업하고, 5분을 채우면 마치기를 권한다. 5분은 강제 종료가 아니라
-// 권장 고비일 뿐이라 계속 함께 있어도 된다.
+// 잠깐 멈춤은 "5분 지연 도구"다 (refocus memo §2 — 충동 멈추기). 타이머는 5분(300초)
+// 에서 0까지 카운트다운하고, 다 채우면 마치기를 권한다. 5분은 강제 종료가 아니라
+// 권장 고비일 뿐이라 멈췄다가 다시 이어가도 된다.
 const TARGET_SECONDS = 300;
 
-export default function UrgeScreen({ onNavigate, onCrisisHeld }) {
-  const [seconds, setSeconds] = useState(0);
+// Urge는 "지금 선택한 카운터"의 충동을 함께 넘기는 도구다 (counter-management). 어떤
+// 절제를 붙잡고 있는지 selectedCounterName으로 보여줘 맥락을 잃지 않게 한다.
+export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterName = '' }) {
+  const [remaining, setRemaining] = useState(TARGET_SECONDS);
   const [running, setRunning] = useState(false);
+  const [started, setStarted] = useState(false);
   const [view, setView] = useState('breath'); // 'breath' | 'alt'
   const [altNote, setAltNote] = useState(null);
   const tickRef = useRef(null);
 
   useEffect(() => {
     if (!running) return undefined;
-    tickRef.current = window.setInterval(() => setSeconds((s) => s + 1), 1000);
+    tickRef.current = window.setInterval(() => {
+      setRemaining((r) => {
+        if (r <= 1) {
+          window.clearInterval(tickRef.current);
+          return 0;
+        }
+        return r - 1;
+      });
+    }, 1000);
     return () => window.clearInterval(tickRef.current);
   }, [running]);
 
-  const mm = String(Math.floor(seconds / 60)).padStart(2, '0');
-  const ss = String(seconds % 60).padStart(2, '0');
-  const progress = Math.min(100, Math.round((seconds / TARGET_SECONDS) * 100));
-  const reachedTarget = seconds >= TARGET_SECONDS;
+  // Stop the clock once the 5-minute target is reached (the count holds at 00:00).
+  useEffect(() => {
+    if (remaining === 0) setRunning(false);
+  }, [remaining]);
+
+  const mm = String(Math.floor(remaining / 60)).padStart(2, '0');
+  const ss = String(remaining % 60).padStart(2, '0');
+  const elapsed = TARGET_SECONDS - remaining;
+  const progress = Math.min(100, Math.round((elapsed / TARGET_SECONDS) * 100));
+  const reachedTarget = remaining === 0;
+
+  const start = () => {
+    setStarted(true);
+    setRunning(true);
+  };
 
   // Completing an alternative returns to the breath timer with a calm note. It
   // does not start the timer or grant anything — it just buys time honestly, and
@@ -60,7 +82,8 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld }) {
         <div>
           <h1 className="screen-title">지금 충동을 멈춰요</h1>
           <p className="screen-subtitle" style={{ marginTop: 'var(--sp-2)' }}>
-            지금은 결정하지 않고, 선택을 5분만 늦추는 시간이에요. 같이 버텨봐요.
+            {selectedCounterName ? `‘${selectedCounterName}’ — ` : ''}지금은 결정하지 않고, 선택을 5분만
+            늦추는 시간이에요. 같이 버텨봐요.
           </p>
         </div>
       </header>
@@ -79,17 +102,19 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld }) {
               role="progressbar"
               aria-valuemin={0}
               aria-valuemax={TARGET_SECONDS}
-              aria-valuenow={Math.min(seconds, TARGET_SECONDS)}
+              aria-valuenow={elapsed}
               aria-label="5분 목표 진행"
             >
               <span className="urge-progress-fill" style={{ width: `${progress}%` }} />
             </div>
             <p className="urge-hint">
-              {!running
-                ? '5분만 흘려보내도 충동의 강도는 조금 내려가요.\n호흡에 맞춰 천천히 같이 버텨봐요.'
+              {!started
+                ? '5분만 흘려보내도 충동의 강도는 조금 내려가요.\n준비되면 5분 같이 버티기를 눌러요.'
                 : reachedTarget
-                ? '5분을 넘겼어요. 이 고비를 잘 넘기고 있어요.\n준비되면 마치기를 눌러요.'
-                : '천천히 숨을 고르면서 시간을 흘려보내요.\n급하게 결정하지 않아도 괜찮아요.'}
+                ? '5분을 잘 넘겼어요. 이 고비를 잘 넘기고 있어요.\n준비되면 마치기를 눌러요.'
+                : running
+                ? '천천히 숨을 고르면서 시간을 흘려보내요.\n급하게 결정하지 않아도 괜찮아요.'
+                : '잠깐 멈췄어요. 준비되면 다시 이어가요.'}
             </p>
           </div>
 
@@ -100,22 +125,29 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld }) {
           ) : null}
 
           <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
-            {!running ? (
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                onClick={() => setRunning(true)}
-              >
+            {!started ? (
+              <button type="button" className="btn btn-primary btn-block" onClick={start}>
                 5분 같이 버티기
               </button>
             ) : (
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                onClick={() => onCrisisHeld?.()}
-              >
-                {reachedTarget ? '5분을 잘 넘겼어요 · 마치기' : '오늘도 함께 버텼어요 · 마치기'}
-              </button>
+              <>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-block"
+                  onClick={() => onCrisisHeld?.()}
+                >
+                  {reachedTarget ? '5분을 잘 넘겼어요 · 마치기' : '오늘도 함께 버텼어요 · 마치기'}
+                </button>
+                {!reachedTarget ? (
+                  <button
+                    type="button"
+                    className="btn btn-ghost btn-block"
+                    onClick={() => setRunning((r) => !r)}
+                  >
+                    {running ? '잠깐 멈춤' : '다시 이어가기'}
+                  </button>
+                ) : null}
+              </>
             )}
             <button
               type="button"
