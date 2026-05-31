@@ -74,6 +74,14 @@ export const CHECKIN_TAP = SELECTABLE_ORDER.map((status) => ({
 // (§0.5.10 C) land with the domains/ refactor (DOMAIN_ARCHITECTURE flag B). The
 // PRD is the single source until then; no consumer exists yet, so no constant here.
 
+// Rules linked to a given counter (§ rule↔counter link). A rule is a *secondary
+// commitment* attached to an abstinence counter — never the timer itself. Rules
+// with no counterId (counterId == null) are unlinked and belong to no counter.
+export function linkedRules(rules = [], counterId) {
+  if (!counterId) return rules.filter((r) => !r.counterId);
+  return rules.filter((r) => r.counterId === counterId);
+}
+
 // Counts shared across Home / Discipline / records summaries. "지키는 중" counts
 // both kept and held — holding the line under pressure is a win, not a miss.
 export function summarizeRules(rules = []) {

@@ -90,13 +90,20 @@ const DEBUG_NAV = debugNavEnabled();
 // kept/missed/held/unrecorded); the UI renders the selectable label only, never
 // the enum, and `unrecorded` renders no label at all. `badges` are post-action
 // (§0.6.2). Persistence / full editor / reminders are a later phase (§0.5.9).
+//
+// `counterId` links each rule to an abstinence counter (rule↔counter link). A
+// rule is a *secondary commitment* that lowers a counter's relapse risk — never
+// the timer itself (a rule slip never resets a counter). The default rules are
+// seeded to sensible counters: the 충동/검색 rules support 금딸 (c_nofap); the
+// late-night phone / 숏폼 rules support SNS 줄이기 (c_sns). A null counterId means
+// the rule is unlinked. This is the only thing that ties the two systems.
 const INITIAL_RULES = [
-  { id: 'night_phone', label: '밤 11시 이후 침대에서 휴대폰 보지 않기', category: '밤 시간', status: 'kept', badges: { ...EMPTY_BADGES } },
-  { id: 'pause_first', label: '충동이 오면 5분 멈춤 먼저 누르기', category: '충동', status: 'held', badges: { ...EMPTY_BADGES, routineDone: true } },
-  { id: 'no_stim_search', label: '자극 검색하지 않기', category: '검색', status: 'kept', badges: { ...EMPTY_BADGES } },
-  { id: 'short_form', label: 'SNS/숏폼은 하루 15분까지만', category: 'SNS·숏폼', status: 'missed', badges: { ...EMPTY_BADGES } },
-  { id: 'phone_off_desk', label: '잠들기 전 휴대폰은 책상 위에 두기', category: '수면', status: 'unrecorded', badges: { ...EMPTY_BADGES } },
-  { id: 'lonely_swap', label: '외로울 때 바로 검색하지 않고 대체 행동 1개 하기', category: '외로움', status: 'missed', badges: { ...EMPTY_BADGES, reflected: true, nextActionWritten: true } },
+  { id: 'night_phone', label: '밤 11시 이후 침대에서 휴대폰 보지 않기', category: '밤 시간', counterId: 'c_sns', status: 'kept', badges: { ...EMPTY_BADGES } },
+  { id: 'pause_first', label: '충동이 오면 5분 멈춤 먼저 누르기', category: '충동', counterId: 'c_nofap', status: 'held', badges: { ...EMPTY_BADGES, routineDone: true } },
+  { id: 'no_stim_search', label: '자극 검색하지 않기', category: '검색', counterId: 'c_nofap', status: 'kept', badges: { ...EMPTY_BADGES } },
+  { id: 'short_form', label: 'SNS/숏폼은 하루 15분까지만', category: 'SNS·숏폼', counterId: 'c_sns', status: 'missed', badges: { ...EMPTY_BADGES } },
+  { id: 'phone_off_desk', label: '잠들기 전 휴대폰은 책상 위에 두기', category: '수면', counterId: 'c_sns', status: 'unrecorded', badges: { ...EMPTY_BADGES } },
+  { id: 'lonely_swap', label: '외로울 때 바로 검색하지 않고 대체 행동 1개 하기', category: '외로움', counterId: 'c_nofap', status: 'missed', badges: { ...EMPTY_BADGES, reflected: true, nextActionWritten: true } },
 ];
 
 export default function App() {
@@ -146,12 +153,47 @@ export default function App() {
   const longestDays = selectedCounter?.longestDays ?? 0;
   const streakDays = Math.max(0, Math.floor((Date.now() - abstinenceStartMs) / DAY_MS));
 
-  const addRule = ({ label, category }) => {
+  // Build a counter row (counter-management). Pure factory: computes the id +
+  // clamps a future start to now, but does NOT touch state — so add-counter and
+  // add-rule-with-new-counter can both reuse it without duplicating the shape.
+  const makeCounter = ({ name, startMs, targetDays } = {}) => {
+    const id = `c_${Date.now()}`;
+    const start = Number.isFinite(startMs) ? Math.min(startMs, Date.now()) : Date.now();
+    return {
+      id,
+      name: (name ?? '').trim(),
+      startMs: start,
+      targetDays: Number.isFinite(targetDays) && targetDays > 0 ? targetDays : 30,
+      longestDays: 0,
+      status: 'active',
+      history: [],
+    };
+  };
+
+  // Add a discipline rule (§0.6.2) optionally linked to a counter (rule↔counter
+  // link). Two link paths: `counterId` attaches the rule to an existing counter;
+  // `newCounter` creates a counter AND links the new rule to it in one action
+  // (the "새 카운터도 함께 만들기" flow). A rule with neither stays unlinked.
+  const addRule = ({ label, category = null, counterId = null, newCounter = null } = {}) => {
     if (!label.trim()) return;
+    let linkedCounterId = counterId;
+    if (newCounter && (newCounter.name ?? '').trim()) {
+      const counter = makeCounter(newCounter);
+      setCounters((prev) => [...prev, counter]);
+      setSelectedCounterId(counter.id);
+      linkedCounterId = counter.id;
+    }
     const id = `rule_${Date.now()}`;
     setRules((prev) => [
       ...prev,
-      { id, label: label.trim(), category: category ?? null, status: 'unrecorded', badges: { ...EMPTY_BADGES } },
+      {
+        id,
+        label: label.trim(),
+        category: category ?? null,
+        counterId: linkedCounterId ?? null,
+        status: 'unrecorded',
+        badges: { ...EMPTY_BADGES },
+      },
     ]);
   };
 
@@ -172,24 +214,11 @@ export default function App() {
   // Multi-counter management (counter-management benchmark). Add / edit / select
   // are non-destructive. This round intentionally ships NO counter delete; a future
   // archive would flip `status` only (the row stays in state, recoverable).
-  const addCounter = ({ name, startMs, targetDays } = {}) => {
-    const trimmed = (name ?? '').trim();
-    if (!trimmed) return;
-    const id = `c_${Date.now()}`;
-    const start = Number.isFinite(startMs) ? Math.min(startMs, Date.now()) : Date.now();
-    setCounters((prev) => [
-      ...prev,
-      {
-        id,
-        name: trimmed,
-        startMs: start,
-        targetDays: Number.isFinite(targetDays) && targetDays > 0 ? targetDays : 30,
-        longestDays: 0,
-        status: 'active',
-        history: [],
-      },
-    ]);
-    setSelectedCounterId(id);
+  const addCounter = (payload = {}) => {
+    if (!(payload.name ?? '').trim()) return;
+    const counter = makeCounter(payload);
+    setCounters((prev) => [...prev, counter]);
+    setSelectedCounterId(counter.id);
   };
 
   const editCounter = (id, { name, startMs, targetDays } = {}) => {
@@ -405,6 +434,12 @@ export default function App() {
     setPlacements((prev) => prev.filter((p) => p.itemId !== itemId));
   };
 
+  // 배치 초기화 (§0.6.9): restore the seeded layout. Non-destructive — ownership
+  // is untouched; only the coordinate placements reset to the default arrangement.
+  const resetPlacements = () => {
+    setPlacements(DEFAULT_PLACEMENTS.map((p) => ({ ...p })));
+  };
+
   // 방 테마 바꾸기 (§0.6.9).
   const chooseRoomTheme = (id) => {
     if (!ownedItems.includes(id) && id !== DEFAULT_THEME) return;
@@ -469,6 +504,7 @@ export default function App() {
             onPlaceItemAt={placeItemAt}
             onMoveItem={placeItemAt}
             onRemovePlacement={removePlacement}
+            onResetPlacements={resetPlacements}
             onChooseRoomTheme={chooseRoomTheme}
             onFeedSnack={feedSnack}
           />

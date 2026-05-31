@@ -2,9 +2,10 @@ import { useEffect, useMemo, useState } from 'react';
 import PetRoomPreview from '../components/PetRoomPreview.jsx';
 import EmberCalendarStrip from '../components/EmberCalendarStrip.jsx';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
-import { summarizeRules } from '../constants/discipline.js';
+import { summarizeRules, linkedRules, STATUS_LABEL, STATUS_PILL } from '../constants/discipline.js';
 import { buildDayRecords, daySummary } from '../constants/recentDays.js';
 import { RESOURCE, nextLockedMilestone } from '../constants/rewards.js';
+import { msToDateValue, msToTimeValue, dateTimeToMs } from '../utils/datetime.js';
 
 const DAY_MS = 86400000;
 
@@ -15,24 +16,6 @@ function formatElapsed(ms) {
   const mm = String(Math.floor((total % 3600) / 60)).padStart(2, '0');
   const ss = String(total % 60).padStart(2, '0');
   return { days, hh, mm, ss };
-}
-
-// <input type="date"> / <input type="time"> helpers for the add/edit counter
-// sheets (counter-management benchmark — name / 시작 일 / 시작 시간 / 목표 일수).
-const pad2 = (n) => String(n).padStart(2, '0');
-function msToDateValue(ms) {
-  const d = new Date(ms);
-  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
-}
-function msToTimeValue(ms) {
-  const d = new Date(ms);
-  return `${pad2(d.getHours())}:${pad2(d.getMinutes())}`;
-}
-function dateTimeToMs(dateStr, timeStr) {
-  if (!dateStr) return NaN;
-  const t = timeStr && timeStr.length >= 4 ? timeStr : '00:00';
-  const ms = new Date(`${dateStr}T${t}`).getTime();
-  return Number.isFinite(ms) ? ms : NaN;
 }
 
 // Room Warmth band (§0.5.10 D) — shown as a word, never a number. A light inline
@@ -99,6 +82,15 @@ export default function HomeScreen({
   );
   const [selectedDay, setSelectedDay] = useState(recentDays.length - 1);
   const relapsedToday = todayRecord?.abstinenceState === 'relapse';
+
+  // Rules linked to the currently-selected counter (rule↔counter link). This is a
+  // TODAY rule-status view — kept separate from the counter's elapsed time, which
+  // the hero/cards above already show. A rule slip never moves the timer.
+  const counterRules = useMemo(
+    () => linkedRules(rules, selectedCounter?.id),
+    [rules, selectedCounter?.id],
+  );
+  const counterRuleSummary = useMemo(() => summarizeRules(counterRules), [counterRules]);
 
   const confirmRelapse = () => {
     setConfirmRestart(false);
@@ -204,6 +196,7 @@ export default function HomeScreen({
             const el = formatElapsed(now - c.startMs);
             const pct = c.targetDays > 0 ? Math.min(100, Math.round((el.days / c.targetDays) * 100)) : 0;
             const selected = c.id === (selectedCounter?.id ?? selectedCounterId);
+            const linkedCount = rules.filter((r) => r.counterId === c.id).length;
             return (
               <button
                 key={c.id}
@@ -228,12 +221,55 @@ export default function HomeScreen({
                 </div>
                 <div className="counter-card-meta">
                   <span className="hairline-note">목표 {c.targetDays}일</span>
+                  <span className="hairline-note">규율 {linkedCount}개</span>
                   <span className="hairline-note">최장 {Math.max(c.longestDays ?? 0, el.days)}일</span>
                 </div>
               </button>
             );
           })}
         </div>
+        {selectedCounter ? (
+          <section className="card linked-rules-card">
+            <div className="card-row">
+              <span className="card-label">‘{selectedCounter.name}’에 연결된 규율</span>
+              <button
+                type="button"
+                className="text-quiet"
+                style={{ fontSize: 'var(--fs-small)' }}
+                onClick={() => onNavigate('discipline')}
+              >
+                규율 편집
+              </button>
+            </div>
+            {counterRules.length === 0 ? (
+              <p className="hairline-note">
+                아직 이 카운터에 연결된 규율이 없어요. ‘나의 규율’에서 더할 수 있어요.
+              </p>
+            ) : (
+              <>
+                <p className="discipline-summary">
+                  오늘 {counterRuleSummary.total}개 중 {counterRuleSummary.keeping}개를 지키는 중이에요.
+                </p>
+                <ul className="linked-rule-list">
+                  {counterRules.map((r) => (
+                    <li className="linked-rule-row" key={r.id}>
+                      <span className="linked-rule-label">{r.label}</span>
+                      <span
+                        className={`pill ${STATUS_PILL[r.status] ?? 'pill'} linked-rule-status`}
+                      >
+                        {STATUS_LABEL[r.status] ?? '미정'}
+                      </span>
+                    </li>
+                  ))}
+                </ul>
+              </>
+            )}
+            <p className="hairline-note text-quiet">
+              규율은 절제 시간을 돕는 보조 약속이에요. 못 지켜도 타이머는 그대로 이어가요.
+            </p>
+          </section>
+        ) : null}
+
         {selectedCounter ? (
           <button
             type="button"

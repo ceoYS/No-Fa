@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
+import PetPlacementEditor from '../components/PetPlacementEditor.jsx';
 import usePetSound from '../hooks/usePetSound.js';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import {
@@ -44,7 +45,8 @@ const TAP_MESSAGES = [
   '오늘의 절제를 조용히 기억했어요.',
 ];
 
-const SCENE_FEED_MESSAGE = '간식을 건넸어요. 고양이 곁에 살며시 놓아두었어요.';
+// Honest hand-off copy (Goal E) — a calm delivery line, no feeding/sound claim.
+const SCENE_FEED_MESSAGE = '간식을 고양이 곁에 놓아두었어요.';
 const SCENE_REWARD_MESSAGE = '오늘의 절제를 조용히 기억했어요.';
 const NO_SNACK_MESSAGE = '보유한 간식이 없어요. 오늘의 보상으로 다시 받을 수 있어요.';
 
@@ -64,6 +66,7 @@ export default function PetRewardScreen({
   onPlaceItemAt,
   onMoveItem,
   onRemovePlacement,
+  onResetPlacements,
   onChooseRoomTheme,
   onFeedSnack,
 }) {
@@ -74,6 +77,9 @@ export default function PetRewardScreen({
   const tapCount = useRef(0);
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // 'inventory' | 'shop' | null
+  // 배치 편집 (placement preview) — explicit opt-in MVP mode that lets owned items
+  // be dragged over a plain room. Honest about being a preview (see editor note).
+  const [placementMode, setPlacementMode] = useState(false);
   const [catMotion, setCatMotion] = useState('idle');
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
@@ -106,6 +112,9 @@ export default function PetRewardScreen({
   };
 
   const snackCount = inventory.snack ?? 0;
+  // The snack hand-off token carries the real snack image when present, so the
+  // feed shows a visible snack traveling toward the scene (not a bare flash).
+  const snackSrc = resolveItemAsset('snack');
   const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
   const lockedNext = nextLockedMilestone(streakDays);
   const placedIds = new Set(placements.map((p) => p.itemId));
@@ -204,53 +213,75 @@ export default function PetRewardScreen({
         </div>
       </header>
 
-      <PetRoomEditor
-        ref={editorRef}
-        theme={activeRoomTheme}
-        placements={placements}
-        tone="bright"
-        catMotion={catMotion}
-        selectedId={selectedId}
-        onSelect={setSelectedId}
-        onMove={onMoveItem}
-        onPlaceAt={onPlaceItemAt}
-        onCatTap={handleCatTap}
-        sceneMode={sceneMode}
-        reacting={sceneReacting}
-        label="지금 꾸미는 고양이 방"
-      />
-
-      {canControlSelected ? (
-        <div className="room-select-bar">
-          <span className="room-select-name">{selectedItem.name} 선택됨</span>
-          <div className="room-select-actions">
-            <button
-              type="button"
-              className="room-select-btn"
-              onClick={() => {
-                onRemovePlacement?.(selectedItem.id);
-                setSelectedId(null);
-              }}
-            >
-              보관함으로 치우기
-            </button>
-            <button type="button" className="room-select-btn room-select-btn--ghost" onClick={() => setSelectedId(null)}>
-              선택 해제
-            </button>
-          </div>
-        </div>
+      {placementMode ? (
+        <PetPlacementEditor
+          theme={activeRoomTheme}
+          placements={placements}
+          ownedItems={ownedItems}
+          onMove={onMoveItem}
+          onReset={onResetPlacements}
+          onDone={() => setPlacementMode(false)}
+          label="아이템 배치 미리보기"
+        />
       ) : (
-        <p className="room-instruction" aria-live="polite">
-          {/* Scene mode's persistent "완성된 방 이미지" caption lives in the stage's
-              room-scene-note; this region only surfaces dynamic tap/feed/reward
-              feedback so the same sentence never stacks twice. Kept mounted (empty
-              when idle) so it stays a stable live region and reserves its space. */}
-          {stageReady
-            ? sceneMode
-              ? tapMsg ?? ''
-              : tapMsg ?? '아이템을 끌어서 방에 놓아보세요. 놓인 아이템은 다시 끌어 옮길 수 있어요.'
-            : '승인된 고양이와 방 이미지를 연결하면 꾸미기를 시작할 수 있어요.'}
-        </p>
+        <>
+          <PetRoomEditor
+            ref={editorRef}
+            theme={activeRoomTheme}
+            placements={placements}
+            tone="bright"
+            catMotion={catMotion}
+            selectedId={selectedId}
+            onSelect={setSelectedId}
+            onMove={onMoveItem}
+            onPlaceAt={onPlaceItemAt}
+            onCatTap={handleCatTap}
+            sceneMode={sceneMode}
+            reacting={sceneReacting}
+            label="지금 꾸미는 고양이 방"
+          />
+
+          {canControlSelected ? (
+            <div className="room-select-bar">
+              <span className="room-select-name">{selectedItem.name} 선택됨</span>
+              <div className="room-select-actions">
+                <button
+                  type="button"
+                  className="room-select-btn"
+                  onClick={() => {
+                    onRemovePlacement?.(selectedItem.id);
+                    setSelectedId(null);
+                  }}
+                >
+                  보관함으로 치우기
+                </button>
+                <button type="button" className="room-select-btn room-select-btn--ghost" onClick={() => setSelectedId(null)}>
+                  선택 해제
+                </button>
+              </div>
+            </div>
+          ) : (
+            <p className="room-instruction" aria-live="polite">
+              {/* Scene mode's persistent "완성된 방 이미지" caption lives in the stage's
+                  room-scene-note; this region only surfaces dynamic tap/feed/reward
+                  feedback so the same sentence never stacks twice. Kept mounted (empty
+                  when idle) so it stays a stable live region and reserves its space. */}
+              {stageReady
+                ? sceneMode
+                  ? tapMsg ?? ''
+                  : tapMsg ?? '아이템을 끌어서 방에 놓아보세요. 놓인 아이템은 다시 끌어 옮길 수 있어요.'
+                : '승인된 고양이와 방 이미지를 연결하면 꾸미기를 시작할 수 있어요.'}
+            </p>
+          )}
+
+          <button
+            type="button"
+            className="btn btn-ghost btn-block placement-enter-btn"
+            onClick={() => setPlacementMode(true)}
+          >
+            아이템 배치 편집 (미리보기)
+          </button>
+        </>
       )}
 
       <p className="hairline-note" aria-live="polite">
@@ -279,7 +310,9 @@ export default function PetRewardScreen({
           {feedCardMessage}
         </p>
         <div className="feed-btn-wrap">
-          <span className="snack-toss-token" data-active={snackToss} aria-hidden="true" />
+          <span className="snack-toss-token" data-active={snackToss} aria-hidden="true">
+            {snackSrc ? <img className="snack-toss-img" src={snackSrc} alt="" /> : null}
+          </span>
           <button
             type="button"
             className="btn btn-primary btn-block feed-btn"

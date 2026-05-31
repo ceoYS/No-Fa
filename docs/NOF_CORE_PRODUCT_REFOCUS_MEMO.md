@@ -428,3 +428,42 @@ contradicts the locked spec:
   (기본 카운터 다수 / 추가·편집 UI / 선택 가능한 카운터 목록 / relapse 선택 카운터 스코프).
 - **검증:** `npm run build` 통과(CSS 40.46 kB), `npm run check:nof` 18/18 통과,
   금지 토큰 스캔 기존 예외만(usePetSound meow/purr 빈 placeholder, `align-items: stretch`).
+
+---
+
+## 16. 규율↔카운터 연결 + 펫 룸 상호작용 구현 로그 (rule↔counter / pet-room interaction 라운드)
+
+이전 라운드까지 카운터와 규율은 분리돼 있었고, 펫 룸 상호작용은 사실상 플래시 수준이었다.
+이번 라운드는 두 가지 누락된 제품 연결을 만든다: (1) 카운터와 규율이 함께 동작하도록, (2) 펫
+룸에 실제 상호작용(단순 플래시가 아니라). Ink & Ember 정체성 유지, 에셋 생성·삭제·교체 없음.
+
+- **규율↔카운터 데이터 모델 (App.jsx, discipline.js):** 규율에 `counterId` 추가. 기본 규율을
+  의미 있는 카운터에 시드 — 충동/검색/외로움(`pause_first`,`no_stim_search`,`lonely_swap`)→금딸
+  (c_nofap), 밤 시간/숏폼/수면(`night_phone`,`short_form`,`phone_off_desk`)→SNS 줄이기(c_sns).
+  규율은 보조 약속일 뿐 타이머가 아니며 슬립은 카운터를 리셋하지 않는다. `linkedRules(rules,
+  counterId)` 헬퍼 추가(counterId 없으면 미연결).
+- **규율+카운터 함께 추가 (DisciplineScreen.jsx):** 규율 추가 시트에 라벨·카테고리에 더해
+  `연결할 금욕 카운터` 선택 추가. 기존 카운터 연결 / 연결 안 함 / `새 카운터도 함께 만들기`
+  (이름·시작일·시작시간·목표일수) 중 선택. App `addRule({label,category,counterId,newCounter})`가
+  새 카운터를 만들면서 규율을 그 카운터에 연결(공용 `makeCounter` 팩토리). 규율 삭제는 여전히 없음.
+- **연결된 규율 노출 (HomeScreen.jsx):** 선택 카운터 영역에 `연결된 규율` 블록(오늘 상태 요약 +
+  규율별 상태 칩) 추가, 카운터 카드 메타에 `규율 N개` 표시. 오늘 규율 상태와 경과 시간을 분리
+  (규율은 타이머와 별개라는 보조 문구 명시). 카운터별 보기/그룹핑은 Discipline의 필터 칩으로.
+- **배치 편집 (PetPlacementEditor.jsx, PetRewardScreen.jsx):** 투명 스프라이트가 아직 없으므로
+  scene mode 정직성은 유지하되, 명시적 opt-in `배치 편집(미리보기)` 모드를 추가. 보유 아이템을
+  실제(불투명) 이미지 스탠드인으로 방 위에서 드래그(pointer/mouse/touch, pointercancel·언마운트
+  정리 포함), `배치 완료`/`초기화` 제공. `배치 미리보기(MVP)`로 명확히 라벨링 — 완성 아트 주장
+  없음, `spriteReady` 플립 없음.
+- **간식 상호작용 (PetRewardScreen.jsx, CSS):** 간식 토큰을 실제 간식 이미지로 바꾸고 버튼에서
+  씬 쪽으로 이동(translateY)하는 전달 애니메이션으로 개선(플래시 아님). 1회 피드당 간식 1개만
+  차감. 문구는 `간식을 고양이 곁에 놓아두었어요.`(먹기/움직임 주장 없음). 씬은 미세한 따뜻함
+  반응만(고양이 단독 모션 주장 없음 — 투명 스프라이트 대기).
+- **사운드:** `public/assets/audio`·`public/assets/sounds` 모두 없음 — `cat_meow_soft.mp3` /
+  `cat_purr_soft.mp3` 미존재. usePetSound는 무음 no-op 유지(거짓 사운드 주장 없음). **오디오
+  에셋 필요(audio asset required).**
+- **회귀(check:nof):** check 13을 새 핸드오프 문구로 갱신, check 19~26 추가(규율 counterId 연결 /
+  기존 카운터 연결 / 카운터 함께 생성 / 선택 카운터의 연결 규율 / 카운터 그룹·필터 / 배치 편집
+  모드 / 간식 이동 애니메이션 / 정직한 무음 사운드). 규율 삭제 비활성은 check 4로 유지.
+- **검증:** `npm run build` 통과(CSS 43.09 kB), `npm run check:nof` 26/26 통과, 금지 토큰 스캔 OK.
+- **검토:** 다중 에이전트 적대적 리뷰(논리/정직성/런타임/회귀) 실행 — 런타임에서 드래그 리스너
+  정리 보강(안정 ref + pointercancel + 언마운트 cleanup) 1건 반영, 나머지 차원 클린.

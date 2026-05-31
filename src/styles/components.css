@@ -1889,8 +1889,9 @@ button.room-token:active {
   40% { transform: translateY(-1px); filter: brightness(1.06); }
 }
 
-/* snack hand-off token — a small ember dot rising from the feed button toward the
-   scene on a successful feed. A delivery cue only; not a feeding animation. */
+/* snack hand-off token — a visible snack image that travels from the feed button
+   up toward the scene on a successful feed. A delivery cue only; never a feeding
+   animation (the cat does not move/consume here — that needs a real sprite). */
 .feed-btn-wrap {
   position: relative;
 }
@@ -1898,25 +1899,36 @@ button.room-token:active {
 .snack-toss-token {
   position: absolute;
   left: 50%;
-  top: -2px;
-  width: 12px;
-  height: 12px;
-  margin-left: -6px;
-  border-radius: 50%;
+  top: -8px;
+  width: 32px;
+  height: 32px;
+  margin-left: -16px;
+  border-radius: var(--r-sm);
+  overflow: hidden;
   background: radial-gradient(circle, var(--ember-200), var(--ember-400) 70%);
-  box-shadow: 0 0 10px var(--accent-ember-glow);
+  box-shadow: 0 0 14px var(--accent-ember-glow);
   opacity: 0;
   pointer-events: none;
+  z-index: 2;
 }
 
+.snack-toss-img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  display: block;
+}
+
+/* The hand-off travels a real distance upward toward the scene above the card —
+   movement, not just an opacity flash. */
 .snack-toss-token[data-active='true'] {
   animation: snack-toss 900ms var(--ease-soft);
 }
 
 @keyframes snack-toss {
-  0% { opacity: 0; transform: translateY(8px) scale(0.6); }
-  25% { opacity: 0.95; }
-  100% { opacity: 0; transform: translateY(-76px) scale(1); }
+  0% { opacity: 0; transform: translateY(12px) scale(0.5); }
+  20% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-150px) scale(0.92); }
 }
 
 /* home hero — timer-first CTA pair sits tight under the abstinence timer. */
@@ -1928,6 +1940,182 @@ button.room-token:active {
   .snack-toss-token[data-active='true'] {
     animation: none;
   }
+}
+
+/* =================================================================
+ * 배치 편집 (placement preview) — explicit MVP mode (Goal D). Owned items become
+ * draggable stand-in tokens over a plain room. Honest preview, not final art:
+ * the current item images are rectangular (non-transparent), framed to read as
+ * movable placeholders until approved transparent sprites land.
+ * ================================================================= */
+.placement-editor {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.placement-stage {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  border-radius: var(--r-lg);
+  overflow: hidden;
+  touch-action: none;
+  border: 1px solid var(--border-soft);
+}
+
+.placement-token {
+  position: absolute;
+  transform: translate(-50%, -50%) scale(var(--scale, 1));
+  width: 26%;
+  aspect-ratio: 1 / 1;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+}
+
+.placement-token:active,
+.placement-token[data-dragging='true'] {
+  cursor: grabbing;
+}
+
+.placement-token-img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--r-sm);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+  outline: 1px solid rgba(245, 164, 90, 0.28);
+  pointer-events: none;
+}
+
+.placement-token[data-dragging='true'] .placement-token-img {
+  outline-color: var(--ember-300);
+  box-shadow: 0 10px 22px rgba(0, 0, 0, 0.55);
+}
+
+.placement-token-pending {
+  display: block;
+  width: 78%;
+  height: 78%;
+  margin: 11% auto;
+  border-radius: var(--r-md);
+  border: 1px dashed var(--border-medium);
+  background: rgba(201, 194, 183, 0.08);
+}
+
+.placement-empty {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: var(--sp-5) var(--sp-6);
+  z-index: 2;
+}
+
+.placement-empty-copy {
+  max-width: 28ch;
+  text-align: center;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text-quiet);
+}
+
+.placement-note {
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text-muted);
+  text-align: center;
+}
+
+.placement-actions {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.placement-actions .btn {
+  flex: 1;
+}
+
+.placement-enter-btn {
+  margin-top: calc(-1 * var(--sp-1));
+}
+
+/* Home — selected counter's linked rules (rule↔counter link, Goal C). A TODAY
+ * status list, kept visually distinct from the counter's elapsed timer. */
+.linked-rule-list {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.linked-rule-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-3);
+}
+
+.linked-rule-label {
+  font-size: var(--fs-small);
+  color: var(--text-secondary);
+  line-height: var(--lh-snug);
+}
+
+.linked-rule-status {
+  flex: 0 0 auto;
+  font-size: var(--fs-micro);
+}
+
+/* Discipline — counter filter chips + grouped rule sections (Goal C). */
+.rule-filter-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0;
+}
+
+.rule-filter-chip {
+  font-size: var(--fs-small);
+}
+
+.rule-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.rule-group-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--sp-2);
+  padding-bottom: var(--sp-1);
+  border-bottom: 1px solid var(--border-soft);
+}
+
+.rule-group-name {
+  font-weight: 600;
+  color: var(--text-primary);
+}
+
+.rule-group-summary {
+  flex: 0 0 auto;
+  font-size: var(--fs-micro);
+}
+
+/* add-rule sheet — new-counter sub-form grouped in a soft inset card */
+.new-counter-form {
+  margin-top: var(--sp-1);
+  padding: var(--sp-3);
+  border-radius: var(--r-md);
+  background: var(--bg-surface-raised);
+  border: 1px solid var(--border-soft);
 }
 
 /* reward screen — disclaimer + catalogue rows ---------------------- */
