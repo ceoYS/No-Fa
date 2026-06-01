@@ -1,0 +1,32 @@
+{
+  "manifest_version": 3,
+  "name": "NoF 실드 (프로토타입)",
+  "version": "0.0.1",
+  "description": "NoF 실드 Chrome 차단 프로토타입 — 로컬 전용. 해롭지 않은 테스트 신호만 막아요.",
+  "permissions": ["declarativeNetRequest", "storage"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "background": {
+    "service_worker": "service_worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "NoF 실드 (프로토타입)"
+  },
+  "options_page": "options.html",
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "nof_static_rules",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
+    }
+  ]
+}

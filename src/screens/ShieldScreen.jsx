@@ -27,7 +27,7 @@ import {
 const PLANNED_LAYERS = [
   {
     name: '브라우저 확장 (Chrome 등)',
-    desc: 'PC 브라우저에서 자극 사이트와 검색을 먼저 거르는 가장 빠른 길이에요.',
+    desc: '실제 브라우저 차단은 Chrome 확장 프로그램을 따로 설치해야 동작해요. 지금은 데스크톱용 프로토타입 단계예요.',
     phase: '1단계',
   },
   {

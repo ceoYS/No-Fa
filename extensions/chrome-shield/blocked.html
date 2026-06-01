@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>잠깐 멈춤 · NoF 실드</title>
+    <style>
+      :root {
+        color-scheme: dark;
+        --ink: #14110f;
+        --ink-soft: #1e1a17;
+        --ember: #e8854a;
+        --ember-soft: rgba(232, 133, 74, 0.16);
+        --text: #f3ece6;
+        --quiet: #b6aaa0;
+      }
+      * { box-sizing: border-box; }
+      body {
+        margin: 0;
+        min-height: 100vh;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: var(--ink);
+        color: var(--text);
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Apple SD Gothic Neo",
+          "Noto Sans KR", sans-serif;
+        line-height: 1.6;
+      }
+      .card {
+        width: 100%;
+        max-width: 420px;
+        background: var(--ink-soft);
+        border: 1px solid rgba(232, 133, 74, 0.28);
+        border-radius: 18px;
+        padding: 28px 24px;
+        text-align: center;
+      }
+      .tag {
+        display: inline-block;
+        font-size: 12px;
+        letter-spacing: 0.02em;
+        color: var(--ember);
+        background: var(--ember-soft);
+        border: 1px solid rgba(232, 133, 74, 0.4);
+        border-radius: 999px;
+        padding: 4px 12px;
+        margin-bottom: 14px;
+      }
+      h1 { font-size: 22px; margin: 0 0 8px; }
+      p { margin: 0 0 12px; color: var(--text); }
+      .quiet { color: var(--quiet); font-size: 13px; }
+      button {
+        width: 100%;
+        border: 0;
+        border-radius: 12px;
+        padding: 13px 16px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+      }
+      .primary { background: var(--ember); color: #2a1606; margin-top: 6px; }
+      .ghost {
+        background: transparent;
+        color: var(--quiet);
+        border: 1px solid rgba(182, 170, 160, 0.35);
+        margin-top: 10px;
+        font-weight: 500;
+      }
+      .timer-wrap { margin-top: 18px; }
+      .timer {
+        font-size: 40px;
+        font-weight: 700;
+        font-variant-numeric: tabular-nums;
+        letter-spacing: 0.04em;
+        color: var(--ember);
+      }
+      .footer {
+        margin-top: 20px;
+        padding-top: 16px;
+        border-top: 1px solid rgba(182, 170, 160, 0.18);
+      }
+    </style>
+  </head>
+  <body>
+    <main class="card">
+      <span class="tag">NoF 실드 · 로컬 Chrome 전용 프로토타입</span>
+      <h1>잠깐 멈춤</h1>
+      <p>멀리 두기로 정한 신호에 닿았어요. 지금은 열지 않고 5분만 늦춰볼까요?</p>
+      <p class="quiet">어디로 가려 했는지는 일부러 보여주지 않아요.</p>
+
+      <button id="pause" class="primary" type="button">잠깐 멈춤으로 가기</button>
+
+      <div id="timer-wrap" class="timer-wrap" hidden>
+        <div id="timer" class="timer" aria-live="polite">05:00</div>
+        <p id="done" class="quiet" hidden>5분을 지나왔어요. 잘했어요.</p>
+      </div>
+
+      <button id="close" class="ghost" type="button">이 탭 닫기</button>
+
+      <p class="quiet footer">
+        완벽한 벽이 아니라 마찰이에요. 이 확장은 Chrome 데스크톱에서, 이 기기에서만 도와줘요.
+        모바일 앱이나 SNS 앱은 막지 못하고, 이미지를 가려 주지도 않아요.
+      </p>
+    </main>
+
+    <script src="blocked.js"></script>
+  </body>
+</html>

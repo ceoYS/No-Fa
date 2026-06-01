@@ -44,6 +44,11 @@
  *  31. Shield reads as a plan, not a working blocker: planner says it does not block
  *      yet, 보호 방식 layers are roadmap info (no buttons), and the Safe Browser PoC is
  *      an in-app demo that opens no external link and routes a match to 잠깐 멈춤.
+ *  32. The Chrome blocking PoC (extensions/chrome-shield) is a real, LOCAL-only MV3
+ *      declarativeNetRequest prototype: it redirects a top-level navigation containing
+ *      the harmless test token to the in-app NoF pause page, pulls in no remote code /
+ *      CDN / external API, never reveals the visited target, and documents that it is
+ *      Chrome-only (NOT mobile / SNS / image mosaic).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -628,6 +633,129 @@ check('shield safe browser PoC is honest, in-app only, and routes a match to 잠
   }
   // The local matcher must exist and be exported.
   assert(read('src/constants/shield.js').includes('export function matchSignals'), 'shield.js does not export matchSignals');
+});
+
+// 32 — the Chrome blocking PoC (extensions/chrome-shield) must be a real, LOCAL-only
+// Manifest V3 prototype: declarativeNetRequest redirects a top-level navigation whose
+// URL/query contains the harmless test token (nof-test-risk-signal) to the in-app NoF
+// pause page (blocked.html); it pulls in NO remote code / CDN / external API, never
+// reveals the visited target, ships no adult terms, and documents that it is
+// Chrome-only (NOT mobile / SNS / image mosaic).
+check('chrome-shield extension is a local MV3 declarativeNetRequest PoC (honest, no remote code)', () => {
+  const dir = 'extensions/chrome-shield';
+  const files = [
+    'manifest.json', 'rules.json', 'signals.js', 'service_worker.js',
+    'blocked.html', 'blocked.js', 'popup.html', 'popup.js',
+    'options.html', 'options.js', 'README.md',
+  ];
+  const src = {};
+  for (const f of files) {
+    try {
+      src[f] = read(`${dir}/${f}`);
+    } catch {
+      throw new Error(`missing extension file: ${dir}/${f}`);
+    }
+  }
+
+  // manifest: MV3, DNR ruleset, module service worker, DNR permission, WAR pause page.
+  const mf = JSON.parse(src['manifest.json']);
+  assert(mf.manifest_version === 3, 'manifest is not Manifest V3');
+  assert(
+    mf.background && mf.background.service_worker === 'service_worker.js',
+    'manifest background service_worker is not service_worker.js',
+  );
+  assert(
+    Array.isArray(mf.permissions) && mf.permissions.includes('declarativeNetRequest'),
+    'manifest lacks the declarativeNetRequest permission',
+  );
+  const rr = mf.declarative_net_request && mf.declarative_net_request.rule_resources;
+  assert(
+    Array.isArray(rr) && rr.some((r) => r.path === 'rules.json' && r.enabled === true),
+    'manifest does not enable the rules.json static ruleset',
+  );
+  const war = mf.web_accessible_resources;
+  assert(
+    Array.isArray(war) && war.some((w) => Array.isArray(w.resources) && w.resources.includes('blocked.html')),
+    'manifest does not expose blocked.html as a web-accessible redirect target',
+  );
+
+  // static rule: test token → redirect to the in-app pause page, scoped to navigation.
+  const rules = JSON.parse(src['rules.json']);
+  const rule = rules.find(
+    (r) => r.condition && typeof r.condition.urlFilter === 'string'
+      && r.condition.urlFilter.includes('nof-test-risk-signal'),
+  );
+  assert(rule, 'rules.json has no rule for the nof-test-risk-signal test token');
+  assert(rule.action && rule.action.type === 'redirect', 'test rule does not redirect');
+  assert(
+    rule.action.redirect && String(rule.action.redirect.extensionPath || '').includes('blocked.html'),
+    'test rule does not redirect to the in-app blocked.html pause page',
+  );
+  assert(
+    Array.isArray(rule.condition.resourceTypes) && rule.condition.resourceTypes.includes('main_frame'),
+    'test rule does not scope to main_frame navigation',
+  );
+
+  // signals model: harmless test token + dynamic-rule builder, shared by SW/popup/options.
+  assert(
+    /export const TEST_SIGNAL\s*=\s*'nof-test-risk-signal'/.test(src['signals.js']),
+    'signals.js does not export the harmless TEST_SIGNAL (nof-test-risk-signal)',
+  );
+  assert(src['signals.js'].includes('export function buildDynamicRules'), 'signals.js does not export buildDynamicRules');
+
+  // service worker: real DNR usage + future app-sync path, imports the shared model.
+  assert(src['service_worker.js'].includes('declarativeNetRequest'), 'service worker does not use declarativeNetRequest');
+  assert(src['service_worker.js'].includes('updateDynamicRules'), 'service worker has no dynamic-rule sync path (updateDynamicRules)');
+  assert(/from '\.\/signals\.js'/.test(src['service_worker.js']), 'service worker does not import the shared signals model');
+  assert(
+    /from '\.\/signals\.js'/.test(src['popup.js']) && /from '\.\/signals\.js'/.test(src['options.js']),
+    'popup/options do not reuse the shared signals model',
+  );
+
+  // the in-app pause page: honest prototype copy, offers 잠깐 멈춤, hides the target.
+  assert(src['blocked.html'].includes('로컬 Chrome 전용 프로토타입'), 'blocked.html is missing the local Chrome-only prototype label');
+  assert(src['blocked.html'].includes('잠깐 멈춤으로 가기'), 'blocked.html is missing the 잠깐 멈춤으로 가기 action');
+  for (const leak of ['referrer', 'URLSearchParams', 'document.URL']) {
+    assert(!src['blocked.js'].includes(leak), `blocked.js may reveal the visited target (${leak}) — the pause page must not show it`);
+  }
+
+  // SAFETY: no remote code / CDN / network / external API anywhere in the extension
+  // CODE (manifest host_permissions legitimately list http/https, so it is exempt).
+  const codeFiles = [
+    'rules.json', 'signals.js', 'service_worker.js', 'blocked.html', 'blocked.js',
+    'popup.html', 'popup.js', 'options.html', 'options.js',
+  ];
+  const remoteTokens = ['http://', 'https://', 'cdn.', 'googleapis', 'unpkg', 'jsdelivr', 'fetch(', 'XMLHttpRequest', 'import("http'];
+  for (const f of codeFiles) {
+    for (const t of remoteTokens) {
+      assert(!src[f].includes(t), `${dir}/${f} pulls in remote code / network (${t}) — the PoC must stay local`);
+    }
+  }
+  // No fake present-tense blocking claim in the user-facing pages.
+  for (const f of ['blocked.html', 'popup.html', 'options.html']) {
+    for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+      assert(!src[f].includes(fake), `${dir}/${f} makes a fake working-blocking claim: ${fake}`);
+    }
+  }
+  // No explicit/adult tokens anywhere in the extension code.
+  for (const f of codeFiles) {
+    for (const bad of ['porn', 'xxx', 'sex', 'adult', 'xvideos', 'nsfw']) {
+      assert(!src[f].toLowerCase().includes(bad), `${dir}/${f} contains an explicit/adult token: ${bad}`);
+    }
+  }
+
+  // README must state the honest scope: Chrome-only, NOT mobile / SNS / mosaic.
+  assert(src['README.md'].includes('Chrome 데스크톱 전용'), 'README does not state the Chrome-desktop-only scope');
+  assert(
+    src['README.md'].includes('iOS·Android·SNS·이미지 모자이크 차단이 아니다'),
+    'README does not disclaim mobile/SNS/mosaic blocking',
+  );
+
+  // ShieldScreen must tell users real browser blocking needs the Chrome extension.
+  assert(
+    read('src/screens/ShieldScreen.jsx').includes('실제 브라우저 차단은 Chrome 확장'),
+    'ShieldScreen does not point real browser blocking to the Chrome extension',
+  );
 });
 
 let failed = 0;
