@@ -38,6 +38,8 @@
  *  28. The pet room uses the completed composite cat-room image (cat always visible).
  *  29. The Shield (차단 설정) screen is an honest 준비 중 placeholder — no fake blocking,
  *      no working-claim copy, no functional toggle; routed and linked from Home.
+ *  30. The Shield blocklist planner is non-enforcing: an honest 준비 중 plan list
+ *      (no enforcement, no toggle, no fake "blocked" claim, no hardcoded domain).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -517,6 +519,44 @@ check('shield screen is an honest 준비 중 placeholder (no fake blocking)', ()
   for (const layer of ['브라우저 확장', 'NoF 안전 브라우저', 'iOS·Android 기기 차단']) {
     assert(screen.includes(layer), `Shield screen is missing a planned layer: ${layer}`);
   }
+});
+
+// 30 — the Shield blocklist planner must stay a NON-ENFORCING plan list. It edits
+// data only; it must not claim to block, must ship no toggle, must carry a visible
+// "this list does not block yet" banner, and shield.js must not hardcode any real
+// domain or ship a working blocker.
+check('shield blocklist planner is honest and non-enforcing', () => {
+  const app = read('src/App.jsx');
+  assert(app.includes("from './constants/shield.js'"), 'App.jsx does not use the shield blocklist model');
+  assert(/const \[blocklist, setBlocklist\] = useState\(/.test(app), 'App.jsx has no blocklist state');
+  assert(
+    app.includes('onAddBlockEntry') && app.includes('onRemoveBlockEntry'),
+    'App.jsx does not wire add/remove block-entry handlers',
+  );
+
+  const screen = read('src/screens/ShieldScreen.jsx');
+  assert(
+    screen.includes('onAddBlockEntry') && screen.includes('onRemoveBlockEntry'),
+    'Shield planner does not call the add/remove handlers',
+  );
+  assert(
+    screen.includes('이 목록은 아직 차단에 쓰이지 않아요'),
+    'Shield planner is missing the "list does not block yet" banner',
+  );
+  // Still no present-tense blocking claim and no functional toggle.
+  for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+    assert(!screen.includes(fake), `Shield planner makes a fake working-blocking claim: ${fake}`);
+  }
+  assert(!/type="checkbox"/.test(screen), 'Shield planner ships a checkbox toggle');
+  assert(!/role="switch"/.test(screen), 'Shield planner ships a switch control');
+
+  // The model must not hardcode real domains and must seed an empty blocklist —
+  // suggestions are abstract category labels only (no preset entries, no URLs).
+  const model = read('src/constants/shield.js');
+  for (const dom of ['http', 'www.', '.com', '.net', '.org', '.xxx']) {
+    assert(!model.includes(dom), `shield.js hardcodes a domain-like string: ${dom}`);
+  }
+  assert(/DEFAULT_BLOCKLIST\s*=\s*\[\]/.test(model), 'shield.js DEFAULT_BLOCKLIST must ship empty (no preset entries)');
 });
 
 let failed = 0;

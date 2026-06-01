@@ -2593,3 +2593,77 @@ button.room-token:active {
   text-align: center;
   padding: 0 var(--sp-2);
 }
+
+/* Shield blocklist planner (P0.5) — authoring a NON-enforcing plan list. The
+ * dashed banner keeps the "this does not block yet" status visible. */
+.shield-planner-banner {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 14px);
+  border: 1px dashed rgba(245, 164, 90, 0.3);
+  background: var(--accent-ember-soft);
+  color: var(--text-ember);
+}
+
+.shield-kind-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--sp-2);
+}
+
+.shield-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.shield-group-name {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
+}
+
+.shield-entry-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shield-entry-row {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 14px);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-raised);
+}
+
+.shield-kind-tag {
+  flex: none;
+}
+
+.shield-entry-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  font-size: var(--fs-small);
+  color: var(--text-primary);
+  overflow-wrap: anywhere;
+}
+
+.shield-entry-remove {
+  flex: none;
+  border: 1px solid var(--border-soft);
+  background: transparent;
+  color: var(--text-muted);
+  font-size: var(--fs-small);
+  padding: 4px var(--sp-3);
+  border-radius: var(--r-pill);
+  cursor: pointer;
+}
+
+.shield-entry-remove:hover {
+  color: var(--text-secondary);
+  border-color: var(--text-muted);
+}

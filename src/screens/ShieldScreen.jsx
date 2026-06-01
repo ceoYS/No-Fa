@@ -1,31 +1,28 @@
-/*
- * ShieldScreen — 차단 설정 / NoF 실드 (준비 중).
- *
- * HONESTY NOTE: NoF has NO content-blocking engine yet. This screen is a product
- * placeholder, never a working blocker. It must not claim any site / search / app
- * is being blocked, and it ships no functional toggle — a switch that does nothing
- * would read as fake blocking. It explains what Shield will do, the planned layers
- * (browser extension / NoF safe browser / native iOS·Android), how Shield will
- * connect to counters · rules · 잠깐 멈춤 · records, and points to the tools that
- * already work today. Real blocking is a later phase — see docs/NOF_SHIELD_*.md
- * (P1 extension/safe-browser, P2 native, P3 SNS mosaic research). No shame copy;
- * the tone matches 규율 = 내가 정한 기준, not 처벌.
- */
+import { useState } from 'react';
+import {
+  BLOCK_KINDS,
+  KIND_LABEL,
+  KIND_HELP,
+  TEMPLATE_SUGGESTIONS,
+  summarizeBlocklist,
+  entriesForCounter,
+} from '../constants/shield.js';
 
-const PLANNED_BLOCKS = [
-  {
-    name: '성인 사이트·도메인 차단',
-    desc: '알려진 자극적 사이트와 도메인을 멀리 둘 수 있게 준비하고 있어요.',
-  },
-  {
-    name: '자극적인 검색어 차단',
-    desc: '검색창에서 위험한 키워드를 흐리게 만드는 방향을 준비하고 있어요.',
-  },
-  {
-    name: '앱·SNS 위험 줄이기',
-    desc: '자극으로 이어지기 쉬운 앱·SNS 진입을 늦추는 방법을 살펴보고 있어요.',
-  },
-];
+/*
+ * ShieldScreen — 차단 설정 / NoF 실드 (준비 중) + 차단 목록 계획(P0.5).
+ *
+ * HONESTY NOTE: NoF has NO content-blocking engine yet. This screen never blocks
+ * anything. The planner below only *authors a plan list* — the domains / keywords /
+ * app categories a user wants to mute later — which a future P1 engine (browser
+ * extension / NoF safe browser) will consume. It must not claim any site / search /
+ * app is being blocked, ships no functional toggle (a dead switch would read as
+ * fake blocking), and carries a visible "이 목록은 아직 차단에 쓰이지 않아요" banner.
+ * It explains the planned layers (extension / safe browser / native iOS·Android),
+ * how Shield will connect to counters · rules · 잠깐 멈춤 · records, and points to
+ * the tools that already work today. SNS image mosaic stays P3 research only. No
+ * shame copy; the tone matches 규율 = 내가 정한 기준, not 처벌. Guards #29/#30 pin
+ * these invariants.
+ */
 
 const PLANNED_LAYERS = [
   {
@@ -45,9 +42,46 @@ const PLANNED_LAYERS = [
   },
 ];
 
-export default function ShieldScreen({ onNavigate, counters = [], rules = [] }) {
-  const counterCount = counters.length;
-  const ruleCount = rules.length;
+const PLANNING_BANNER = '이 목록은 아직 차단에 쓰이지 않아요. 준비 중인 계획 목록이에요.';
+const UNLINKED = '__unlinked__';
+
+export default function ShieldScreen({
+  onNavigate,
+  counters = [],
+  rules = [],
+  blocklist = [],
+  onAddBlockEntry,
+  onRemoveBlockEntry,
+}) {
+  const [kind, setKind] = useState('domain');
+  const [label, setLabel] = useState('');
+  const [linkedCounterId, setLinkedCounterId] = useState(null);
+
+  const summary = summarizeBlocklist(blocklist);
+
+  // Group planned entries by linked counter, plus a trailing unlinked bucket.
+  const groups = [
+    ...counters.map((c) => ({
+      id: c.id,
+      name: c.name,
+      entries: entriesForCounter(blocklist, c.id),
+    })),
+    {
+      id: UNLINKED,
+      name: '연결 안 된 목록',
+      entries: blocklist.filter(
+        (e) => !e.counterId || !counters.some((c) => c.id === e.counterId),
+      ),
+    },
+  ];
+  const visibleGroups = groups.filter((g) => g.entries.length > 0);
+
+  const ready = label.trim().length > 0;
+  const submit = () => {
+    if (!ready) return;
+    onAddBlockEntry?.({ kind, label, counterId: linkedCounterId });
+    setLabel('');
+  };
 
   return (
     <div className="screen">
@@ -74,19 +108,112 @@ export default function ShieldScreen({ onNavigate, counters = [], rules = [] }) 
       </section>
 
       <section className="card">
-        <span className="card-label">실드가 도와줄 것들</span>
-        <ul className="shield-list">
-          {PLANNED_BLOCKS.map((b) => (
-            <li className="shield-row" key={b.name}>
-              <span className="shield-dot" aria-hidden="true" />
-              <span className="shield-row-text">
-                <span className="shield-row-name">{b.name}</span>
-                <span className="shield-row-desc">{b.desc}</span>
-              </span>
-              <span className="pill shield-tag">준비 중</span>
-            </li>
+        <div className="card-row">
+          <span className="card-label">멀리 둘 목록 미리 적기</span>
+          <span className="pill shield-tag">{summary.total}개</span>
+        </div>
+        <p className="hairline-note shield-planner-banner">{PLANNING_BANNER}</p>
+
+        <div className="shield-kind-row" role="group" aria-label="목록 종류 고르기">
+          {BLOCK_KINDS.map((k) => (
+            <button
+              key={k}
+              type="button"
+              className="chip"
+              data-selected={kind === k}
+              aria-pressed={kind === k}
+              onClick={() => setKind(k)}
+            >
+              {KIND_LABEL[k]}
+            </button>
           ))}
-        </ul>
+        </div>
+        <p className="hairline-note text-quiet">{KIND_HELP[kind]}</p>
+
+        <div className="sheet-chip-grid">
+          {TEMPLATE_SUGGESTIONS[kind].map((s) => (
+            <button key={s} type="button" className="chip" onClick={() => setLabel(s)}>
+              {s}
+            </button>
+          ))}
+        </div>
+
+        <input
+          type="text"
+          className="sheet-input"
+          value={label}
+          onChange={(e) => setLabel(e.target.value)}
+          placeholder="멀리 둘 사이트·검색어·앱 종류를 적어요"
+          maxLength={60}
+        />
+
+        {counters.length > 0 ? (
+          <>
+            <p className="hairline-note text-quiet">어떤 절제와 연결할까요? (선택)</p>
+            <div className="sheet-chip-grid">
+              {counters.map((c) => (
+                <button
+                  key={c.id}
+                  type="button"
+                  className="chip"
+                  data-selected={linkedCounterId === c.id}
+                  aria-pressed={linkedCounterId === c.id}
+                  onClick={() =>
+                    setLinkedCounterId((cur) => (cur === c.id ? null : c.id))
+                  }
+                >
+                  {c.name}
+                </button>
+              ))}
+            </div>
+          </>
+        ) : null}
+
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          disabled={!ready}
+          style={ready ? undefined : { opacity: 0.45, pointerEvents: 'none' }}
+          onClick={submit}
+        >
+          목록에 더하기
+        </button>
+      </section>
+
+      <section className="card">
+        <span className="card-label">적어둔 목록</span>
+        {blocklist.length === 0 ? (
+          <p className="hairline-note">
+            아직 적어둔 항목이 없어요. 위에서 멀리 둘 것을 하나씩 더해 보세요.
+          </p>
+        ) : (
+          <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
+            {visibleGroups.map((g) => (
+              <div className="shield-group" key={g.id}>
+                <span className="shield-group-name">{g.name}</span>
+                <ul className="shield-entry-list">
+                  {g.entries.map((e) => (
+                    <li className="shield-entry-row" key={e.id}>
+                      <span className="pill shield-tag shield-kind-tag">{KIND_LABEL[e.kind]}</span>
+                      <span className="shield-entry-label">{e.label}</span>
+                      <button
+                        type="button"
+                        className="shield-entry-remove"
+                        aria-label={`${e.label} 목록에서 치우기`}
+                        onClick={() => onRemoveBlockEntry?.(e.id)}
+                      >
+                        치우기
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </div>
+        )}
+        <p className="hairline-note text-quiet">
+          이 목록은 실드가 준비되면 그대로 옮겨와 쓸 거예요. 지금은 아무것도 차단하지 않아요.
+        </p>
       </section>
 
       <section className="card">
@@ -115,8 +242,8 @@ export default function ShieldScreen({ onNavigate, counters = [], rules = [] }) 
           실드는 따로 도는 기능이 아니라, 지금 쓰는 절제 도구와 연결돼요.
         </p>
         <ul className="shield-link-list">
-          <li className="hairline-note">· 금욕 카운터({counterCount}개)별로 무엇을 멀리 둘지 정하게 할 거예요.</li>
-          <li className="hairline-note">· 규율({ruleCount}개)에 ‘이 사이트 안 열기’ 같은 약속을 이어붙이게 할 거예요.</li>
+          <li className="hairline-note">· 금욕 카운터({counters.length}개)별로 무엇을 멀리 둘지 적어둘 수 있어요.</li>
+          <li className="hairline-note">· 규율({rules.length}개)에 ‘이 사이트 안 열기’ 같은 약속을 이어붙이게 할 거예요.</li>
           <li className="hairline-note">· 차단에 막힌 순간엔 ‘잠깐 멈춤’ 5분으로 바로 이어지게 할 거예요.</li>
           <li className="hairline-note">· 멀리 둔 순간들을 기록에 남겨 흐름을 돌아보게 할 거예요.</li>
         </ul>

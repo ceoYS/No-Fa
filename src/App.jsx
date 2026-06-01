@@ -18,6 +18,7 @@ import {
   catalogDef,
   feedReaction,
 } from './constants/roomItems.js';
+import { DEFAULT_BLOCKLIST, makeBlockEntry } from './constants/shield.js';
 
 const SCREENS = [
   { id: 'home', label: '홈', Component: HomeScreen },
@@ -120,6 +121,11 @@ export default function App() {
   const [reflectionCtx, setReflectionCtx] = useState(null);
   // Today's DayRecord fields written by the reflection diary (§0.6.5/§0.6.6).
   const [todayRecord, setTodayRecord] = useState(null);
+
+  // Shield blocklist planner (P0.5). In-memory like the rest of the prototype.
+  // This list does NOT block anything — it is the plan a future P1 engine
+  // (browser extension / NoF safe browser) will consume. No enforcement here.
+  const [blocklist, setBlocklist] = useState(DEFAULT_BLOCKLIST);
 
   // Reward / pet-room layer (§0.6.9). Cosmetic only; earned 잔불 조각 is the single
   // currency — no payment, no random rewards. All in-memory for the prototype.
@@ -238,6 +244,19 @@ export default function App() {
 
   const selectCounter = (id) => {
     if (counters.some((c) => c.id === id)) setSelectedCounterId(id);
+  };
+
+  // Shield planner handlers (P0.5). Non-enforcing: add appends a planned entry,
+  // remove drops it. Nothing here blocks traffic — it only edits the plan list
+  // that a later P1 engine will read.
+  const addBlockEntry = ({ kind, label, counterId = null } = {}) => {
+    const entry = makeBlockEntry({ kind, label, counterId });
+    if (!entry) return;
+    setBlocklist((prev) => [...prev, entry]);
+  };
+
+  const removeBlockEntry = (id) => {
+    setBlocklist((prev) => prev.filter((e) => e.id !== id));
   };
 
   // Grant the earned resource (잔불 조각). Fixed amounts only — never random.
@@ -502,6 +521,9 @@ export default function App() {
             onRemovePlacement={removePlacement}
             onChooseRoomTheme={chooseRoomTheme}
             onFeedSnack={feedSnack}
+            blocklist={blocklist}
+            onAddBlockEntry={addBlockEntry}
+            onRemoveBlockEntry={removeBlockEntry}
           />
         </main>
         <BottomNav value={screenId} onChange={setScreenId} />
