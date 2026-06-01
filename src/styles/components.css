@@ -2513,3 +2513,83 @@ button.room-token:active {
   flex: 1 1 0;
   min-width: 0;
 }
+
+/* Shield (차단 설정 / NoF 실드) — 준비 중 placeholder. No working blocker; the
+ * styling reads as a calm "preparing" status, never an active control. */
+.shield-tag {
+  background: var(--ink-700);
+  color: var(--text-muted);
+  border-color: var(--border-soft);
+  letter-spacing: 0.01em;
+}
+
+.shield-status {
+  border-color: rgba(245, 164, 90, 0.18);
+}
+
+.shield-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shield-row {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 14px);
+  border: 1px solid var(--border-soft);
+  background: var(--bg-surface-raised);
+}
+
+.shield-dot {
+  flex: none;
+  margin-top: 6px;
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: radial-gradient(circle, var(--ember-200), var(--ember-400) 70%);
+  box-shadow: 0 0 6px var(--accent-ember-glow);
+}
+
+.shield-row-text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.shield-row-name {
+  font-size: var(--fs-small);
+  color: var(--text-primary);
+}
+
+.shield-row-desc {
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  color: var(--text-muted);
+}
+
+.shield-row .shield-tag {
+  flex: none;
+  align-self: flex-start;
+}
+
+.shield-link-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-1);
+  margin: 0;
+  padding: 0;
+  list-style: none;
+}
+
+.shield-privacy {
+  text-align: center;
+  padding: 0 var(--sp-2);
+}

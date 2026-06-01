@@ -6,6 +6,7 @@ import CalendarScreen from './screens/CalendarScreen.jsx';
 import RecoveryScreen from './screens/RecoveryScreen.jsx';
 import PetRewardScreen from './screens/PetRewardScreen.jsx';
 import DisciplineScreen from './screens/DisciplineScreen.jsx';
+import ShieldScreen from './screens/ShieldScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import ScreenSwitcher from './components/ScreenSwitcher.jsx';
 import { EMPTY_BADGES, summarizeRules } from './constants/discipline.js';
@@ -26,6 +27,7 @@ const SCREENS = [
   { id: 'calendar', label: '최근 기록', Component: CalendarScreen },
   { id: 'recovery', label: '복기 다이어리', Component: RecoveryScreen },
   { id: 'reward', label: '고양이 방', Component: PetRewardScreen },
+  { id: 'shield', label: '차단 설정', Component: ShieldScreen },
 ];
 
 const DAY_MS = 86400000;

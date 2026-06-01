@@ -36,6 +36,8 @@
  *  26. No fake sound claim — audio stays an honest, silent gated fallback.
  *  27. The selected counter is visual-only (amber border/glow) — no 보는 중 text badge.
  *  28. The pet room uses the completed composite cat-room image (cat always visible).
+ *  29. The Shield (차단 설정) screen is an honest 준비 중 placeholder — no fake blocking,
+ *      no working-claim copy, no functional toggle; routed and linked from Home.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -483,6 +485,38 @@ check('pet room uses the completed cat-room image (ember_room_with_white_kitten)
     /resolveRoomSceneAsset[\s\S]*?with_white_kitten/.test(assets),
     'resolveRoomSceneAsset does not return the composite cat-room image',
   );
+});
+
+// 29 — the Shield screen must stay an HONEST 준비 중 placeholder. NoF has no
+// content-blocking engine yet, so the screen must (a) be routed + reachable from
+// Home, (b) state plainly that real blocking is not provided yet, (c) make NO
+// present-tense working claim, and (d) ship no functional toggle (a dead switch
+// would read as fake blocking).
+check('shield screen is an honest 준비 중 placeholder (no fake blocking)', () => {
+  const app = read('src/App.jsx');
+  assert(app.includes("import ShieldScreen from"), 'App.jsx does not import ShieldScreen');
+  assert(/id:\s*'shield'/.test(app), "App.jsx does not route a 'shield' screen");
+
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes("onNavigate('shield')"), 'Home has no entry that navigates to the Shield screen');
+
+  const screen = read('src/screens/ShieldScreen.jsx');
+  assert(screen.includes('준비 중'), 'Shield screen is missing the 준비 중 status');
+  assert(
+    screen.includes('아직 실제 차단은 제공하지 않아요'),
+    'Shield screen is missing the honest "no real blocking yet" copy',
+  );
+  // No present-tense claim that blocking is active.
+  for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+    assert(!screen.includes(fake), `Shield screen makes a fake working-blocking claim: ${fake}`);
+  }
+  // No functional toggle/switch — the placeholder must not look operable.
+  assert(!/type="checkbox"/.test(screen), 'Shield screen ships a checkbox toggle — placeholder must not look operable');
+  assert(!/role="switch"/.test(screen), 'Shield screen ships a switch control — placeholder must not look operable');
+  // The planned layers must be documented honestly in the screen.
+  for (const layer of ['브라우저 확장', 'NoF 안전 브라우저', 'iOS·Android 기기 차단']) {
+    assert(screen.includes(layer), `Shield screen is missing a planned layer: ${layer}`);
+  }
 });
 
 let failed = 0;

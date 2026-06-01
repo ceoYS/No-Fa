@@ -358,6 +358,24 @@ export default function HomeScreen({
             고양이 방 꾸미기
           </button>
         </section>
+
+        <section className="card">
+          <div className="card-row">
+            <span className="card-label">차단 설정 · NoF 실드</span>
+            <span className="pill shield-tag">준비 중</span>
+          </div>
+          <p className="hairline-note text-quiet">
+            자극적인 사이트와 검색을 멀리 두는 보호막을 준비하고 있어요. 아직 실제 차단은
+            제공하지 않아요.
+          </p>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('shield')}
+          >
+            실드 준비 상황 보기
+          </button>
+        </section>
       </div>
 
       {/* 재발 확인 시트 — 즉시 리셋 금지. 실제 onRelapse()는 여기서만 호출된다. */}
