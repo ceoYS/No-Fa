@@ -32,8 +32,8 @@ const PLANNED_LAYERS = [
   },
   {
     name: 'NoF 안전 브라우저',
-    desc: '앱 안에서 위험한 곳을 열지 않는 자체 브라우저를 검토하고 있어요.',
-    phase: '1단계',
+    desc: '앱 안에서 위험한 곳을 열지 않는 자체 브라우저예요. 지금은 프로토타입 실험만 돼요.',
+    phase: '앱 안에서만 실험 가능',
   },
   {
     name: 'iOS·Android 기기 차단',
@@ -44,6 +44,8 @@ const PLANNED_LAYERS = [
 
 const PLANNING_BANNER = '이 목록은 아직 차단에 쓰이지 않아요. 준비 중인 계획 목록이에요.';
 const SAFETY_NOTE = '위험한 사이트를 직접 찾아 적지 마세요. 카테고리와 키워드 신호만 정해도 충분해요.';
+const PLANNER_NOT_ENFORCED = '지금 입력한 신호는 아직 실제 차단에 쓰이지 않아요.';
+const REAL_BLOCK_WHERE = '실제 차단은 Safe Browser 또는 브라우저 확장 단계에서 동작해요.';
 const UNLINKED = '__unlinked__';
 
 export default function ShieldScreen({
@@ -113,6 +115,9 @@ export default function ShieldScreen({
           <span className="card-label">위험 신호 미리 정하기</span>
           <span className="pill shield-tag">{summary.total}개</span>
         </div>
+        <p className="hairline-note shield-safety-note">
+          {PLANNER_NOT_ENFORCED} {REAL_BLOCK_WHERE}
+        </p>
         <p className="hairline-note shield-safety-note">{SAFETY_NOTE}</p>
         <p className="hairline-note shield-planner-banner">{PLANNING_BANNER}</p>
 
@@ -219,16 +224,18 @@ export default function ShieldScreen({
       </section>
 
       <section className="card">
-        <span className="card-label">어떻게 막을지 준비하고 있어요</span>
-        <ul className="shield-list">
+        <span className="card-label">앞으로 연결될 보호 방식</span>
+        <p className="hairline-note text-quiet">
+          아래는 켜는 버튼이 아니라, 앞으로 어떤 순서로 보호를 잇는지 보여주는 로드맵이에요.
+        </p>
+        <ul className="shield-roadmap" role="list">
           {PLANNED_LAYERS.map((l) => (
-            <li className="shield-row" key={l.name}>
-              <span className="shield-dot" aria-hidden="true" />
-              <span className="shield-row-text">
-                <span className="shield-row-name">{l.name}</span>
-                <span className="shield-row-desc">{l.desc}</span>
+            <li className="shield-roadmap-item" key={l.name}>
+              <span className="shield-roadmap-phase">{l.phase}</span>
+              <span className="shield-roadmap-text">
+                <span className="shield-roadmap-name">{l.name}</span>
+                <span className="shield-roadmap-desc">{l.desc}</span>
               </span>
-              <span className="pill shield-tag">{l.phase}</span>
             </li>
           ))}
         </ul>
@@ -236,6 +243,21 @@ export default function ShieldScreen({
           SNS 이미지를 흐리게 가리는 방법은 아직 연구 단계예요. 잘 되는 척하지 않고,
           확실해질 때 추가할게요.
         </p>
+      </section>
+
+      <section className="card">
+        <span className="card-label">안전 브라우저 실험 (프로토타입)</span>
+        <p className="hairline-note">
+          앱 안에서만 동작하는 실험이에요. 실제 웹은 열지 않고, 내가 정한 위험 신호와
+          닿는지 비교해 ‘잠깐 멈춤’으로 이어줘요.
+        </p>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={() => onNavigate('shieldBrowser')}
+        >
+          안전 브라우저 실험 열기
+        </button>
       </section>
 
       <section className="card">

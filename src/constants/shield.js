@@ -65,3 +65,19 @@ export function summarizeBlocklist(list = []) {
 export function entriesForCounter(list = [], counterId = null) {
   return list.filter((e) => e.counterId === counterId);
 }
+
+// Prototype-only matcher for the Safe Browser PoC. Case-insensitive substring match
+// of a typed test phrase against the planned signal labels. It opens NOTHING — no
+// network, no iframe, no external navigation — it only inspects the in-memory plan
+// list and returns the signals the text touches, so the PoC can demonstrate the
+// intended "keep this at a distance → 잠깐 멈춤" hand-off inside the app. A real
+// blocking engine (P1) is out of scope; this never asks for a risky real site.
+export function matchSignals(list = [], text = '') {
+  const q = (text ?? '').trim().toLowerCase();
+  if (!q) return [];
+  return list.filter((e) => {
+    const label = (e.label ?? '').trim().toLowerCase();
+    if (!label) return false;
+    return q.includes(label) || label.includes(q);
+  });
+}

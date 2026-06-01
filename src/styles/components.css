@@ -2527,57 +2527,77 @@ button.room-token:active {
   border-color: rgba(245, 164, 90, 0.18);
 }
 
-.shield-list {
+/* Shield "앞으로 연결될 보호 방식" — roadmap INFO, never interactive controls.
+ * Rendered as a left-railed timeline so each layer reads as a future plan step,
+ * not a tappable button (the prior raised-card rows looked like dead buttons). */
+.shield-roadmap {
   display: flex;
   flex-direction: column;
-  gap: var(--sp-2);
+  gap: var(--sp-3);
   margin: 0;
-  padding: 0;
+  padding: 0 0 0 var(--sp-3);
   list-style: none;
+  border-left: 2px solid var(--border-soft);
 }
 
-.shield-row {
+.shield-roadmap-item {
   display: flex;
-  align-items: flex-start;
-  gap: var(--sp-2);
-  padding: var(--sp-2) var(--sp-3);
-  border-radius: var(--r-md, 14px);
-  border: 1px solid var(--border-soft);
-  background: var(--bg-surface-raised);
+  flex-direction: column;
+  gap: 4px;
+  position: relative;
 }
 
-.shield-dot {
-  flex: none;
-  margin-top: 6px;
-  width: 8px;
-  height: 8px;
+.shield-roadmap-item::before {
+  content: '';
+  position: absolute;
+  left: calc(-1 * var(--sp-3) - 1px);
+  top: 5px;
+  width: 7px;
+  height: 7px;
   border-radius: 50%;
   background: radial-gradient(circle, var(--ember-200), var(--ember-400) 70%);
   box-shadow: 0 0 6px var(--accent-ember-glow);
 }
 
-.shield-row-text {
+.shield-roadmap-phase {
+  align-self: flex-start;
+  font-size: var(--fs-small);
+  color: var(--text-ember);
+  letter-spacing: 0.02em;
+}
+
+.shield-roadmap-text {
   display: flex;
   flex-direction: column;
   gap: 2px;
-  flex: 1 1 auto;
   min-width: 0;
 }
 
-.shield-row-name {
+.shield-roadmap-name {
   font-size: var(--fs-small);
   color: var(--text-primary);
 }
 
-.shield-row-desc {
+.shield-roadmap-desc {
   font-size: var(--fs-small);
   line-height: var(--lh-snug);
   color: var(--text-muted);
 }
 
-.shield-row .shield-tag {
-  flex: none;
-  align-self: flex-start;
+/* Safe Browser PoC (prototype-only) — the matched interstitial that nudges toward
+ * 잠깐 멈춤. It demonstrates intent inside the app; it blocks no real traffic. */
+.shield-interstitial {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  border-color: rgba(245, 164, 90, 0.4);
+  background: var(--accent-ember-soft);
+}
+
+.shield-interstitial-title {
+  margin: 0;
+  font-size: var(--fs-lg, 1.05rem);
+  color: var(--text-primary);
 }
 
 .shield-link-list {

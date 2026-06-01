@@ -41,6 +41,9 @@
  *  30. The Shield risk-signal planner is non-enforcing AND never asks users to hunt
  *      for / paste a risky site: abstract signals only (category/keyword/app/situation),
  *      a safety note steering users away, no toggle, no fake "blocked" claim, empty seed.
+ *  31. Shield reads as a plan, not a working blocker: planner says it does not block
+ *      yet, 보호 방식 layers are roadmap info (no buttons), and the Safe Browser PoC is
+ *      an in-app demo that opens no external link and routes a match to 잠깐 멈춤.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -576,6 +579,55 @@ check('shield risk-signal planner is honest, non-enforcing, and never asks for r
     "shield.js still exposes a 'domain' kind — it must be removed",
   );
   assert(/DEFAULT_BLOCKLIST\s*=\s*\[\]/.test(model), 'shield.js DEFAULT_BLOCKLIST must ship empty (no preset entries)');
+});
+
+// 31 — Shield must read as a plan, not a working blocker, AND the Safe Browser PoC
+// must stay an in-app demo that opens nothing. So: the planner states plainly it
+// does not block yet; the 보호 방식 layers are roadmap INFO (no buttons); a Safe
+// Browser experiment is routed; and that screen opens no external link, matches via
+// the local helper, and routes a matched signal to 잠깐 멈춤 (never a real site).
+check('shield safe browser PoC is honest, in-app only, and routes a match to 잠깐 멈춤', () => {
+  const app = read('src/App.jsx');
+  assert(app.includes('import SafeBrowserScreen from'), 'App.jsx does not import SafeBrowserScreen');
+  assert(/id:\s*'shieldBrowser'/.test(app), "App.jsx does not route a 'shieldBrowser' screen");
+
+  const screen = read('src/screens/ShieldScreen.jsx');
+  // Planner must say plainly it does not block yet, and point at where real blocking lives.
+  assert(
+    screen.includes('지금 입력한 신호는 아직 실제 차단에 쓰이지 않아요'),
+    'Shield planner is missing the explicit "signals do not block yet" copy',
+  );
+  assert(
+    screen.includes('실제 차단은 Safe Browser 또는 브라우저 확장 단계에서 동작해요'),
+    'Shield planner is missing the "real blocking happens at Safe Browser / extension" copy',
+  );
+  // 보호 방식 section is roadmap INFO, not interactive controls.
+  assert(screen.includes('앞으로 연결될 보호 방식'), 'Shield is missing the renamed roadmap section title');
+  const roadmap = screen.match(/<ul className="shield-roadmap"[\s\S]*?<\/ul>/);
+  assert(roadmap, 'Shield roadmap list (shield-roadmap) not found');
+  assert(!/<button/.test(roadmap[0]), 'Shield roadmap layers must not be buttons — they are roadmap info, not controls');
+  // Entry to the Safe Browser experiment.
+  assert(screen.includes('안전 브라우저 실험 열기'), 'Shield is missing the Safe Browser experiment entry button');
+  assert(screen.includes("onNavigate('shieldBrowser')"), 'Shield entry does not navigate to the Safe Browser screen');
+
+  const browser = read('src/screens/SafeBrowserScreen.jsx');
+  // Local matching only — must use the in-memory helper, never a real engine.
+  assert(browser.includes('matchSignals('), 'SafeBrowserScreen does not match via the local matchSignals helper');
+  // Opens NOTHING: no network, no iframe, no external navigation.
+  for (const ext of ['http', 'window.open', '<iframe', 'href=']) {
+    assert(!browser.includes(ext), `SafeBrowserScreen can open an external target (${ext}) — it must stay in-app only`);
+  }
+  // A matched signal hands off to 잠깐 멈춤 (UrgeScreen), not a site.
+  assert(browser.includes("onNavigate('urge')"), 'SafeBrowserScreen does not route a matched signal to 잠깐 멈춤');
+  assert(browser.includes('이 신호는 멀리 두기로 정했어요'), 'SafeBrowserScreen is missing the matched interstitial title');
+  assert(browser.includes('지금은 열지 않고 5분만 늦춰볼까요'), 'SafeBrowserScreen is missing the matched 잠깐 멈춤 nudge');
+  assert(browser.includes('프로토타입에서는 실제 웹을 열지 않아요'), 'SafeBrowserScreen is missing the no-match "opens no real web" copy');
+  // No present-tense claim that a real site/app/SNS is being blocked.
+  for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+    assert(!browser.includes(fake), `SafeBrowserScreen makes a fake working-blocking claim: ${fake}`);
+  }
+  // The local matcher must exist and be exported.
+  assert(read('src/constants/shield.js').includes('export function matchSignals'), 'shield.js does not export matchSignals');
 });
 
 let failed = 0;
