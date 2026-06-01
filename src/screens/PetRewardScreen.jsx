@@ -66,7 +66,6 @@ export default function PetRewardScreen({
   onPlaceItemAt,
   onMoveItem,
   onRemovePlacement,
-  onResetPlacements,
   onChooseRoomTheme,
   onFeedSnack,
 }) {
@@ -112,9 +111,6 @@ export default function PetRewardScreen({
   };
 
   const snackCount = inventory.snack ?? 0;
-  // The snack hand-off token carries the real snack image when present, so the
-  // feed shows a visible snack traveling toward the scene (not a bare flash).
-  const snackSrc = resolveItemAsset('snack');
   const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
   const lockedNext = nextLockedMilestone(streakDays);
   const placedIds = new Set(placements.map((p) => p.itemId));
@@ -216,12 +212,9 @@ export default function PetRewardScreen({
       {placementMode ? (
         <PetPlacementEditor
           theme={activeRoomTheme}
-          placements={placements}
           ownedItems={ownedItems}
-          onMove={onMoveItem}
-          onReset={onResetPlacements}
           onDone={() => setPlacementMode(false)}
-          label="아이템 배치 미리보기"
+          label="아이템 배치 계획"
         />
       ) : (
         <>
@@ -279,7 +272,7 @@ export default function PetRewardScreen({
             className="btn btn-ghost btn-block placement-enter-btn"
             onClick={() => setPlacementMode(true)}
           >
-            아이템 배치 편집 (미리보기)
+            아이템 배치 계획 (준비 중)
           </button>
         </>
       )}
@@ -311,7 +304,7 @@ export default function PetRewardScreen({
         </p>
         <div className="feed-btn-wrap">
           <span className="snack-toss-token" data-active={snackToss} aria-hidden="true">
-            {snackSrc ? <img className="snack-toss-img" src={snackSrc} alt="" /> : null}
+            <span className="snack-toss-ember" />
           </span>
           <button
             type="button"
@@ -428,7 +421,7 @@ function InventorySheet({ ownedDecor, placedIds, sceneMode, onStartDrag, onClose
           <h2 className="sheet-title">아이템 보관함</h2>
           <p className="sheet-help">
             {sceneMode
-              ? '현재는 완성된 방 이미지로 보여주고 있어요. 투명 아이템 이미지가 연결되면 직접 배치할 수 있어요.'
+              ? '현재는 완성된 방 이미지로 보여주고 있어요. 배치 기능은 투명 아이템 이미지가 준비되면 제공돼요.'
               : anyPlaceable
               ? '끌어서 방에 놓아보세요. 이미 놓인 아이템도 다시 끌 수 있어요.'
               : '이미지 연결 후 방에 배치할 수 있어요.'}

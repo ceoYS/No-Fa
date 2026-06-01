@@ -204,14 +204,11 @@ export default function HomeScreen({
                 className="counter-card"
                 data-selected={selected}
                 aria-pressed={selected}
-                aria-label={`${c.name} — ${el.days}일 ${el.hh}:${el.mm}${selected ? ', 지금 보는 중' : ''}`}
+                aria-label={`${c.name} — ${el.days}일 ${el.hh}:${el.mm}`}
                 onClick={() => onSelectCounter?.(c.id)}
               >
                 <div className="counter-card-head">
                   <span className="counter-card-name">{c.name}</span>
-                  {selected ? (
-                    <span className="pill pill-ember counter-card-flag">보는 중</span>
-                  ) : null}
                 </div>
                 <div className="counter-card-time">
                   {el.days}일 {el.hh}:{el.mm}

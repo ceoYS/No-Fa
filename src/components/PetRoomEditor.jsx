@@ -200,7 +200,7 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
 
       {resolvedSceneMode && artReady ? (
         <p className="room-scene-note">
-          현재는 완성된 방 이미지로 표시 중이에요. 투명 아이템 이미지가 연결되면 직접 배치할 수 있어요.
+          현재는 완성된 방 이미지로 표시 중이에요. 배치 기능은 투명 아이템 이미지가 준비되면 제공돼요.
         </p>
       ) : null}
 

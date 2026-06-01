@@ -434,12 +434,6 @@ export default function App() {
     setPlacements((prev) => prev.filter((p) => p.itemId !== itemId));
   };
 
-  // 배치 초기화 (§0.6.9): restore the seeded layout. Non-destructive — ownership
-  // is untouched; only the coordinate placements reset to the default arrangement.
-  const resetPlacements = () => {
-    setPlacements(DEFAULT_PLACEMENTS.map((p) => ({ ...p })));
-  };
-
   // 방 테마 바꾸기 (§0.6.9).
   const chooseRoomTheme = (id) => {
     if (!ownedItems.includes(id) && id !== DEFAULT_THEME) return;
@@ -504,7 +498,6 @@ export default function App() {
             onPlaceItemAt={placeItemAt}
             onMoveItem={placeItemAt}
             onRemovePlacement={removePlacement}
-            onResetPlacements={resetPlacements}
             onChooseRoomTheme={chooseRoomTheme}
             onFeedSnack={feedSnack}
           />

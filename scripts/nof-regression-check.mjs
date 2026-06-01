@@ -31,9 +31,11 @@
  *  21. The add-rule flow can create a counter together with the rule.
  *  22. The selected counter reveals its linked rules on Home (status, not time).
  *  23. Discipline can filter/group rules by counter.
- *  24. The pet room has a placement-edit (배치 편집) mode with 배치 완료 / 초기화.
- *  25. The snack feed uses a real movement animation (travel), not a flash only.
+ *  24. The 배치 계획 mode is an honest no-overlay placeholder (no rect item crops).
+ *  25. The snack feed travels an ember particle, not the raw rectangular snack image.
  *  26. No fake sound claim — audio stays an honest, silent gated fallback.
+ *  27. The selected counter is visual-only (amber border/glow) — no 보는 중 text badge.
+ *  28. The pet room uses the completed composite cat-room image (cat always visible).
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -152,7 +154,7 @@ check('no fake-motion / emoji-furniture / blob tokens in source', () => {
   // honesty gate. Fake *motion* copy is what we forbid here.
   const tokens = [
     '기지개', '꼬리', '먹었', '먹는', '움직였', 'eating', '파도처럼',
-    'pet-cat-svg', 'room-token-glow',
+    'pet-cat-svg', 'room-token-glow', '직접 배치할 수 있어요',
     '🐱', '🪑', '🧺', '🛏️', '🪔', '💡', '🛋️', '🟫', '🐟',
   ];
   const offenders = [];
@@ -395,31 +397,38 @@ check('discipline filters/groups rules by counter', () => {
   assert(screen.includes('지키는 중'), 'rule group summary does not report today rule status');
 });
 
-// 24 — the pet room must offer a real placement-edit (배치 편집) mode: a dedicated
-// draggable editor with 배치 완료 + 초기화, wired to the reset handler.
-check('pet room has a placement-edit mode (배치 편집)', () => {
+// 24 — the 배치 계획 mode must be an HONEST placeholder: with the current
+// non-transparent decor art it must NOT overlay rectangular item crops on the room
+// (no placement-token-img, no pointer drag). It shows the finished room + an owned
+// item inventory and states real placement waits on transparent sprites.
+check('pet room 배치 계획 mode is an honest no-overlay placeholder', () => {
   const screen = read('src/screens/PetRewardScreen.jsx');
   assert(screen.includes('PetPlacementEditor'), 'PetPlacementEditor not used by the pet room');
   assert(screen.includes('placementMode'), 'no placement-mode state in PetRewardScreen');
-  assert(screen.includes('배치 편집'), 'placement-edit entry (배치 편집) missing');
-  assert(screen.includes('onResetPlacements'), 'placement editor is not wired to a reset handler');
   const editor = read('src/components/PetPlacementEditor.jsx');
-  assert(editor.includes('배치 완료') && editor.includes('초기화'), '배치 완료 / 초기화 controls missing');
-  assert(editor.includes('onPointerDown'), 'placement tokens are not pointer-draggable');
-  // Honest MVP framing — it must NOT claim final art, and must not flip spriteReady.
-  assert(editor.includes('미리보기'), 'placement editor does not label itself as an MVP preview');
-  assert(!/spriteReady:\s*true/.test(editor), 'placement editor flips spriteReady — drag must not claim final sprites');
-  // App must reset placements to the seeded layout (non-destructive).
-  const app = read('src/App.jsx');
-  assert(/const resetPlacements = \(\) => \{/.test(app), 'App resetPlacements() handler missing');
+  assert(
+    editor.includes('배치 기능은 투명 아이템 이미지가 준비되면 제공돼요'),
+    'placement mode is missing the honest pending copy',
+  );
+  assert(
+    !editor.includes('placement-token-img'),
+    'placement mode still overlays rectangular item images (placement-token-img)',
+  );
+  assert(
+    !/onPointerDown/.test(editor),
+    'placement mode still drags item tokens — drag must wait for transparent sprites',
+  );
+  assert(!/spriteReady:\s*true/.test(editor), 'placement editor flips spriteReady — must not claim final sprites');
 });
 
-// 25 — the snack feed must animate a real hand-off MOVEMENT (a travel), not a
-// flash-only opacity blink. The keyframe must translate the token a distance.
-check('snack feed uses a movement animation (not flash-only)', () => {
+// 25 — the snack feed must animate a real hand-off MOVEMENT (a travel), but with
+// the current non-transparent snack art it must NOT fling the raw rectangular snack
+// image — it travels a small ember particle token instead, still on the keyframe.
+check('snack feed travels an ember particle (no raw rectangular image)', () => {
   const screen = read('src/screens/PetRewardScreen.jsx');
-  assert(screen.includes("data-active={snackToss}"), 'snack token is not driven by a feed trigger');
-  assert(screen.includes('snack-toss-img'), 'snack token carries no visible snack image');
+  assert(screen.includes('data-active={snackToss}'), 'snack token is not driven by a feed trigger');
+  assert(screen.includes('snack-toss-ember'), 'snack hand-off is not an ember particle token');
+  assert(!screen.includes('snack-toss-img'), 'snack hand-off still flings the raw rectangular snack image');
   const css = read('src/styles/components.css');
   const m = css.match(/@keyframes snack-toss \{[\s\S]*?\n\}/);
   assert(m, 'snack-toss keyframes missing');
@@ -440,6 +449,40 @@ check('audio is an honest silent fallback (no fake sound claim)', () => {
   for (const fake of ['소리가 났', '야옹 소리가', '골골 소리가', '소리가 재생']) {
     assert(!screen.includes(fake), `fake sound claim copy present: ${fake}`);
   }
+});
+
+// 27 — the selected counter must be shown by VISUAL treatment only: a data-selected
+// hook drives an amber border + glow, and selection reaches assistive tech via
+// aria-pressed. No 보는 중 / 현재 / 선택됨 text badge may render inside the card.
+check('counter selected state is visual-only (no 보는 중 text badge)', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes('data-selected={selected}'), 'counter card has no data-selected visual hook');
+  assert(home.includes('aria-pressed={selected}'), 'counter card selection is not exposed via aria-pressed');
+  for (const badge of ['보는 중', '선택됨', 'counter-card-flag']) {
+    assert(!home.includes(badge), `counter card still renders a selected text badge: ${badge}`);
+  }
+  const css = read('src/styles/components.css');
+  assert(
+    /\.counter-card\[data-selected='true'\][\s\S]*?border-color:\s*var\(--accent-ember\)/.test(css),
+    'selected counter card has no amber border treatment',
+  );
+});
+
+// 28 — the pet room's finished scene must reference the completed composite cat-room
+// image (cat always visible in the main scene), and the scene resolver must return
+// it — never a plain room that needs a pasted cat/item overlay.
+check('pet room uses the completed cat-room image (ember_room_with_white_kitten)', () => {
+  const assets = read('src/constants/petAssets.js');
+  assert(
+    assets.includes('ember_room_with_white_kitten.webp'),
+    'composite cat-room image (ember_room_with_white_kitten.webp) is not registered',
+  );
+  assert(/with_white_kitten[\s\S]*?sceneReady:\s*true/.test(assets), 'scene room is not marked sceneReady');
+  assert(/with_white_kitten[\s\S]*?containsCat:\s*true/.test(assets), 'scene room is not flagged as containing the cat');
+  assert(
+    /resolveRoomSceneAsset[\s\S]*?with_white_kitten/.test(assets),
+    'resolveRoomSceneAsset does not return the composite cat-room image',
+  );
 });
 
 let failed = 0;
