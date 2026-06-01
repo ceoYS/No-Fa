@@ -2594,8 +2594,18 @@ button.room-token:active {
   padding: 0 var(--sp-2);
 }
 
-/* Shield blocklist planner (P0.5) — authoring a NON-enforcing plan list. The
- * dashed banner keeps the "this does not block yet" status visible. */
+/* Shield risk-signal planner (P0.5) — authoring NON-enforcing abstract signals.
+ * The safety note tells users NOT to go hunt risky sites themselves (that search
+ * is a relapse trigger); the dashed banner keeps "this does not block yet" visible. */
+.shield-safety-note {
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md, 14px);
+  border: 1px solid rgba(245, 164, 90, 0.45);
+  background: var(--accent-ember-soft);
+  color: var(--text-ember);
+  font-weight: 600;
+}
+
 .shield-planner-banner {
   padding: var(--sp-2) var(--sp-3);
   border-radius: var(--r-md, 14px);

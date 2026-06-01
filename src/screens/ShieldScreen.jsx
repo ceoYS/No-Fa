@@ -9,30 +9,30 @@ import {
 } from '../constants/shield.js';
 
 /*
- * ShieldScreen — 차단 설정 / NoF 실드 (준비 중) + 차단 목록 계획(P0.5).
+ * ShieldScreen — 차단 설정 / NoF 실드 (준비 중) + 위험 신호 계획(P0.5).
  *
  * HONESTY NOTE: NoF has NO content-blocking engine yet. This screen never blocks
- * anything. The planner below only *authors a plan list* — the domains / keywords /
- * app categories a user wants to mute later — which a future P1 engine (browser
- * extension / NoF safe browser) will consume. It must not claim any site / search /
- * app is being blocked, ships no functional toggle (a dead switch would read as
- * fake blocking), and carries a visible "이 목록은 아직 차단에 쓰이지 않아요" banner.
- * It explains the planned layers (extension / safe browser / native iOS·Android),
- * how Shield will connect to counters · rules · 잠깐 멈춤 · records, and points to
- * the tools that already work today. SNS image mosaic stays P3 research only. No
- * shame copy; the tone matches 규율 = 내가 정한 기준, not 처벌. Guards #29/#30 pin
- * these invariants.
+ * anything. The planner below only *authors abstract risk signals* — categories,
+ * search-temptation signals, app/SNS kinds, and risky situations a user wants to
+ * keep at a distance later — which a future P1 engine (browser extension / NoF
+ * safe browser) maps to app-curated block packs. It must never ask the user to
+ * hunt for or paste a risky site (that search is itself a relapse trigger), claims
+ * nothing is being blocked, ships no functional toggle (a dead switch would read as
+ * fake blocking), and carries a visible "이 목록은 아직 차단에 쓰이지 않아요" banner
+ * plus a safety note telling users not to go looking for risky sites themselves.
+ * SNS image mosaic stays P3 research only. No shame copy; tone matches
+ * 규율 = 내가 정한 기준, not 처벌. Guards #29/#30 pin these invariants.
  */
 
 const PLANNED_LAYERS = [
   {
     name: '브라우저 확장 (Chrome 등)',
-    desc: 'PC 브라우저에서 주소·검색을 먼저 거르는 가장 빠른 길이에요.',
+    desc: 'PC 브라우저에서 자극 사이트와 검색을 먼저 거르는 가장 빠른 길이에요.',
     phase: '1단계',
   },
   {
     name: 'NoF 안전 브라우저',
-    desc: '앱 안에서 위험한 주소를 열지 않는 자체 브라우저를 검토하고 있어요.',
+    desc: '앱 안에서 위험한 곳을 열지 않는 자체 브라우저를 검토하고 있어요.',
     phase: '1단계',
   },
   {
@@ -43,6 +43,7 @@ const PLANNED_LAYERS = [
 ];
 
 const PLANNING_BANNER = '이 목록은 아직 차단에 쓰이지 않아요. 준비 중인 계획 목록이에요.';
+const SAFETY_NOTE = '위험한 사이트를 직접 찾아 적지 마세요. 카테고리와 키워드 신호만 정해도 충분해요.';
 const UNLINKED = '__unlinked__';
 
 export default function ShieldScreen({
@@ -53,13 +54,13 @@ export default function ShieldScreen({
   onAddBlockEntry,
   onRemoveBlockEntry,
 }) {
-  const [kind, setKind] = useState('domain');
+  const [kind, setKind] = useState('category');
   const [label, setLabel] = useState('');
   const [linkedCounterId, setLinkedCounterId] = useState(null);
 
   const summary = summarizeBlocklist(blocklist);
 
-  // Group planned entries by linked counter, plus a trailing unlinked bucket.
+  // Group planned signals by linked counter, plus a trailing unlinked bucket.
   const groups = [
     ...counters.map((c) => ({
       id: c.id,
@@ -68,7 +69,7 @@ export default function ShieldScreen({
     })),
     {
       id: UNLINKED,
-      name: '연결 안 된 목록',
+      name: '연결 안 된 신호',
       entries: blocklist.filter(
         (e) => !e.counterId || !counters.some((c) => c.id === e.counterId),
       ),
@@ -109,12 +110,13 @@ export default function ShieldScreen({
 
       <section className="card">
         <div className="card-row">
-          <span className="card-label">멀리 둘 목록 미리 적기</span>
+          <span className="card-label">위험 신호 미리 정하기</span>
           <span className="pill shield-tag">{summary.total}개</span>
         </div>
+        <p className="hairline-note shield-safety-note">{SAFETY_NOTE}</p>
         <p className="hairline-note shield-planner-banner">{PLANNING_BANNER}</p>
 
-        <div className="shield-kind-row" role="group" aria-label="목록 종류 고르기">
+        <div className="shield-kind-row" role="group" aria-label="신호 종류 고르기">
           {BLOCK_KINDS.map((k) => (
             <button
               key={k}
@@ -143,7 +145,7 @@ export default function ShieldScreen({
           className="sheet-input"
           value={label}
           onChange={(e) => setLabel(e.target.value)}
-          placeholder="멀리 둘 사이트·검색어·앱 종류를 적어요"
+          placeholder="피하고 싶은 검색 신호나 상황을 적어요"
           maxLength={60}
         />
 
@@ -176,15 +178,15 @@ export default function ShieldScreen({
           style={ready ? undefined : { opacity: 0.45, pointerEvents: 'none' }}
           onClick={submit}
         >
-          목록에 더하기
+          신호 더하기
         </button>
       </section>
 
       <section className="card">
-        <span className="card-label">적어둔 목록</span>
+        <span className="card-label">정해둔 신호</span>
         {blocklist.length === 0 ? (
           <p className="hairline-note">
-            아직 적어둔 항목이 없어요. 위에서 멀리 둘 것을 하나씩 더해 보세요.
+            아직 정해둔 신호가 없어요. 위에서 멀리 둘 신호를 하나씩 더해 보세요.
           </p>
         ) : (
           <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
@@ -212,7 +214,7 @@ export default function ShieldScreen({
           </div>
         )}
         <p className="hairline-note text-quiet">
-          이 목록은 실드가 준비되면 그대로 옮겨와 쓸 거예요. 지금은 아무것도 차단하지 않아요.
+          이 신호는 실드가 준비되면 그대로 옮겨와 쓸 거예요. 지금은 아무것도 차단하지 않아요.
         </p>
       </section>
 
@@ -242,8 +244,8 @@ export default function ShieldScreen({
           실드는 따로 도는 기능이 아니라, 지금 쓰는 절제 도구와 연결돼요.
         </p>
         <ul className="shield-link-list">
-          <li className="hairline-note">· 금욕 카운터({counters.length}개)별로 무엇을 멀리 둘지 적어둘 수 있어요.</li>
-          <li className="hairline-note">· 규율({rules.length}개)에 ‘이 사이트 안 열기’ 같은 약속을 이어붙이게 할 거예요.</li>
+          <li className="hairline-note">· 금욕 카운터({counters.length}개)별로 무엇을 멀리 둘지 정해둘 수 있어요.</li>
+          <li className="hairline-note">· 규율({rules.length}개)에 ‘이 종류는 멀리 두기’ 같은 약속을 이어붙이게 할 거예요.</li>
           <li className="hairline-note">· 차단에 막힌 순간엔 ‘잠깐 멈춤’ 5분으로 바로 이어지게 할 거예요.</li>
           <li className="hairline-note">· 멀리 둔 순간들을 기록에 남겨 흐름을 돌아보게 할 거예요.</li>
         </ul>
