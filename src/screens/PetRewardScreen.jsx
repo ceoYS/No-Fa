@@ -86,7 +86,9 @@ export default function PetRewardScreen({
   // successful feed. Purely a hand-off cue — never a consume or motion claim.
   const [snackToss, setSnackToss] = useState(false);
   // Gesture-gated cat audio; silent fallback while the .mp3 files are pending.
-  const { play: playSound, muted, toggleMuted } = usePetSound();
+  // hasSound stays false until a real file is probed present, so the 소리/무음
+  // toggle is hidden rather than shown as a dead switch over silent audio.
+  const { play: playSound, muted, toggleMuted, hasSound } = usePetSound();
   // Esc closes whichever sheet (보관함 / 상점) is open — keyboard dismiss parity.
   useDismissOnEscape(sheet !== null, () => setSheet(null));
 
@@ -195,16 +197,22 @@ export default function PetRewardScreen({
           <h1 className="screen-title">고양이 방</h1>
         </div>
         <div className="room-header-side">
-          <button
-            type="button"
-            className="sound-toggle"
-            onClick={toggleMuted}
-            aria-pressed={muted}
-            aria-label={muted ? '고양이 소리 켜기' : '고양이 소리 끄기'}
-            title={muted ? '소리 꺼짐' : '소리 켜짐'}
-          >
-            {muted ? '무음' : '소리'}
-          </button>
+          {/* Only render the 소리/무음 toggle once real audio is confirmed present.
+              While the .mp3s are uncommitted every play() is a silent no-op, so an
+              operable sound switch would imply audio that does not exist — the same
+              dead-switch the Shield screen deliberately removed. */}
+          {hasSound ? (
+            <button
+              type="button"
+              className="sound-toggle"
+              onClick={toggleMuted}
+              aria-pressed={muted}
+              aria-label={muted ? '고양이 소리 켜기' : '고양이 소리 끄기'}
+              title={muted ? '소리 꺼짐' : '소리 켜짐'}
+            >
+              {muted ? '무음' : '소리'}
+            </button>
+          ) : null}
           <span className="pill pill-ember">{RESOURCE.name} {emberShards}{RESOURCE.unit}</span>
         </div>
       </header>

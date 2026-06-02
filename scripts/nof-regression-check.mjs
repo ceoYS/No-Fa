@@ -49,6 +49,10 @@
  *      the harmless test token to the in-app NoF pause page, pulls in no remote code /
  *      CDN / external API, never reveals the visited target, and documents that it is
  *      Chrome-only (NOT mobile / SNS / image mosaic).
+ *  33. The pet-room 소리/무음 toggle is hidden until real audio is probed present
+ *      (usePetSound.hasSound) — no dead sound switch over a silent fallback.
+ *  34. The 5-minute crisis pause (잠깐 멈춤) is in the persistent bottom nav and
+ *      routes to the real UrgeScreen — reachable in one tap from every screen.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -755,6 +759,47 @@ check('chrome-shield extension is a local MV3 declarativeNetRequest PoC (honest,
   assert(
     read('src/screens/ShieldScreen.jsx').includes('실제 브라우저 차단은 Chrome 확장'),
     'ShieldScreen does not point real browser blocking to the Chrome extension',
+  );
+});
+
+// 33 — the pet-room 소리/무음 toggle must be CONDITION-GATED on real audio
+// availability. While the .mp3s are uncommitted every play() is a silent no-op, so
+// an always-rendered on/off sound control would be a dead switch implying audio that
+// does not exist (the same anti-pattern the Shield screen removed). usePetSound must
+// expose an honest hasSound signal (false until a real file is probed present), and
+// the screen must only render the toggle when hasSound is true.
+check('pet-room sound toggle is hidden until real audio is available (no dead switch)', () => {
+  const hook = read('src/hooks/usePetSound.js');
+  assert(
+    /const \[hasSound, setHasSound\] = useState\(false\)/.test(hook),
+    'usePetSound has no hasSound availability state defaulting to false',
+  );
+  assert(/setHasSound\(/.test(hook), 'usePetSound never derives hasSound from the audio probe');
+  assert(/return \{[^}]*hasSound[^}]*\}/.test(hook), 'usePetSound does not return the hasSound signal');
+
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  assert(screen.includes('hasSound'), 'PetRewardScreen does not read the hasSound availability signal');
+  assert(
+    /hasSound \?[\s\S]{0,220}className="sound-toggle"/.test(screen),
+    'the sound-toggle is not gated behind hasSound — a silent dead switch could render',
+  );
+});
+
+// 34 — the 5-minute crisis pause (잠깐 멈춤) must be reachable in one tap from EVERY
+// screen, not only Home. It must live in the persistent bottom nav and route to the
+// real UrgeScreen (never a dead entry). This is the single highest-urgency action in
+// a self-control app, so gating it behind a Home round-trip is a real-use harm.
+check('global crisis pause (잠깐 멈춤) is in the persistent nav and routes to the real urge screen', () => {
+  const nav = read('src/components/BottomNav.jsx');
+  assert(/id:\s*'urge'/.test(nav), 'BottomNav has no 잠깐 멈춤 (urge) tab');
+  assert(nav.includes('잠깐 멈춤'), 'BottomNav urge tab is missing the warm 잠깐 멈춤 label');
+  assert(/onChange\(t\.id\)/.test(nav), 'BottomNav tabs do not route via onChange(tab id) — could be a dead entry');
+
+  const app = read('src/App.jsx');
+  assert(/<BottomNav[\s\S]*?onChange=\{setScreenId\}/.test(app), 'App does not wire BottomNav onChange to the screen router');
+  assert(
+    /id:\s*'urge',\s*label:\s*'잠깐 멈춤',\s*Component:\s*UrgeScreen/.test(app),
+    "App does not route 'urge' to the real UrgeScreen",
   );
 });
 

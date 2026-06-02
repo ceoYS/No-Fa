@@ -40,6 +40,10 @@ export default function usePetSound() {
   // Per-key availability cache: undefined = unknown, true/false = probed.
   const availability = useRef({});
   const [missing, setMissing] = useState([]);
+  // Honest availability signal: false until the HEAD probe confirms at least one
+  // real audio file is actually present. The UI gates the visible 소리/무음 toggle
+  // on this so a sound control never appears while every play() is a silent no-op.
+  const [hasSound, setHasSound] = useState(false);
 
   // One-time, non-blocking probe so a developer sees which contract files are
   // still absent. HEAD avoids downloading audio; failures are treated as missing.
@@ -61,6 +65,8 @@ export default function usePetSound() {
       if (cancelled) return;
       const absent = results.filter(Boolean);
       setMissing(absent);
+      // At least one contract file resolved present → real audio exists.
+      setHasSound(absent.length < Object.keys(PET_SOUNDS).length);
       if (absent.length && import.meta.env?.DEV) {
         // eslint-disable-next-line no-console
         console.info('[usePetSound] silent fallback — missing audio:', absent.join(', '));
@@ -109,5 +115,5 @@ export default function usePetSound() {
     [muted],
   );
 
-  return { play, muted, toggleMuted, missing };
+  return { play, muted, toggleMuted, missing, hasSound };
 }

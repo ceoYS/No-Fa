@@ -1,6 +1,10 @@
+// Persistent primary navigation. 잠깐 멈춤 (the 5-minute crisis pause) sits in the
+// center slot so the app's panic action is one thumb-tap from every screen, not only
+// from Home. It routes to the real UrgeScreen (id 'urge') — never a dead entry.
 const TABS = [
   { id: 'home', label: '홈', icon: HomeIcon },
   { id: 'calendar', label: '기록', icon: CalendarIcon },
+  { id: 'urge', label: '잠깐 멈춤', icon: PauseIcon },
   { id: 'checkin', label: '체크인', icon: CheckIcon },
   { id: 'recovery', label: '복기', icon: SparkIcon },
 ];
@@ -41,6 +45,15 @@ function CalendarIcon({ className }) {
     <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
       <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
       <path d="M3.5 10h17M8 3v4M16 3v4" />
+    </svg>
+  );
+}
+
+function PauseIcon({ className }) {
+  return (
+    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
+      <rect x="7" y="5" width="3.4" height="14" rx="1.6" />
+      <rect x="13.6" y="5" width="3.4" height="14" rx="1.6" />
     </svg>
   );
 }

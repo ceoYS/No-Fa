@@ -863,7 +863,7 @@
 /* bottom nav -------------------------------------------------------- */
 .bottom-nav {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(5, 1fr);
   padding: var(--sp-3) var(--sp-3) var(--sp-5);
   background: linear-gradient(180deg, rgba(14, 10, 7, 0.6), rgba(14, 10, 7, 0.95));
   border-top: 1px solid var(--border-soft);
@@ -878,6 +878,7 @@
   padding: var(--sp-2) 0;
   color: var(--text-quiet);
   font-size: var(--fs-micro);
+  white-space: nowrap;
   border-radius: var(--r-md);
   transition: color var(--dur-fast) var(--ease-soft);
 }
