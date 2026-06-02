@@ -8,6 +8,7 @@ import PetRewardScreen from './screens/PetRewardScreen.jsx';
 import DisciplineScreen from './screens/DisciplineScreen.jsx';
 import ShieldScreen from './screens/ShieldScreen.jsx';
 import SafeBrowserScreen from './screens/SafeBrowserScreen.jsx';
+import ShieldExtensionScreen from './screens/ShieldExtensionScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import ScreenSwitcher from './components/ScreenSwitcher.jsx';
 import { EMPTY_BADGES, summarizeRules } from './constants/discipline.js';
@@ -31,6 +32,7 @@ const SCREENS = [
   { id: 'reward', label: '고양이 방', Component: PetRewardScreen },
   { id: 'shield', label: '차단 설정', Component: ShieldScreen },
   { id: 'shieldBrowser', label: '안전 브라우저', Component: SafeBrowserScreen },
+  { id: 'shieldExtension', label: '실제 차단 테스트', Component: ShieldExtensionScreen },
 ];
 
 const DAY_MS = 86400000;

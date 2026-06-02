@@ -63,6 +63,15 @@
  *      live on the inner .sheet while the dimmed .sheet-backdrop closes on outside click
  *      (onClick) — never role on the backdrop, which would announce the dim layer as the
  *      dialog and historically shipped with no outside-click dismissal.
+ *  37. The real-blocking path is discoverable AND honestly bounded: a dedicated
+ *      ShieldExtensionScreen (routed as 'shieldExtension', linked from the Shield
+ *      screen) states plainly that the in-app signal list is only a PLAN and that the
+ *      real "blocked → 잠깐 멈춤" test runs only in the separate Chrome extension, using
+ *      ONLY the harmless test token (nof-test-risk-signal). That screen ships no real
+ *      adult URL / explicit term, claims no mobile / SNS / image / video / whole-web
+ *      blocking, never says the app itself blocks browsing, and adds no network /
+ *      remote-code / external-API sink (the one address shown is the reserved
+ *      example.com test URL). The Shield screen stays planner-only / non-enforcing.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -915,6 +924,76 @@ check('selectable controls expose aria-pressed + sheets keep honest dialog seman
   };
   sheetsAccessible('src/screens/HomeScreen.jsx');
   sheetsAccessible('src/screens/DisciplineScreen.jsx');
+});
+
+// 37 — the real-blocking path must be DISCOVERABLE from the running app yet honestly
+// bounded. A dedicated ShieldExtensionScreen (routed 'shieldExtension', linked from the
+// Shield screen) must say the in-app list is only a plan, that the real test runs only
+// in the Chrome extension, name the harmless test token, steer users away from hunting
+// risky sites, and carry NO real adult URL / explicit term, NO mobile/SNS/image/video/
+// whole-web blocking claim, NO "the app blocks browsing" claim, and NO network/remote
+// sink (the only address shown is the reserved example.com test URL). Shield stays planner-only.
+check('shield real-blocking test path is discoverable AND honestly bounded (extension-only, no overclaim)', () => {
+  // Route + wiring: the new screen is imported and registered, and Shield links to it.
+  const app = read('src/App.jsx');
+  assert(app.includes('import ShieldExtensionScreen from'), 'App.jsx does not import ShieldExtensionScreen');
+  assert(app.includes("id: 'shieldExtension'"), "App.jsx does not route a 'shieldExtension' screen");
+  assert(app.includes('Component: ShieldExtensionScreen'), "App.jsx route 'shieldExtension' is not mapped to ShieldExtensionScreen");
+
+  const shield = read('src/screens/ShieldScreen.jsx');
+  assert(shield.includes("onNavigate('shieldExtension')"), 'Shield screen has no entry to the Chrome extension test screen');
+  // Shield itself must remain planner-only / non-enforcing (pinned here too).
+  assert(shield.includes('이 목록은 아직 차단에 쓰이지 않아요'), 'Shield screen is no longer planner-only (missing "list does not block yet" banner)');
+
+  let screen;
+  try {
+    screen = read('src/screens/ShieldExtensionScreen.jsx');
+  } catch {
+    throw new Error('src/screens/ShieldExtensionScreen.jsx is missing');
+  }
+
+  // Honest separation copy: in-app list is a plan; real test is extension-only; harmless.
+  for (const must of [
+    '앱 안 신호 목록은 아직 계획이에요.',
+    '실제 차단 테스트는 Chrome 확장에서만 동작해요.',
+    '해롭지 않은 테스트 신호만 사용해요.',
+    '위험한 사이트를 직접 찾지 마세요.',
+    'nof-test-risk-signal',
+    'chrome://extensions',
+    'extensions/chrome-shield',
+  ]) {
+    assert(screen.includes(must), `ShieldExtensionScreen is missing required honest copy: ${must}`);
+  }
+  // A back path must exist.
+  assert(screen.includes("onNavigate('home')"), 'ShieldExtensionScreen has no back path to Home');
+
+  // No present-tense fake-blocking claim (same canonical detector as #29/#30/#31).
+  for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+    assert(!screen.includes(fake), `ShieldExtensionScreen makes a fake working-blocking claim: ${fake}`);
+  }
+  // No claim of mobile / SNS / image / video blocking — the screen must not even name
+  // those surfaces (it is Chrome-desktop-test-only; the extension README owns scope).
+  for (const noun of ['iOS', 'Android', '모바일', 'SNS', '이미지', '영상', '동영상']) {
+    assert(!screen.includes(noun), `ShieldExtensionScreen names an out-of-scope blocking surface: ${noun}`);
+  }
+  // No whole-web / app-blocks-browsing overclaim.
+  for (const over of ['모든 사이트', '모든 웹', '웹 전체', '앱이 차단', '앱에서 차단', '앱이 막아']) {
+    assert(!screen.includes(over), `ShieldExtensionScreen overclaims blocking scope: ${over}`);
+  }
+  // No explicit / adult tokens (reuse the existing extension-audit blocklist).
+  for (const bad of ['porn', 'xxx', 'sex', 'adult', 'xvideos', 'nsfw']) {
+    assert(!screen.toLowerCase().includes(bad), `ShieldExtensionScreen contains an explicit/adult token: ${bad}`);
+  }
+  // No network / remote-code / external-API sink. NOTE: target real call sites — the
+  // bare 'http' substring is intentionally NOT banned because the harmless example URL
+  // contains it; instead, strip that one allowed literal and assert nothing else has http.
+  for (const sink of ['fetch(', 'XMLHttpRequest', 'window.open', '<iframe', 'import("http', "import('http", 'href="http', "href='http"]) {
+    assert(!screen.includes(sink), `ShieldExtensionScreen adds a network/remote sink: ${sink}`);
+  }
+  const allowedExample = 'https://example.com/?q=nof-test-risk-signal';
+  assert(screen.includes(allowedExample), 'ShieldExtensionScreen is missing the labelled harmless test example URL');
+  const withoutExample = screen.split(allowedExample).join('');
+  assert(!withoutExample.includes('http'), 'ShieldExtensionScreen contains an http(s) literal other than the harmless test example');
 });
 
 let failed = 0;

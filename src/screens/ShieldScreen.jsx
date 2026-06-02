@@ -261,6 +261,21 @@ export default function ShieldScreen({
       </section>
 
       <section className="card">
+        <span className="card-label">실제 차단 테스트 (Chrome 확장)</span>
+        <p className="hairline-note">
+          여기 정해둔 신호는 아직 계획이에요. 실제로 막히는지 확인하는 테스트는 따로
+          설치하는 Chrome 확장에서만 동작해요. 해롭지 않은 테스트 신호 하나로만 확인해요.
+        </p>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={() => onNavigate('shieldExtension')}
+        >
+          Chrome 확장으로 실제 차단 테스트하기
+        </button>
+      </section>
+
+      <section className="card">
         <span className="card-label">실드와 NoF가 이어지는 방식</span>
         <p className="hairline-note">
           실드는 따로 도는 기능이 아니라, 지금 쓰는 절제 도구와 연결돼요.
