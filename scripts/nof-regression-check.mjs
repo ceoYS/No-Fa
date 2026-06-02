@@ -961,6 +961,9 @@ check('shield real-blocking test path is discoverable AND honestly bounded (exte
     'nof-test-risk-signal',
     'chrome://extensions',
     'extensions/chrome-shield',
+    // Managed-browser honesty: org policy may block unpacked install; never tell users to bypass.
+    '회사/조직에서 관리하는 브라우저',
+    '정책을 우회하지',
   ]) {
     assert(screen.includes(must), `ShieldExtensionScreen is missing required honest copy: ${must}`);
   }

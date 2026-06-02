@@ -58,6 +58,22 @@ export default function ShieldExtensionScreen({ onNavigate }) {
       </section>
 
       <section className="card">
+        <span className="card-label">회사·조직 PC라면 (정책 제한)</span>
+        <p className="hairline-note">
+          회사/조직에서 관리하는 브라우저에서는 확장 설치가 정책으로 막힐 수 있어요.
+        </p>
+        <p className="hairline-note">
+          이 경우 이 PC에서는 실제 차단 테스트를 완료할 수 없어요.
+        </p>
+        <p className="hairline-note text-quiet">
+          정책을 우회하지 말고, 허용된 개인 PC 또는 비관리 브라우저에서만 테스트하세요.
+        </p>
+        <p className="hairline-note text-quiet">
+          설치가 막혔다고 NoF가 잘못된 건 아니에요. 브라우저 정책이 막은 것뿐이에요.
+        </p>
+      </section>
+
+      <section className="card">
         <span className="card-label">테스트해 보기</span>
         <p className="hairline-note">
           확장을 켠 뒤, 막히는 흐름은 아래 <strong>해롭지 않은 테스트 신호</strong>로만
