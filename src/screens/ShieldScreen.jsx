@@ -26,7 +26,7 @@ import {
 
 const PLANNED_LAYERS = [
   {
-    name: '브라우저 확장 (Chrome 등)',
+    name: '브라우저 확장 (Chrome)',
     desc: '실제 브라우저 차단은 Chrome 확장 프로그램을 따로 설치해야 동작해요. 지금은 데스크톱용 프로토타입 단계예요.',
     phase: '1단계',
   },

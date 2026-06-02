@@ -53,6 +53,11 @@
  *      (usePetSound.hasSound) — no dead sound switch over a silent fallback.
  *  34. The 5-minute crisis pause (잠깐 멈춤) is in the persistent bottom nav and
  *      routes to the real UrgeScreen — reachable in one tap from every screen.
+ *  35. The chrome-shield extension keeps LEAST PRIVILEGE: the manifest requests only
+ *      the minimal permission set (declarativeNetRequest), declares no dangerous keys
+ *      (content_scripts / webRequest / tabs / cookies / scripting / externally_connectable),
+ *      and still carries no remote code / CDN / analytics, no adult terms, and no
+ *      blocked-target leak — pinning the security audit so future scope-creep fails loud.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -801,6 +806,58 @@ check('global crisis pause (잠깐 멈춤) is in the persistent nav and routes t
     /id:\s*'urge',\s*label:\s*'잠깐 멈춤',\s*Component:\s*UrgeScreen/.test(app),
     "App does not route 'urge' to the real UrgeScreen",
   );
+});
+
+// 35 — the chrome-shield extension must keep LEAST PRIVILEGE. The manifest may request
+// ONLY the minimal permission it actually uses (declarativeNetRequest), must declare
+// none of the dangerous extension keys/permissions (content_scripts / webRequest /
+// tabs / cookies / scripting / externally_connectable) on any surface, and the code
+// must still carry no remote code / CDN / analytics, no explicit/adult terms, and no
+// blocked-target leak. This pins the security-audit hardening so a future change that
+// adds a risky permission or key fails the build instead of silently shipping.
+check('chrome-shield manifest keeps least privilege (minimal perms, no dangerous keys)', () => {
+  const dir = 'extensions/chrome-shield';
+  const mf = JSON.parse(read(`${dir}/manifest.json`));
+
+  // Permission allow-list: the PoC may request ONLY what it actually uses.
+  const ALLOWED_PERMS = ['declarativeNetRequest'];
+  assert(Array.isArray(mf.permissions), 'manifest permissions is not an array');
+  const extraPerms = mf.permissions.filter((p) => !ALLOWED_PERMS.includes(p));
+  assert(extraPerms.length === 0, `manifest requests non-minimal permission(s): ${extraPerms.join(', ')}`);
+  assert(mf.permissions.includes('declarativeNetRequest'), 'manifest lost the required declarativeNetRequest permission');
+
+  // Dangerous keys/permissions must be absent on EVERY manifest surface (top-level
+  // key, permissions, and optional_permissions / optional_host_permissions).
+  const DANGEROUS = ['content_scripts', 'webRequest', 'tabs', 'cookies', 'scripting', 'externally_connectable'];
+  const optional = [...(mf.optional_permissions || []), ...(mf.optional_host_permissions || [])];
+  for (const k of DANGEROUS) {
+    assert(!(k in mf), `manifest declares a dangerous top-level key: ${k}`);
+    assert(!mf.permissions.includes(k), `manifest requests a dangerous permission: ${k}`);
+    assert(!optional.includes(k), `manifest requests a dangerous optional permission: ${k}`);
+  }
+
+  // No remote code / CDN / analytics / external API / fetch / XHR in the extension code
+  // (manifest host_permissions legitimately list http/https, so the manifest is exempt).
+  const codeFiles = [
+    'rules.json', 'signals.js', 'service_worker.js', 'blocked.html', 'blocked.js',
+    'popup.html', 'popup.js', 'options.html', 'options.js',
+  ];
+  const remoteTokens = ['http://', 'https://', 'cdn.', 'googleapis', 'unpkg', 'jsdelivr', 'fetch(', 'XMLHttpRequest', 'import("http', 'analytics'];
+  for (const f of codeFiles) {
+    const s = read(`${dir}/${f}`);
+    for (const t of remoteTokens) {
+      assert(!s.includes(t), `${dir}/${f} pulls in remote code / network (${t}) — the PoC must stay local`);
+    }
+    for (const bad of ['porn', 'xxx', 'sex', 'adult', 'xvideos', 'nsfw']) {
+      assert(!s.toLowerCase().includes(bad), `${dir}/${f} contains an explicit/adult token: ${bad}`);
+    }
+  }
+
+  // The in-app pause page must still not leak the blocked target URL.
+  const blockedJs = read(`${dir}/blocked.js`);
+  for (const leak of ['referrer', 'URLSearchParams', 'document.URL']) {
+    assert(!blockedJs.includes(leak), `blocked.js may reveal the visited target (${leak}) — the pause page must not show it`);
+  }
 });
 
 let failed = 0;
