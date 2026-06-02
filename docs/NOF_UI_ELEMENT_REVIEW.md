@@ -5,7 +5,9 @@ Review is contextual, screen-by-screen, element-by-element, grounded in the actu
 source on branch `wip/pet-room-scene-mode` (not in policy docs, which can be stale).
 
 - **Scope of this round:** review only. No product UI was changed.
-- **Baseline:** `npm run build` PASS, `npm run check:nof` 32/32 PASS.
+- **Baseline (at review time):** `npm run build` PASS, `npm run check:nof` 32/32 PASS.
+  **Current:** 35/35 — guards #33–#35 landed after this review (see "Resolved after
+  review" below). Screen findings are kept verbatim as history.
 - **Prime directive checked against every surface:** *Do not fake functionality. Do
   not claim blocking, motion, sound, dragging, placement, safety,
   iOS/Android/SNS blocking, image/video mosaic, or pet eating unless it actually works.*
@@ -19,12 +21,12 @@ source on branch `wip/pet-room-scene-mode` (not in policy docs, which can be sta
 ## Headline conclusions
 
 1. **No P0 found.** Every honesty invariant in the 9 protected rules holds in the
-   current source, and all 32 static guards pass. Scene-mode drag stays disabled,
+   current source, and all static guards pass (32 at review time, **35 now**). Scene-mode drag stays disabled,
    the feed never claims eating, Shield never claims blocking, relapse is scoped to
    one counter, no delete path exists, no real adult URLs/terms are present, and the
    planner never asks the user to hunt for risky sites. This is the product's
    strongest asset — protect it.
-2. **Two P1 issues stand out:**
+2. **Two P1 issues stood out (both RESOLVED in `44da424` — see "Resolved after review"):**
    - The **5-minute crisis pause (잠깐 멈춤)** — the single highest-urgency action in
      a self-control app — is **not in the persistent bottom nav**. It is only
      reachable by first returning Home. In a real urge, on the Calendar/Recovery/Pet
@@ -37,6 +39,40 @@ source on branch `wip/pet-room-scene-mode` (not in policy docs, which can be sta
 3. **The rest is P2 polish** — mostly accessibility parity (a few selectable controls
    expose state via `data-selected` but not `aria-pressed`), sheet/dialog consistency,
    and a couple of silent-clamp inputs that change a value without telling the user.
+
+---
+
+## Resolved after review
+
+Fixed after this review was written. The screen-by-screen findings below are kept
+verbatim as historical context; **this section is the authoritative current status.**
+
+- **[P1 → RESOLVED, `44da424`] Pet-room sound toggle dead switch (§1.0, §10).** The
+  소리/무음 control is now hidden until real audio is probed present
+  (`usePetSound().hasSound`, default `false`, derived from a HEAD probe of the
+  contract files). No pet audio is committed, so the toggle does not render and every
+  `play()` stays a silent no-op — the app no longer implies sound that does not exist.
+  Pinned by **guard #33**.
+- **[P1 → RESOLVED, `44da424`] Crisis pause not globally reachable (§1, §13).** The
+  5-minute 잠깐 멈춤 now lives in the persistent bottom nav (`BottomNav.jsx`) and routes
+  to the real `UrgeScreen` — one tap from every screen. Pinned by **guard #34**.
+- **[P2 → RESOLVED, `ed39f09`] Shield "(Chrome 등)" over-hint (§11, §12).**
+  `PLANNED_LAYERS` now reads "브라우저 확장 (Chrome)". Scope is unchanged: Chrome desktop
+  PoC only — no Edge / Safari / iOS / Android / SNS / image-mosaic claim.
+- **[P2 → RESOLVED, `ed39f09`] Chrome extension permission surface (§12).** The unused
+  `storage` permission was removed from `manifest.json`; the manifest now requests only
+  `declarativeNetRequest`. Pinned by **guard #35** (permission allow-list + no dangerous
+  keys [content_scripts / webRequest / tabs / cookies / scripting / externally_connectable]
+  + no remote code / CDN / analytics + no adult terms + no blocked-target leak).
+
+**Guard count:** review-time **32/32** → **35/35** (#33 sound-toggle gating, #34 global
+crisis pause, #35 Shield manifest least-privilege).
+
+**Discipline model:** live model is **3-state** — `kept` / `held` / `missed` plus
+`unrecorded` (default, no label); recovery is a *badge*, not a state. `REVIEW_CHECKLIST.md`
+§B was reconciled to match in `eeb7e36`. Do not reintroduce 5-state wording. This is
+distinct from the records-domain calendar dot tones (`kept`/`recovered`/`needs_check`/
+`untracked` in `recentDays.js`) — a separate spectrum that remains correct.
 
 ---
 
@@ -55,7 +91,7 @@ sheet, AddCounterSheet, EditCounterSheet.
 
 **Findings.**
 
-- **[P1] Crisis pause not persistent.** The 못 참을 것 같아요 → `urge` CTA exists only
+- **[P1 → RESOLVED `44da424`; see "Resolved after review"] Crisis pause not persistent.** The 못 참을 것 같아요 → `urge` CTA exists only
   in the Home hero (HomeScreen.jsx:145–151). Aspects: 1, 5, 10, 20. Impact: from any
   other screen, the user must navigate Home before they can reach the 5-minute pause —
   exactly the moment friction hurts most. Fix: covered in the cross-cutting section;
@@ -334,7 +370,7 @@ disclaimer, InventorySheet, ShopSheet, CatalogCard.
 
 **Findings.**
 
-- **[P1, borderline P0] Sound toggle is a dead switch.** The 소리/무음 button
+- **[P1, borderline P0 → RESOLVED `44da424`; see "Resolved after review"] Sound toggle is a dead switch.** The 소리/무음 button
   (PetRewardScreen.jsx:198–207) is fully operable and flips `muted`, but no audio ever
   plays — the .mp3s aren't committed and `usePetSound().play()` is a silent no-op (guard
   26 confirms the silent fallback). Aspects: 9, 14, 17(by analogy). Impact: an on/off
@@ -391,8 +427,8 @@ privacy note. Safe Browser: safety note, input + 열어 보기, matched intersti
   but the wall of caveats is dense. Fix: consolidate into one banner + one safety line
   without dropping any claim. Scope: small (copy/layout). **Do not** reduce honesty to
   gain polish.
-- **[P2] Roadmap "(Chrome 등)" mildly over-promises.** PLANNED_LAYERS names "브라우저 확장
-  (Chrome 등)" (ShieldScreen.jsx:29). Aspects: 7, 17. Impact: "등/etc." hints at browsers
+- **[P2 → RESOLVED `ed39f09`] Roadmap "(Chrome 등)" mildly over-promises.** PLANNED_LAYERS now names "브라우저 확장
+  (Chrome)" (ShieldScreen.jsx:29) — the "등" was dropped. Aspects: 7, 17. Impact: "등/etc." hints at browsers
   beyond Chrome, but only a Chrome PoC exists. Fix: say "Chrome" (or "Chrome 데스크톱")
   until others are real. Scope: tiny.
 
@@ -423,8 +459,8 @@ blocked.html, main_frame), `signals.js` (TEST_SIGNAL, buildDynamicRules),
 
 **Findings.**
 
-- **[P2] Edge is implied by "브라우저 확장 (Chrome 등)" but untested.** The in-app roadmap
-  hints at non-Chrome browsers; the extension and README are correctly Chrome-only. Aspects:
+- **[P2 → RESOLVED `ed39f09`] Edge was implied by "브라우저 확장 (Chrome 등)" but untested.** Copy is now "(Chrome)"; the in-app roadmap
+  no longer hints at non-Chrome browsers; the extension and README stay Chrome-only. Aspects:
   17, 20. Impact: minor expectation gap. Fix: align the in-app wording (see §11) and don't
   claim Edge until verified. Scope: tiny.
 - **[P2] Blocked page is dark-themed while the app is warm ember.** blocked.html uses
@@ -442,14 +478,16 @@ referrer/URLSearchParams/document.URL). README must keep the Chrome-desktop-only
 the "NOT mobile/SNS/mosaic" disclaimer. All pinned by guard 32.
 
 **Regression ideas.** Guard 32 is comprehensive (MV3 shape, redirect rule, no-remote-code,
-no-adult-terms, target-hiding, README scope). No gap.
+no-adult-terms, target-hiding, README scope); **guard #35** (added `ed39f09`) now also
+pins manifest least-privilege (permission allow-list + no dangerous keys). No gap.
 
 ---
 
 ## 13. Cross-cutting: navigation & global reachability
 
-**Finding — [P1] The crisis pause is not in the persistent nav.** `BottomNav`
-(BottomNav.jsx:1–6) has four tabs: 홈 / 기록 / 체크인 / 복기. The four most safety-relevant
+**Finding — [P1 → RESOLVED `44da424`; see "Resolved after review"] The crisis pause is not in the persistent nav.** At review time `BottomNav`
+had four tabs: 홈 / 기록 / 체크인 / 복기. It now carries 잠깐 멈춤 (urge) in the center slot,
+routed to the real `UrgeScreen` (guard #34). Original finding follows. The four most safety-relevant
 or frequent secondary surfaces — 잠깐 멈춤 (urge), 나의 규율 (discipline), 고양이 방
 (reward), 차단 설정 (shield) — are reachable only via in-screen buttons (mostly Home) or
 the dev-only `ScreenSwitcher`. For a self-control app, the **5-minute pause is the panic
@@ -477,12 +515,12 @@ production load. No action — noted as a positive to preserve.
 
 Severity first, then dependency and blast radius. Honesty fixes lead.
 
-1. **[P1] Hide the pet-room sound toggle until real audio exists.** Gate the 소리/무음
-   control on `hasPetSound()` (or remove it). Highest honesty priority — it is the one
-   element flirting with a P0 directive breach. Add a regression guard that the toggle is
-   condition-gated. (PetRewardScreen.jsx:198–207.)
-2. **[P1] Make the 5-minute crisis pause globally reachable.** Add 잠깐 멈춤 to the
-   persistent nav (or a floating affordance) wired to the real `urge` route, plus a guard.
+1. **[P1 — DONE `44da424`] Hide the pet-room sound toggle until real audio exists.** Gate the 소리/무음
+   control on `hasSound` (default false). Done: the toggle is hidden until a real audio
+   file is probed present; regression pinned by **guard #33**. (PetRewardScreen.jsx,
+   usePetSound.js.)
+2. **[P1 — DONE `44da424`] Make the 5-minute crisis pause globally reachable.** Done: 잠깐 멈춤 is in the
+   persistent bottom nav, wired to the real `urge` route; regression pinned by **guard #34**.
    (BottomNav.jsx, App.jsx.)
 3. **[P2] Accessibility parity pass (batch).** Add `aria-pressed` to `checkin-tap`
    (CheckinScreen.jsx:160–170) and `status-option` (DisciplineScreen.jsx:296–309); add one
@@ -492,8 +530,8 @@ Severity first, then dependency and blast radius. Honesty fixes lead.
 5. **[P2] Honest input feedback.** Surface the silent clamps in the counter sheets (future
    start → now; empty target → 30). (HomeScreen.jsx + App.jsx.)
 6. **[P2] Copy tightening (batch, honesty-preserving).** Consolidate Shield disclaimers
-   without dropping any claim (ShieldScreen.jsx:118–122); fix "(Chrome 등)" → "Chrome"
-   (ShieldScreen.jsx:29); soften scene-mode tap copy that implies a gaze/reaction
+   without dropping any claim (ShieldScreen.jsx:118–122); the "(Chrome 등)" → "Chrome"
+   fix is DONE (`ed39f09`); soften scene-mode tap copy that implies a gaze/reaction
    (PetRewardScreen.jsx:41–46); align the relapse "required" comment with the non-coercive
    escape hatch (RecoveryScreen.jsx / App.jsx).
 7. **[P2] Warmth band.** Either make it a real multi-level index or soften the "방 온기"
@@ -502,19 +540,19 @@ Severity first, then dependency and blast radius. Honesty fixes lead.
    across Check-in and Recovery (§8/§9); extract shared CounterFields (§6); production
    removal of the faux status bar (§13). None this round.
 
-## Update for a stale policy doc (not a UI change)
+## Update for a stale policy doc (not a UI change) — RESOLVED `eeb7e36`
 
-`docs/REVIEW_CHECKLIST.md` §B still describes discipline as a **5-state** model, but the
-code, memory, and `docs/UX_RULES.md` confirm the live model is **3-state**
-(`kept`/`held`/`missed` + `unrecorded` default — see `src/constants/discipline.js`). The
-checklist is stale and should be corrected so future reviews don't grade against the wrong
-model. Flagged here per the skill's "trust source over docs" rule; no code touched.
+At review time `docs/REVIEW_CHECKLIST.md` §B still described discipline as a **5-state**
+model, while the code confirms the live model is **3-state** (`kept`/`held`/`missed` +
+`unrecorded` default — see `src/constants/discipline.js`). §A/§B were reconciled to the
+3-state model in `eeb7e36`; this flag is retained as history. Calendar dot tones (records
+domain) are a separate 4-tone spectrum and were intentionally left unchanged.
 
 ## Verification gate (always run before any "done" claim)
 
 ```
 npm run build          # must PASS
-npm run check:nof      # must be 32/32 PASS (and any new guards added)
+npm run check:nof      # must be 35/35 PASS (and any new guards added)
 git status --short --branch
 git diff --stat
 ```
