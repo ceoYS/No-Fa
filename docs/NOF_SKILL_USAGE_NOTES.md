@@ -7,11 +7,22 @@ git/credentials/network/system, no secrets).
 
 ## Discovery result
 
-No repo-local custom QA/design skill exists under `.claude/skills` (only an
-unrelated `harness` meta-skill and `settings.local.json`). No `impeccable`,
-`find-skills`, `skills-search`, or visual-regression skill is installed in this
-repo. No external skill was installed — network/global install was intentionally
-avoided.
+A repo-local custom skill now exists and is **git-tracked**:
+`.claude/skills/nof-ui-element-review/SKILL.md` — the honesty/UX element-review skill
+that produced `docs/NOF_UI_ELEMENT_REVIEW.md`. (Earlier rounds predated it; this is the
+correction to the old "no repo-local skill exists" note.) No `impeccable`, `find-skills`,
+`skills-search`, or visual-regression skill is installed in this repo, and no
+external/global skill was installed — network/global install was intentionally avoided.
+
+Repo-bound NoF tooling is exactly: the `nof-ui-element-review` skill, the
+`npm run check:nof` honesty harness (**35 static guards** as of `ed39f09`), and the
+allow-listed MCP servers (Mobbin, Playwright). A machine-installed plugin is not the
+same as repo-applied tooling.
+
+The Claude Code tool/skill applicability matrix is now committed at
+`references/tooling/claude_code_github_tools_project_matrix_kr_v3.xlsx` (`ea4c5a1`).
+Company-PC holds stand: `agentmemory`, `Odysseus`, `claude-video`, and `Remotion`
+remain held / banned and are not applied to this repo.
 
 ## Skills / tools considered
 

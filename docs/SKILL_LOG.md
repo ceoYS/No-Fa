@@ -6,6 +6,35 @@ later session can recover the reasoning without re-deriving it.
 
 ---
 
+## 2026-06-02 — Shield security, tooling-matrix, and UI-honesty reconcile
+
+Four commits landed since the P0.1 review; each was verified with `npm run build`
+(PASS) and `npm run check:nof` before commit. Newest first.
+
+- **`ed39f09` fix: harden NoF Shield extension scope.** Removed the unused `storage`
+  permission from the Chrome extension manifest and added guard **#35** (manifest
+  least-privilege: permission allow-list = `declarativeNetRequest` only, no dangerous
+  keys, no remote code / CDN / analytics, no adult terms, no blocked-target leak). Also
+  fixed Shield copy `(Chrome 등)` → `(Chrome)`. A read-first security pass had found
+  no P0/P1; the two P2 items (unused perm, copy over-hint) were fixed here. Evidence:
+  build PASS, `check:nof` **35/35**.
+- **`ea4c5a1` chore: add Claude Code tools matrix reference.** Committed only
+  `references/tooling/claude_code_github_tools_project_matrix_kr_v3.xlsx` (11 sheets,
+  59 tools / 14 projects). Read-only reference; no code touched. Company-PC holds in the
+  matrix stand: agentmemory · Odysseus · claude-video · Remotion (held / banned).
+- **`44da424` fix: make pet sound and crisis pause UI honest.** Resolved the two P1s
+  from the UI element review: hid the pet-room 소리/무음 toggle until real audio is
+  probed present (`usePetSound.hasSound`, guard #33), and moved the 5-minute 잠깐 멈춤
+  crisis pause into the persistent bottom nav, routed to the real UrgeScreen (guard #34).
+- **`06a2792` docs: add NoF UI element review skill and audit.** Added the git-tracked
+  `.claude/skills/nof-ui-element-review/SKILL.md` plus `docs/NOF_UI_ELEMENT_REVIEW.md`
+  (screen-by-screen honesty review — no P0, two P1 since fixed).
+
+**Guard count:** `check:nof` moved 32 → 34 (sound toggle + crisis pause) → **35**
+(Shield manifest least-privilege).
+
+---
+
 ## 2026-05-29 — Domain-boundary review of the P0.1 catch-up diff
 
 **Trigger:** before committing the P0.1 code catch-up, audit whether the diff

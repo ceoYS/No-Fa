@@ -15,7 +15,7 @@ but never a silent pass.
       Payment is its own domain, wired only through `app/`.
 - [ ] **No pet logic inside `CalendarScreen`** (or any records file). Pet warmth/tone
       belongs to the pet domain.
-- [ ] **No duplicated discipline status logic.** The 5-state enum, labels, pills,
+- [ ] **No duplicated discipline status logic.** The 3-state enum, labels, pills,
       and `summarizeRules` have exactly one source (`discipline.js`). Screens
       consume it; they never re-declare it.
 - [ ] **Records/calendar logic is not mixed with reward or protection logic.**
@@ -29,15 +29,20 @@ but never a silent pass.
       logic (status change, recovery, claim) has a domain home, even if a screen
       currently calls it.
 
-## B. Discipline 5-state integrity
+## B. Discipline 3-state integrity (v2, PRD §0.6.2)
 
-- [ ] Internal enum is `kept / needs_check / shaken / recovered / not_applicable`.
+- [ ] Internal enum is `kept / held / missed`, plus `unrecorded` (the default, with
+      **no label**). The removed v1 states (`needs_check`, `shaken`, `recovered`,
+      `not_applicable`) must not reappear.
 - [ ] The enum string is **never rendered**; UI shows only the Korean label via
-      `STATUS_LABEL`.
-- [ ] New rules default to `needs_check`.
-- [ ] `흔들렸어요` (shaken) routes to the recovery flow.
-- [ ] Completing a recovery action transitions the target rule to `recovered`.
-- [ ] `not_applicable` is excluded from the summary denominator.
+      `STATUS_LABEL` (지켰어요 / 위기였지만 버텼어요 / 못 지켰어요).
+- [ ] New or untouched rules stay `unrecorded` — shown as the unselected 3-tap row,
+      never rendered as a pill/chip.
+- [ ] Recovery is a **badge, not a state**: `reflected` / `routineDone` /
+      `nextActionWritten` are awarded by behaviour and are never directly selectable.
+- [ ] `못 지켰어요` (missed) invites a gentle 복기 and **never resets the timer**.
+- [ ] `summarizeRules` 지키는 중 (`keeping`) counts `kept + held`; a slip is a `missed`
+      tally, never a failure/violation marker.
 
 ## C. Records / calendar integrity
 
@@ -72,6 +77,9 @@ aria-labels, button text). Code comments and internal enums are exempt.
 
 - [ ] `npm run build` passes.
 - [ ] No `dist/`, `node_modules/`, or binaries staged.
+- [ ] No browser-generated extension artifacts staged — `extensions/chrome-shield/_metadata/`
+      is created when Chrome loads the unpacked extension and must never be committed
+      (not yet covered by `.gitignore`; keep it out of every `git add`).
 - [ ] `design_outputs/claude_design_v3/*.html` untouched.
 - [ ] `docs/PRD` + Spec Kit untouched (locked).
 - [ ] `docs/ACQUISITION_POSITIONING_BENCHMARK.md` kept separate from feature diffs.
