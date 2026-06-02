@@ -163,6 +163,7 @@ export default function CheckinScreen({ onNavigate, rules = [], onSetRuleStatus,
                           type="button"
                           className="checkin-tap"
                           data-selected={rule.status === opt.status}
+                          aria-pressed={rule.status === opt.status}
                           onClick={() => onSetRuleStatus?.(rule.id, opt.status)}
                         >
                           {opt.label}

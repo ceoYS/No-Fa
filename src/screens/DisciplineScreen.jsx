@@ -282,13 +282,14 @@ export default function DisciplineScreen({
 function StatusSheet({ rule, onCancel, onPick }) {
   if (!rule) return null;
   return (
-    <div
-      className="sheet-backdrop"
-      role="dialog"
-      aria-modal="true"
-      aria-label="규율 상태 변경"
-    >
-      <div className="sheet">
+    <div className="sheet-backdrop" onClick={onCancel}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="규율 상태 변경"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">오늘 이 규율은 어땠어요?</h2>
         <p className="sheet-help">“{rule.label}”</p>
@@ -299,6 +300,7 @@ function StatusSheet({ rule, onCancel, onPick }) {
               type="button"
               className="status-option"
               data-selected={rule.status === status}
+              aria-pressed={rule.status === status}
               onClick={() => onPick(status)}
             >
               <span className={`pill ${STATUS_PILL[status]} status-option-pill`}>
@@ -367,8 +369,14 @@ function AddRuleSheet({ categories, counters, selectedCounterId, onAddCategory, 
   };
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="새 규율 추가">
-      <div className="sheet">
+    <div className="sheet-backdrop" onClick={onCancel}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="새 규율 추가"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">새 규율 추가</h2>
         <p className="sheet-help">내가 지키고 싶은 기준을 짧게 적어주세요.</p>

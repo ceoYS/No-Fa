@@ -461,8 +461,14 @@ function AddCounterSheet({ onCancel, onSubmit }) {
   };
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="카운터 추가">
-      <div className="sheet">
+    <div className="sheet-backdrop" onClick={onCancel}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="카운터 추가"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">새 카운터 추가</h2>
         <p className="sheet-help">새로 이어갈 절제를 하나 추가해요.</p>
@@ -548,8 +554,14 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
   };
 
   return (
-    <div className="sheet-backdrop" role="dialog" aria-modal="true" aria-label="카운터 편집">
-      <div className="sheet">
+    <div className="sheet-backdrop" onClick={onCancel}>
+      <div
+        className="sheet"
+        role="dialog"
+        aria-modal="true"
+        aria-label="카운터 편집"
+        onClick={(e) => e.stopPropagation()}
+      >
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">카운터 편집</h2>
         <p className="sheet-help">시작 시각을 바로잡거나 이름·목표를 바꿀 수 있어요.</p>

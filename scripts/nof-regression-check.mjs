@@ -58,6 +58,11 @@
  *      (content_scripts / webRequest / tabs / cookies / scripting / externally_connectable),
  *      and still carries no remote code / CDN / analytics, no adult terms, and no
  *      blocked-target leak — pinning the security audit so future scope-creep fails loud.
+ *  36. Selectable status controls expose aria-pressed (not only the data-selected visual
+ *      hook), and every sheet keeps honest dialog semantics: role="dialog" + aria-modal
+ *      live on the inner .sheet while the dimmed .sheet-backdrop closes on outside click
+ *      (onClick) — never role on the backdrop, which would announce the dim layer as the
+ *      dialog and historically shipped with no outside-click dismissal.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { join, dirname, extname } from 'node:path';
@@ -858,6 +863,58 @@ check('chrome-shield manifest keeps least privilege (minimal perms, no dangerous
   for (const leak of ['referrer', 'URLSearchParams', 'document.URL']) {
     assert(!blockedJs.includes(leak), `blocked.js may reveal the visited target (${leak}) — the pause page must not show it`);
   }
+});
+
+// 36 — selectable status controls must expose aria-pressed (assistive-tech state),
+// not only the data-selected visual hook, AND every sheet must keep honest dialog
+// semantics: role="dialog" + aria-modal belong on the INNER .sheet while the dimmed
+// .sheet-backdrop closes on outside click (onClick). Putting role on the backdrop would
+// announce the dim layer as the dialog and (historically) shipped with no outside-click
+// close. Window scans (not line matches) keep this robust to whitespace/attribute order.
+check('selectable controls expose aria-pressed + sheets keep honest dialog semantics', () => {
+  const exposesPressed = (file, cls) => {
+    const src = read(file);
+    const at = src.indexOf(`className="${cls}"`);
+    assert(at !== -1, `${cls} not found in ${file}`);
+    const tag = src.slice(at, at + 200);
+    assert(
+      tag.includes('data-selected') && tag.includes('aria-pressed'),
+      `${cls} must expose aria-pressed alongside data-selected (${file})`,
+    );
+  };
+  exposesPressed('src/screens/CheckinScreen.jsx', 'checkin-tap');
+  exposesPressed('src/screens/DisciplineScreen.jsx', 'status-option');
+
+  // For each .sheet-backdrop, the span up to its inner .sheet (the backdrop's own
+  // opening tag) must carry onClick and NOT role="dialog"; the inner .sheet must.
+  const sheetsAccessible = (file) => {
+    const src = read(file);
+    let i = src.indexOf('className="sheet-backdrop"');
+    let n = 0;
+    while (i !== -1) {
+      const innerAt = src.indexOf('className="sheet"', i);
+      assert(innerAt !== -1, `${file}: a .sheet-backdrop has no inner .sheet`);
+      const backdropTag = src.slice(i, innerAt);
+      assert(
+        !backdropTag.includes('role="dialog"'),
+        `${file}: role="dialog" must live on the inner .sheet, not the .sheet-backdrop`,
+      );
+      assert(
+        backdropTag.includes('onClick'),
+        `${file}: .sheet-backdrop must close on outside click (onClick missing)`,
+      );
+      const innerTag = src.slice(innerAt, innerAt + 200);
+      assert(
+        innerTag.includes('role="dialog"') && innerTag.includes('aria-modal'),
+        `${file}: inner .sheet must carry role="dialog" + aria-modal`,
+      );
+      n += 1;
+      i = src.indexOf('className="sheet-backdrop"', i + 1);
+    }
+    assert(n >= 1, `${file}: expected at least one sheet-backdrop`);
+  };
+  sheetsAccessible('src/screens/HomeScreen.jsx');
+  sheetsAccessible('src/screens/DisciplineScreen.jsx');
 });
 
 let failed = 0;
