@@ -999,6 +999,70 @@ check('shield real-blocking test path is discoverable AND honestly bounded (exte
   assert(!withoutExample.includes('http'), 'ShieldExtensionScreen contains an http(s) literal other than the harmless test example');
 });
 
+// 38 — local persistence is honest: state is saved to localStorage ONLY via the
+// versioned storage util, with NO network/analytics sink anywhere on the path, and
+// the saved bundle carries NO browsing/visited/extension-blocked-target data. The
+// Shield planner stays non-enforcing even though its signal list now persists.
+check('local persistence is localStorage-only, no network, no browsing-target leak', () => {
+  // (a) The storage util exists, uses the versioned key, exports load/save.
+  let storage;
+  try {
+    storage = read('src/utils/storage.js');
+  } catch {
+    throw new Error('src/utils/storage.js is missing');
+  }
+  assert(storage.includes("'nof.mvp.state.v1'"), 'storage.js does not use the versioned key nof.mvp.state.v1');
+  assert(/export function loadState\(/.test(storage), 'storage.js does not export loadState()');
+  assert(/export function saveState\(/.test(storage), 'storage.js does not export saveState(');
+  assert(storage.includes('localStorage'), 'storage.js does not use localStorage');
+
+  const app = read('src/App.jsx');
+  // (b) App actually wires the util in — load once, save on change.
+  assert(app.includes("from './utils/storage.js'"), 'App.jsx does not import the storage util');
+  assert(/useState\(\(\) => loadState\(\)\)/.test(app), 'App.jsx does not load persisted state via loadState() on init');
+  assert(/saveState\(\{/.test(app), 'App.jsx does not save state via saveState(');
+
+  // (c) No network / remote / analytics sink on the persistence path (storage.js + App).
+  // localStorage is the ONLY allowed sink. Comment lines are exempt (storage.js documents
+  // the banned APIs by name in its honesty note); only real code lines count.
+  const sinks = ['fetch(', 'XMLHttpRequest', 'WebSocket', 'navigator.sendBeacon', 'EventSource', 'import("http', "import('http"];
+  const analytics = ['analytics', 'telemetry', 'gtag', 'mixpanel', 'amplitude', 'sentry', 'datadog'];
+  for (const f of ['src/utils/storage.js', 'src/App.jsx']) {
+    read(f).split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      for (const sink of sinks) {
+        assert(!line.includes(sink), `${f}:${i + 1} introduces a network/remote sink on the persistence path: ${sink}`);
+      }
+      for (const a of analytics) {
+        assert(!line.toLowerCase().includes(a), `${f}:${i + 1} introduces an analytics/telemetry sink: ${a}`);
+      }
+    });
+  }
+  // storage.js carries no http(s) literal at all (it is a pure localStorage box).
+  assert(!storage.includes('http'), 'storage.js contains an http(s) literal — it must be localStorage-only');
+
+  // (d) The saved bundle must NOT persist browsing history / visited or blocked targets
+  // / Chrome-extension activity. (Counter `history` is run lengths, not URLs — allowed.)
+  const m = app.match(/saveState\(\{[\s\S]*?\}\)/);
+  assert(m, 'could not locate the saveState({...}) bundle in App.jsx');
+  const bundle = m[0];
+  for (const banned of ['blockedTarget', 'blockedUrl', 'visitedUrl', 'visitedTarget', 'visited', 'browsingHistory', 'extensionActivity', 'http']) {
+    assert(!bundle.includes(banned), `saveState bundle persists a forbidden browsing/extension field: ${banned}`);
+  }
+  // It SHOULD persist the core domain slices (spot-check the load-bearing ones).
+  for (const key of ['counters', 'rules', 'todayRecord', 'blocklist', 'emberShards', 'claimedRewardIds']) {
+    assert(new RegExp(`\\b${key}\\b`).test(bundle), `saveState bundle is missing the persisted slice: ${key}`);
+  }
+
+  // (e) Persisting the Shield signal list did not turn it into an enforcer: the planner
+  // banner stays and no present-tense fake-block claim appears (same detector as #29/#37).
+  const shield = read('src/screens/ShieldScreen.jsx');
+  assert(shield.includes('이 목록은 아직 차단에 쓰이지 않아요'), 'Shield planner banner missing — persistence must not imply enforcement');
+  for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+    assert(!shield.includes(fake), `Shield screen now makes a fake working-blocking claim: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

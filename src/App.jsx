@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import HomeScreen from './screens/HomeScreen.jsx';
 import CheckinScreen from './screens/CheckinScreen.jsx';
 import UrgeScreen from './screens/UrgeScreen.jsx';
@@ -21,6 +21,7 @@ import {
   feedReaction,
 } from './constants/roomItems.js';
 import { DEFAULT_BLOCKLIST, makeBlockEntry } from './constants/shield.js';
+import { loadState, saveState } from './utils/storage.js';
 
 const SCREENS = [
   { id: 'home', label: '홈', Component: HomeScreen },
@@ -115,44 +116,105 @@ const INITIAL_RULES = [
 
 export default function App() {
   const [screenId, setScreenId] = useState('home');
-  const [rules, setRules] = useState(INITIAL_RULES);
-  const [categories, setCategories] = useState(SEED_CATEGORIES);
-  // Multi-counter state (counter-management). In-memory like the rest of the
-  // prototype (the app persists only the debug-nav flag, not domain state).
-  const [counters, setCounters] = useState(makeDefaultCounters);
-  const [selectedCounterId, setSelectedCounterId] = useState('c_nofap');
+
+  // Local persistence (P0). The saved bundle is read ONCE on first paint; every
+  // slice below falls back to its seed/default when there is no bundle yet (first
+  // ever load) or it is corrupt. localStorage only, no network — see
+  // src/utils/storage.js for the honesty note. Guard #38 pins this.
+  const [persisted] = useState(() => loadState());
+
+  const [rules, setRules] = useState(() => persisted?.rules ?? INITIAL_RULES);
+  const [categories, setCategories] = useState(() => persisted?.categories ?? SEED_CATEGORIES);
+  // Multi-counter state (counter-management). Persisted with ABSOLUTE startMs, so a
+  // reload reads the real elapsed time; only a first-ever load uses the relative seed.
+  const [counters, setCounters] = useState(() => persisted?.counters ?? makeDefaultCounters());
+  const [selectedCounterId, setSelectedCounterId] = useState(() => persisted?.selectedCounterId ?? 'c_nofap');
   // Drives the reflection diary: { scope: 'relapse' | 'slip', ruleId? } | null.
+  // Transient navigation state — intentionally NOT persisted.
   const [reflectionCtx, setReflectionCtx] = useState(null);
   // Today's DayRecord fields written by the reflection diary (§0.6.5/§0.6.6).
-  const [todayRecord, setTodayRecord] = useState(null);
+  // Day-rollover: a saved record is restored ONLY if it belongs to the current
+  // calendar day; yesterday's "today" is dropped so a new day starts fresh.
+  const [todayRecord, setTodayRecord] = useState(() =>
+    persisted && persisted.todayRecordDay === dayKey(Date.now())
+      ? persisted.todayRecord ?? null
+      : null,
+  );
 
-  // Shield blocklist planner (P0.5). In-memory like the rest of the prototype.
-  // This list does NOT block anything — it is the plan a future P1 engine
-  // (browser extension / NoF safe browser) will consume. No enforcement here.
-  const [blocklist, setBlocklist] = useState(DEFAULT_BLOCKLIST);
+  // Shield blocklist planner (P0.5). Persisted, but it still does NOT block
+  // anything — it is the abstract plan (no URLs) a future P1 engine will consume.
+  const [blocklist, setBlocklist] = useState(() => persisted?.blocklist ?? DEFAULT_BLOCKLIST);
 
   // Reward / pet-room layer (§0.6.9). Cosmetic only; earned 잔불 조각 is the single
-  // currency — no payment, no random rewards. All in-memory for the prototype.
-  const [emberShards, setEmberShards] = useState(SEED_SHARDS);
-  const [inventory, setInventory] = useState({ snack: 1 });
-  const [ownedItems, setOwnedItems] = useState(DEFAULT_OWNED);
+  // currency — no payment, no random rewards. Persisted so the room survives reload.
+  const [emberShards, setEmberShards] = useState(() => persisted?.emberShards ?? SEED_SHARDS);
+  const [inventory, setInventory] = useState(() => persisted?.inventory ?? { snack: 1 });
+  const [ownedItems, setOwnedItems] = useState(() => persisted?.ownedItems ?? DEFAULT_OWNED);
   // Coordinate placements: [{ itemId, x, y, scale, z }] with x/y normalized 0..1.
-  const [placements, setPlacements] = useState(() => DEFAULT_PLACEMENTS.map((p) => ({ ...p })));
-  const [activeRoomTheme, setActiveRoomTheme] = useState(DEFAULT_THEME);
-  const [petCareState, setPetCareState] = useState({ fedCount: 0, reaction: null });
-  const [claimedRewardIds, setClaimedRewardIds] = useState([]);
+  const [placements, setPlacements] = useState(() =>
+    persisted?.placements ?? DEFAULT_PLACEMENTS.map((p) => ({ ...p })),
+  );
+  const [activeRoomTheme, setActiveRoomTheme] = useState(() => persisted?.activeRoomTheme ?? DEFAULT_THEME);
+  const [petCareState, setPetCareState] = useState(() => persisted?.petCareState ?? { fedCount: 0, reaction: null });
+  const [claimedRewardIds, setClaimedRewardIds] = useState(() => persisted?.claimedRewardIds ?? []);
   // Calendar-day key of the last check-in shard grant, so the daily check-in
   // reward is given once per day even if the user re-opens/re-submits the check-in.
-  const [checkinRewardDay, setCheckinRewardDay] = useState(null);
+  // Persisted dayKeys self-correct across a reload: a stale (yesterday) value never
+  // equals today's key, so today's grant becomes available again exactly once.
+  const [checkinRewardDay, setCheckinRewardDay] = useState(() => persisted?.checkinRewardDay ?? null);
   // Same once-per-calendar-day guard for the other repeatable shard grants: the
   // 잠깐 멈춤 "버텼어요" finish and the general 오늘 복기하기. Without these, both
   // could be re-pressed in a loop to farm 잔불 조각. Relapse reflection needs no
   // day-guard — it follows a timer reset (relapse() zeroes the streak), so it is
   // self-limiting and can't be farmed.
-  const [crisisRewardDay, setCrisisRewardDay] = useState(null);
-  const [slipReflectionDay, setSlipReflectionDay] = useState(null);
+  const [crisisRewardDay, setCrisisRewardDay] = useState(() => persisted?.crisisRewardDay ?? null);
+  const [slipReflectionDay, setSlipReflectionDay] = useState(() => persisted?.slipReflectionDay ?? null);
   // Last grant, for a calm "방금 받았어요" note: { kind:'shards'|'snack', amount, reason }.
+  // Transient — intentionally NOT persisted (a reload should not re-announce a grant).
   const [lastEarn, setLastEarn] = useState(null);
+
+  // Save-on-change: persist exactly the domain slices above to localStorage on any
+  // change. Transient nav state (screenId / reflectionCtx / lastEarn) is excluded.
+  // todayRecordDay stamps the record's calendar day so the loader can drop a stale
+  // yesterday. saveState never throws and never touches the network (storage.js).
+  useEffect(() => {
+    saveState({
+      counters,
+      selectedCounterId,
+      rules,
+      categories,
+      todayRecord,
+      todayRecordDay: todayRecord ? dayKey(Date.now()) : null,
+      blocklist,
+      emberShards,
+      inventory,
+      ownedItems,
+      placements,
+      activeRoomTheme,
+      petCareState,
+      claimedRewardIds,
+      checkinRewardDay,
+      crisisRewardDay,
+      slipReflectionDay,
+    });
+  }, [
+    counters,
+    selectedCounterId,
+    rules,
+    categories,
+    todayRecord,
+    blocklist,
+    emberShards,
+    inventory,
+    ownedItems,
+    placements,
+    activeRoomTheme,
+    petCareState,
+    claimedRewardIds,
+    checkinRewardDay,
+    crisisRewardDay,
+    slipReflectionDay,
+  ]);
 
   const current = SCREENS.find((s) => s.id === screenId) ?? SCREENS[0];
   const Screen = current.Component;
