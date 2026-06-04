@@ -113,6 +113,8 @@ export default function PetRewardScreen({
   };
 
   const snackCount = inventory.snack ?? 0;
+  // Cumulative (not day-scoped) hand-offs, read straight from persisted petCareState.
+  const fedCount = petCareState.fedCount ?? 0;
   const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
   const lockedNext = nextLockedMilestone(streakDays);
   const placedIds = new Set(placements.map((p) => p.itemId));
@@ -304,12 +306,15 @@ export default function PetRewardScreen({
 
       <section className="card">
         <div className="card-row">
-          <span className="card-label">고양이에게 간식 주기</span>
+          <span className="card-label">고양이에게 간식 놓아주기</span>
           <span className="pill" style={{ fontSize: 'var(--fs-small)' }}>간식 {snackCount}개</span>
         </div>
         <p className="hairline-note" aria-live="polite">
           {feedCardMessage}
         </p>
+        {fedCount > 0 ? (
+          <p className="hairline-note text-quiet">지금까지 놓아준 간식 {fedCount}번</p>
+        ) : null}
         <div className="feed-btn-wrap">
           <span className="snack-toss-token" data-active={snackToss} aria-hidden="true">
             <span className="snack-toss-ember" />
@@ -322,7 +327,7 @@ export default function PetRewardScreen({
             data-reacting={sceneReacting && tapMsg === SCENE_FEED_MESSAGE}
             aria-disabled={snackCount <= 0}
           >
-            간식 주기
+            간식 놓아주기
           </button>
         </div>
       </section>

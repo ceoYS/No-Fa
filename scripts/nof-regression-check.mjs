@@ -1063,6 +1063,41 @@ check('local persistence is localStorage-only, no network, no browsing-target le
   }
 });
 
+// 39 — Pet-room tiny real-interaction round. Feeding must (a) surface the persisted
+// cumulative feed count (petCareState.fedCount) so a feed leaves a lasting trace, not
+// just a one-frame flash, and (b) keep the honest hand-off label 간식 놓아주기 with no
+// cat-eating claim. And the AddRuleSheet new-counter name must auto-suggest from the
+// rule label non-destructively: a touched flag (ncNameTouched) latches on the user's
+// first manual edit so the suggestion can never overwrite what they typed.
+check('pet feed surfaces persisted count + honest label; rule sheet auto-suggests counter name', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  assert(
+    screen.includes('petCareState.fedCount'),
+    'pet feed area does not surface the persisted petCareState.fedCount (feed leaves no lasting trace)',
+  );
+  assert(screen.includes('간식 놓아주기'), 'honest feed label (간식 놓아주기) missing');
+  for (const eat of ['먹었', '먹는', '먹이를 먹']) {
+    assert(!screen.includes(eat), `pet screen makes a cat-eating claim: ${eat}`);
+  }
+  const disc = read('src/screens/DisciplineScreen.jsx');
+  assert(
+    disc.includes('ncNameTouched'),
+    'AddRuleSheet has no touched flag (ncNameTouched) for non-destructive auto-suggest',
+  );
+  assert(
+    disc.includes('setNcNameTouched(true)'),
+    'AddRuleSheet does not latch the touched flag on the user\'s manual counter-name edit',
+  );
+  assert(
+    disc.includes('!ncNameTouched'),
+    'AddRuleSheet auto-suggest is not gated by the touched flag — it could overwrite user input',
+  );
+  assert(
+    disc.includes('setNcName(label)'),
+    'AddRuleSheet does not auto-suggest the new-counter name from the rule label',
+  );
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

@@ -1,4 +1,4 @@
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import { msToDateValue, msToTimeValue, dateTimeToMs } from '../utils/datetime.js';
 import {
@@ -337,9 +337,22 @@ function AddRuleSheet({ categories, counters, selectedCounterId, onAddCategory, 
   );
   // new-counter sub-form
   const [ncName, setNcName] = useState('');
+  // The counter name auto-suggests from the rule label, but only until the user
+  // edits it themselves — ncNameTouched latches on first manual edit so the
+  // suggestion never overwrites what they typed.
+  const [ncNameTouched, setNcNameTouched] = useState(false);
   const [ncDate, setNcDate] = useState(msToDateValue(now));
   const [ncTime, setNcTime] = useState(msToTimeValue(now));
   const [ncTarget, setNcTarget] = useState('30');
+
+  // While making a new counter and the name field is still untouched, mirror the
+  // rule label into it as a non-destructive suggestion (e.g. 규율 "밤에 SNS 줄이기"
+  // → 카운터 이름 제안). Stops the moment the user types in the name field.
+  useEffect(() => {
+    if (counterMode === 'new' && !ncNameTouched) {
+      setNcName(label);
+    }
+  }, [label, counterMode, ncNameTouched]);
 
   const newCounterReady = ncName.trim().length > 0 && !!ncDate;
   const ready = label.trim().length > 0 && (counterMode !== 'new' || newCounterReady);
@@ -477,7 +490,10 @@ function AddRuleSheet({ categories, counters, selectedCounterId, onAddCategory, 
               type="text"
               className="sheet-input"
               value={ncName}
-              onChange={(e) => setNcName(e.target.value)}
+              onChange={(e) => {
+                setNcName(e.target.value);
+                setNcNameTouched(true);
+              }}
               placeholder="예: 금딸, SNS 줄이기"
               maxLength={40}
             />
