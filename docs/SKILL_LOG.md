@@ -6,6 +6,70 @@ later session can recover the reasoning without re-deriving it.
 
 ---
 
+## 2026-06-09 — Round 1-A: promote nof-ui-element-review to a folder-style skill package
+
+**Trigger:** promote the single-file `nof-ui-element-review` skill note into a real
+folder-style skill package, reflecting the v4 Excel tooling matrix and the "skills
+are the moat" lesson (knowledge/procedure split, gotchas, eval seed). Docs / skill /
+check-wiring only — no runtime feature change, no commit, no push.
+
+**What changed (skill package only):**
+- `SKILL.md` — slimmed to an entry point: overview, prime directive, when-to-use, a
+  routing table to the new sub-files, the severity scale, and the working ethos. The
+  description was refocused on triggering conditions (per skill-authoring guidance:
+  describe *when to use*, not the workflow). No useful content was destroyed — the
+  heavy reference moved into the sub-files below.
+- `KNOWLEDGE.md` (new) — declarative knowledge: prime directive, the 9 protected
+  rules verbatim, and each protected honesty rule (fake blocking · fake pet
+  eating/motion/sound · adult URL/token collection · browser-policy bypass ·
+  whole-counter reset · item placement before sprites · external data/API leak ·
+  no-delete/non-shaming) mapped to its honest current behavior and its guard in
+  `scripts/nof-regression-check.mjs`. Plus the localStorage privacy caveat, the
+  Shield extension boundary, and the 8 product pillars.
+- `RUNBOOK.md` (new) — the repeatable review procedure (identify → list claims →
+  classify real/mock/placeholder/overclaim → compare to impl → check rules → check
+  guards → severity findings → build/check evidence), the 22 review aspects, the
+  output format, and the verification gate.
+- `GOTCHAS.md` (new) — trust source over stale docs · managed-Chrome may block the
+  unpacked extension by policy · `_metadata/` is generated drift (never commit) · pet
+  room is one composite image (placement blocked until sprites) · feeding is an
+  honest hand-off · localStorage writes to disk (dummy data on shared PC) · v3/v4
+  Excel matrix drift must not be staged · manual visual/mobile QA still required.
+- `examples/README.md` (new) — three output templates (screen claim audit,
+  protected-rule violation finding, PASS/CAUTION/FAIL summary). Abstract placeholders
+  only; no real adult URLs or explicit terms.
+- `evals/honesty_fixtures.json` (new) — 8 abstract anti-pattern fixtures a future
+  check should catch (fake pet eating · fake real blocking · fake audio · adult URL
+  placeholder · whole-counter reset · placement without sprites · browser policy
+  bypass · external data/API leak). Each fixture maps to the protected rule and the
+  guard ids; safe placeholder tokens only — no real URLs, terms, or live endpoints.
+
+**Knowledge / procedure split:** declarative "what is true / never fake" (KNOWLEDGE)
+is now separate from procedural "how to run a review" (RUNBOOK), with SKILL.md as a
+thin router — so a future session loads only the part it needs.
+
+**Verification:** `npm run build` **PASS** (60 modules) · `npm run check:nof`
+**39/39 PASS** (all guards green). This round adds no source change, so the guards
+are unaffected; the JSON fixtures parse clean (8 fixtures).
+
+**Deliberately NOT done this round (proposed Round 1-B):**
+- Wire `check:nof` to load `evals/honesty_fixtures.json` and assert each fixture's
+  anti-pattern is absent from source. `scripts/nof-regression-check.mjs` was left
+  untouched on purpose; the fixtures are a seed, not yet an enforced gate.
+- **Track the 5 new package files.** `.gitignore:2` ignores the whole `.claude/`
+  tree, so `KNOWLEDGE.md`, `RUNBOOK.md`, `GOTCHAS.md`, `examples/README.md`, and
+  `evals/honesty_fixtures.json` are currently git-ignored (`!!`) — only the
+  already-tracked `SKILL.md` shows as modified. To version the package, force-add
+  them next round (`git add -f …`), matching the precedent by which `SKILL.md` was
+  first committed. Not done now: this round does not stage.
+
+**Untouched / excluded:** no source/runtime change; `scripts/nof-regression-check.mjs`
+unchanged; the v3 Excel tooling matrix drift and any
+`extensions/chrome-shield/_metadata/` drift were treated as pre-existing and
+excluded. No stage, no commit, no push.
+
+---
+
 ## 2026-06-02 — Shield security, tooling-matrix, and UI-honesty reconcile
 
 Four commits landed since the P0.1 review; each was verified with `npm run build`

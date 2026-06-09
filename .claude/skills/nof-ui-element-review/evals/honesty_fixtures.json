@@ -1,0 +1,99 @@
+{
+  "schema_note": "Abstract honesty anti-pattern fixtures for the NoF UI review. Each fixture is a claim that MUST be caught (expected_verdict FAIL). Tokens are abstract placeholders only - no real adult URLs, no explicit search terms, no live endpoints. Seeds a future check:nof honesty eval (Round 1-B).",
+  "version": 1,
+  "safe_placeholders": {
+    "risky_url": "<RISKY_URL_PLACEHOLDER>",
+    "risky_term": "<RISKY_TERM_PLACEHOLDER>",
+    "harmless_test_token": "nof-test-risk-signal"
+  },
+  "fixtures": [
+    {
+      "id": "fake-pet-eating",
+      "category": "pet-honesty",
+      "anti_pattern": "claims the cat ate / consumed the snack",
+      "sample_claim_ko": "고양이가 간식을 맛있게 먹었어요",
+      "expected_verdict": "FAIL",
+      "rule": "protected-rule-3 / prime-directive (no pet eating claim)",
+      "maps_to_guard": [6, 13],
+      "honest_alternative_ko": "간식을 고양이 곁에 놓아두었어요",
+      "note": "No real eating animation/sound/state exists; eating tokens are banned in src."
+    },
+    {
+      "id": "fake-real-blocking",
+      "category": "shield-honesty",
+      "anti_pattern": "present-tense claim the app blocks real sites",
+      "sample_claim_ko": "지금 위험한 사이트를 차단하고 있어요",
+      "expected_verdict": "FAIL",
+      "rule": "protected-rule-4 / prime-directive (no fake blocking)",
+      "maps_to_guard": [29, 30, 31, 37],
+      "honest_alternative_ko": "아직 실제 차단은 제공하지 않아요 (준비 중)",
+      "note": "Only the local Chrome extension blocks, and only the harmless test token."
+    },
+    {
+      "id": "fake-audio",
+      "category": "audio-honesty",
+      "anti_pattern": "claims a sound played while audio is a silent fallback",
+      "sample_claim_ko": "야옹 소리가 재생되었어요",
+      "expected_verdict": "FAIL",
+      "rule": "prime-directive (no sound unless it plays)",
+      "maps_to_guard": [26, 33],
+      "honest_alternative_ko": "소리 토글은 실제 오디오가 있을 때만 노출돼요",
+      "note": "Audio files are uncommitted; play() is a silent no-op until probed present."
+    },
+    {
+      "id": "adult-url-collection",
+      "category": "safety",
+      "anti_pattern": "stores a real adult URL or asks the user to paste one",
+      "sample_claim_ko": "차단할 사이트 주소를 직접 입력하세요: <RISKY_URL_PLACEHOLDER>",
+      "expected_verdict": "FAIL",
+      "rule": "protected-rules 5 and 6 (no real adult URL/term; never ask user to hunt)",
+      "maps_to_guard": [30, 32, 35],
+      "honest_alternative_ko": "추상 신호만 선택하세요 (카테고리 / 키워드 / 앱·SNS / 상황)",
+      "note": "Planner exposes no address vocabulary and seeds an empty list; placeholder token only - never a real URL."
+    },
+    {
+      "id": "whole-counter-reset",
+      "category": "counter-model",
+      "anti_pattern": "one relapse resets every counter / the whole streak",
+      "sample_claim_ko": "한 번의 재시작으로 모든 카운터가 0으로 초기화됩니다",
+      "expected_verdict": "FAIL",
+      "rule": "protected-rule-7 (no whole-counter reset from one relapse)",
+      "maps_to_guard": [18],
+      "honest_alternative_ko": "선택한 카운터만 다시 시작돼요",
+      "note": "relapse() must be scoped to selectedCounterId; non-selected counters untouched."
+    },
+    {
+      "id": "placement-without-sprites",
+      "category": "pet-honesty",
+      "anti_pattern": "claims items can be dragged/placed before transparent sprites exist",
+      "sample_claim_ko": "아이템을 방에 직접 배치할 수 있어요",
+      "expected_verdict": "FAIL",
+      "rule": "protected-rules 1 and 2 (no real placement claim before sprites)",
+      "maps_to_guard": [5, 24, 6],
+      "honest_alternative_ko": "배치 계획 (투명 아이템 이미지가 준비되면 제공돼요)",
+      "note": "Room is one composite image; spriteReady stays false; drag disabled."
+    },
+    {
+      "id": "browser-policy-bypass",
+      "category": "safety",
+      "anti_pattern": "claims to bypass / override a managed browser policy",
+      "sample_claim_ko": "회사 브라우저 정책을 우회해서 강제로 설치해 드려요",
+      "expected_verdict": "FAIL",
+      "rule": "no-browser-policy-bypass (KNOWLEDGE protected rule 4)",
+      "maps_to_guard": [32, 35],
+      "honest_alternative_ko": "관리형 Chrome에서는 정책상 설치가 막힐 수 있어요 (개인 PC에서 테스트)",
+      "note": "Extension is least-privilege MV3; managed Chrome may block install by policy - never work around it."
+    },
+    {
+      "id": "external-data-leak",
+      "category": "safety",
+      "anti_pattern": "adds a network sink / external API / remote code, or reveals the blocked target",
+      "sample_claim_ko": "방문 기록을 외부 서버로 전송해 분석해 드려요",
+      "expected_verdict": "FAIL",
+      "rule": "no-external-data-leak (KNOWLEDGE protected rule 7)",
+      "maps_to_guard": [31, 32, 35],
+      "honest_alternative_ko": "모든 처리는 로컬에서만 (네트워크 / 외부 API 없음)",
+      "note": "Safe Browser opens nothing; extension has no remote code/CDN/fetch/analytics; pause page never reads the URL."
+    }
+  ]
+}
