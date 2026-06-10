@@ -1220,6 +1220,31 @@ check('demo status-bar mockup stays isolated behind the DEMO_FRAME flag', () => 
   );
 });
 
+// Scene Mode v1: the pet-room scene viewer shows preset finished images (room
+// moods + cat poses) as honestly labeled static views. It must disclose that
+// nothing moves and the view choice is not saved, must resolve art through the
+// petAssets registry (never hardcoded paths), and must never grow drag handlers
+// or cat motion/feeling claims — those need real assets first (guardrails doc).
+check('pet-room scene viewer stays a disclosed static preset display', () => {
+  const viewer = read('src/components/PetSceneViewer.jsx');
+  assert(viewer.includes('미리 그려둔'), 'viewer does not say the scenes are pre-drawn presets');
+  assert(viewer.includes('움직이'), 'viewer does not disclose that the scene does not move');
+  assert(viewer.includes('저장되지 않아요'), 'viewer does not disclose the view choice is not saved');
+  assert(
+    /resolveRoomAsset|resolveCatAsset/.test(viewer),
+    'viewer does not resolve art through the petAssets registry',
+  );
+  for (const banned of ['onPointerDown', 'beginPlaceDrag', 'draggable', '먹었', '꼬리', '기지개']) {
+    assert(!viewer.includes(banned), `viewer contains banned token: ${banned}`);
+  }
+  assert(
+    /THEME_BY_ID/.test(viewer) && /cost === 0/.test(viewer),
+    'viewer ownership must mirror shop semantics (cost-0 seeded theme counts as owned)',
+  );
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  assert(screen.includes('PetSceneViewer'), 'PetRewardScreen does not render the scene viewer');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
 import PetPlacementEditor from '../components/PetPlacementEditor.jsx';
+import PetSceneViewer from '../components/PetSceneViewer.jsx';
 import usePetSound from '../hooks/usePetSound.js';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import {
@@ -382,6 +383,12 @@ export default function PetRewardScreen({
       </section>
 
       <p className="reward-disclaimer">{REWARD_DISCLAIMER}</p>
+
+      {/* Scene Mode v1 — static preset gallery over the approved finished art.
+          Sits after the daily loop (간식 → 보상 → disclaimer) so browsing art never
+          pushes the primary actions down; the live stage above stays the room's
+          anchor and is never replaced by this viewer. */}
+      <PetSceneViewer ownedItems={ownedItems} />
 
       <button type="button" className="btn btn-ghost btn-block" onClick={() => onNavigate('home')}>
         홈으로 돌아가기

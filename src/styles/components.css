@@ -1824,6 +1824,36 @@ button.room-token:active {
   flex: 1;
 }
 
+/* 장면 보기 (Scene Mode v1) — static preset viewer. Two separate framed images
+ * (opaque room art + opaque cat pose art are never composited); chips reuse the
+ * shared .chip selected treatment. No drag affordance by design. */
+.scene-viewer-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-3);
+}
+
+.scene-viewer-room {
+  width: 100%;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-medium);
+  display: block;
+}
+
+.scene-viewer-pose {
+  width: 56%;
+  max-width: 200px;
+  margin: 0 auto;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-medium);
+  display: block;
+}
+
+.scene-viewer-caption {
+  min-height: 1.2em; /* steady line so swapping captions never shifts the chips */
+}
+
 /* 보관함 (inventory) — compact draggable thumbnails */
 .inv-grid {
   display: grid;
