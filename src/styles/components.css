@@ -1345,19 +1345,27 @@
 }
 
 .checkin-tap-row {
+  /* R-7: 3-segment row per rule (was a 1fr stack → 6 rules ✕ 3 full-width
+   * buttons). Equal thirds keep each target ≳100px wide at 390px. */
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(3, 1fr);
   gap: var(--sp-2);
 }
 
 .checkin-tap {
-  padding: var(--sp-3) var(--sp-4);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 44px;
+  padding: var(--sp-2);
   border-radius: var(--r-md);
   background: var(--ink-700);
   border: 1px solid var(--border-soft);
   color: var(--text-secondary);
-  font-size: var(--fs-body);
-  text-align: left;
+  font-size: var(--fs-small);
+  line-height: var(--lh-snug);
+  text-align: center;
+  word-break: keep-all;
   transition: all var(--dur-fast) var(--ease-soft);
 }
 
