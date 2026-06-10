@@ -183,10 +183,11 @@ export default function HomeScreen({
         </div>
       </section>
 
-      {/* 4) 금욕 카운터 목록 — 여러 절제를 한눈에. 카드를 누르면 히어로 타이머가 바뀐다 */}
+      {/* 4) 절제 카운터 목록 (R-10: 제목 '절제 시간'과 같은 어휘 계열) — 여러 절제를
+          한눈에. 카드를 누르면 히어로 타이머가 바뀐다 */}
       <section className="home-counters">
         <div className="card-row">
-          <p className="section-eyebrow">금욕 카운터</p>
+          <p className="section-eyebrow">절제 카운터</p>
           <button type="button" className="btn-add" onClick={() => setAddCounterOpen(true)}>
             + 카운터 추가
           </button>

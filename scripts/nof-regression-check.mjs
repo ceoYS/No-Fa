@@ -1163,6 +1163,17 @@ check('no internal stage vocabulary (프로토타입/MVP/P0/WIP) in user-facing 
   assert(offenders.length === 0, `internal stage vocabulary in product source: ${offenders.join('; ')}`);
 });
 
+// R-10: Home names the multi-counter concept with ONE vocabulary family. The
+// screen title says 절제 시간, so the counter section must say 절제 카운터 — the
+// 금욕 family is search/community vocabulary (COPY_POLICY) and stays off the
+// Home surface entirely. (DisciplineScreen/ShieldScreen still carry 금욕 카운터
+// in helper copy; sweeping those is a separate, later batch.)
+check('home speaks one counter vocabulary (절제 카운터, no 금욕 on the Home surface)', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes('절제 카운터'), 'Home counter section label 절제 카운터 missing');
+  assert(!home.includes('금욕'), 'Home surface still uses 금욕 vocabulary (R-10)');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
