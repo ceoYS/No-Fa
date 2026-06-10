@@ -55,9 +55,11 @@ export const SHOP_CATEGORIES = [
 ];
 
 // Warm, fixed responses cycled when feeding (간식 주기) — never random rolls.
+// R-8: room-state speech only — no cat mood-reading or approach claims while
+// the scene is a static composite image.
 export const PET_FEED_REACTIONS = [
-  '고양이가 기분 좋아 보여요.',
-  '간식을 주자 고양이가 가까이 온 것 같아요.',
+  '놓아둔 간식이 방을 조금 더 포근하게 해요.',
+  '간식이 고양이 곁에 가지런히 놓였어요.',
   '방이 조금 더 따뜻해졌어요.',
   '오늘의 절제를 조용히 기억했어요.',
 ];

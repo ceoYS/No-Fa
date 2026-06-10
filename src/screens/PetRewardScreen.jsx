@@ -38,9 +38,11 @@ import {
  * room stays one finished image and interactions use text plus a subtle scene
  * glow instead of claiming visible cat/item motion.
  */
+// R-8: room-state speech only while the scene is a static composite — no gaze,
+// mood-reading, or approach lines that set up a motion/reaction expectation.
 const TAP_MESSAGES = [
-  '고양이가 기분 좋아 보여요.',
-  '고양이가 가만히 당신을 바라봐요.',
+  '고양이 곁 잔불이 은은하게 빛나고 있어요.',
+  '방이 당신의 하루를 조용히 담아두고 있어요.',
   '방이 조금 더 따뜻해졌어요.',
   '오늘의 절제를 조용히 기억했어요.',
 ];

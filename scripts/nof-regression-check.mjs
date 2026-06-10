@@ -1092,6 +1092,14 @@ check('pet feed surfaces persisted count + honest label; rule sheet auto-suggest
   for (const eat of ['먹었', '먹는', '먹이를 먹']) {
     assert(!screen.includes(eat), `pet screen makes a cat-eating claim: ${eat}`);
   }
+  // R-8: while the room is a static composite scene, copy must speak in
+  // room-state terms — no gaze / mood-reading / approach lines that set up a
+  // live-reaction expectation the scene cannot honor.
+  const reactionPool = read('src/constants/roomItems.js');
+  for (const reacty of ['바라봐', '기분 좋아', '가까이 온']) {
+    assert(!screen.includes(reacty), `pet screen reads the cat's gaze/mood over a static scene: ${reacty}`);
+    assert(!reactionPool.includes(reacty), `feed reaction pool reads the cat's gaze/mood over a static scene: ${reacty}`);
+  }
   const disc = read('src/screens/DisciplineScreen.jsx');
   assert(
     disc.includes('ncNameTouched'),
