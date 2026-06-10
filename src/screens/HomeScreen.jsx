@@ -467,7 +467,10 @@ export default function HomeScreen({
 }
 
 // 카운터 추가 시트 (counter-management): 이름 / 시작 일 / 시작 시간 / 목표 일수.
-// 시작 시각은 날짜+시간 입력을 합쳐 startMs로 만든다. 미래 시각은 App에서 now로 클램프.
+// 시작 시각은 날짜+시간 입력을 합쳐 startMs로 만든다. 미래 시각은 App에서 now로
+// 클램프되고, 빈/0 목표는 30일로 보정된다 — 두 보정 모두 시트가 입력 시점에
+// 인라인으로 예고한다 (R-12: 무언 보정 금지). HomeScreen의 1초 틱이 이 시트도
+// 리렌더하므로 미래 여부 판정은 시간이 흐르면 자연히 풀린다.
 function AddCounterSheet({ onCancel, onSubmit }) {
   const now = Date.now();
   const [name, setName] = useState('');
@@ -475,6 +478,8 @@ function AddCounterSheet({ onCancel, onSubmit }) {
   const [time, setTime] = useState(msToTimeValue(now));
   const [target, setTarget] = useState('30');
   const ready = name.trim().length > 0 && !!date;
+  const startInFuture = !!date && dateTimeToMs(date, time) > Date.now();
+  const targetDefaults = !(parseInt(target, 10) > 0);
 
   const submit = () => {
     onSubmit({ name, startMs: dateTimeToMs(date, time), targetDays: parseInt(target, 10) });
@@ -528,6 +533,11 @@ function AddCounterSheet({ onCancel, onSubmit }) {
             />
           </div>
         </div>
+        {startInFuture ? (
+          <p className="hairline-note sheet-correction-note" role="status">
+            아직 오지 않은 시각이라, 저장하면 시작 시점을 지금으로 맞춰요.
+          </p>
+        ) : null}
 
         <label className="field-label" htmlFor="add-counter-target">목표 일수</label>
         <input
@@ -539,6 +549,11 @@ function AddCounterSheet({ onCancel, onSubmit }) {
           value={target}
           onChange={(e) => setTarget(e.target.value)}
         />
+        {targetDefaults ? (
+          <p className="hairline-note sheet-correction-note" role="status">
+            목표를 비워 두면 30일로 저장돼요.
+          </p>
+        ) : null}
 
         <div className="sheet-actions">
           <button type="button" className="btn btn-ghost" onClick={onCancel}>
@@ -561,6 +576,8 @@ function AddCounterSheet({ onCancel, onSubmit }) {
 
 // 카운터 편집 시트 (counter-management): 같은 필드를 선택한 카운터 값으로 채워
 // 수정한다. 저장/취소만 제공하며, 이번 라운드에는 카운터 삭제가 없다.
+// R-12: 추가 시트와 같은 보정 예고 — 단, 편집의 빈/0 목표는 30일이 아니라
+// 기존 목표 유지(App.editCounter가 invalid 목표를 무시)라서 문구가 다르다.
 function EditCounterSheet({ counter, onCancel, onSubmit }) {
   const [name, setName] = useState(counter?.name ?? '');
   const [date, setDate] = useState(msToDateValue(counter?.startMs ?? Date.now()));
@@ -568,6 +585,8 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
   const [target, setTarget] = useState(String(counter?.targetDays ?? 30));
   if (!counter) return null;
   const ready = name.trim().length > 0 && !!date;
+  const startInFuture = !!date && dateTimeToMs(date, time) > Date.now();
+  const targetKeepsCurrent = !(parseInt(target, 10) > 0);
 
   const submit = () => {
     onSubmit({ name, startMs: dateTimeToMs(date, time), targetDays: parseInt(target, 10) });
@@ -620,6 +639,11 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
             />
           </div>
         </div>
+        {startInFuture ? (
+          <p className="hairline-note sheet-correction-note" role="status">
+            아직 오지 않은 시각이라, 저장하면 시작 시점을 지금으로 맞춰요.
+          </p>
+        ) : null}
 
         <label className="field-label" htmlFor="edit-counter-target">목표 일수</label>
         <input
@@ -631,6 +655,11 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
           value={target}
           onChange={(e) => setTarget(e.target.value)}
         />
+        {targetKeepsCurrent ? (
+          <p className="hairline-note sheet-correction-note" role="status">
+            목표를 비워 두면 지금 목표 그대로 유지돼요.
+          </p>
+        ) : null}
 
         <div className="sheet-actions">
           <button type="button" className="btn btn-ghost" onClick={onCancel}>

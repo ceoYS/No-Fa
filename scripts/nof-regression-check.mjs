@@ -1187,6 +1187,21 @@ check('home warmth copy speaks only the two reachable states (no fake 4-band gau
   }
 });
 
+// R-12: the counter sheets must disclose, inline and live, the two quiet input
+// corrections App applies on save (a future start clamped to now; an empty or
+// invalid target defaulting to 30 days on add / keeping the existing target on
+// edit). A silently rewritten input is an honesty bug even when small.
+check('counter sheets disclose start/target auto-corrections instead of applying them silently', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes('시작 시점을 지금으로 맞춰요'), 'future-start clamp disclosure missing');
+  assert(home.includes('30일로 저장돼요'), 'empty-target default disclosure missing (add sheet)');
+  assert(home.includes('지금 목표 그대로 유지돼요'), 'empty-target keep disclosure missing (edit sheet)');
+  assert(
+    /startInFuture[\s\S]{0,120}dateTimeToMs\(date, time\) > Date\.now\(\)/.test(home),
+    'live future-start detection missing from the sheets',
+  );
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

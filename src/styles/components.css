@@ -1272,6 +1272,13 @@
   color: var(--text-quiet);
 }
 
+/* R-12: inline disclosure shown ONLY while a sheet input would be auto-adjusted
+ * on save (future start → now / empty target → default·kept). Ember tint lifts
+ * it from the muted helper text without reading as an error. */
+.sheet-correction-note {
+  color: var(--text-ember);
+}
+
 .sheet-input:focus {
   outline: none;
   border-color: var(--ember-300);
