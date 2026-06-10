@@ -1202,6 +1202,20 @@ check('counter sheets disclose start/target auto-corrections instead of applying
   );
 });
 
+// R-13: the iPhone status-bar mockup (9:41 · notch) is demo-shell chrome, not
+// product UI. It must stay isolated behind the DEMO_FRAME flag (demoFrameEnabled():
+// default on for the P0 demo, ?frame=0 persisted opt-out) so a product cut can
+// drop the double frame without surgery. Un-gating it fails this check.
+check('demo status-bar mockup stays isolated behind the DEMO_FRAME flag', () => {
+  const app = read('src/App.jsx');
+  assert(/function demoFrameEnabled\(/.test(app), 'demoFrameEnabled() flag missing from App.jsx');
+  assert(/params\.get\('frame'\)/.test(app), 'demo frame flag does not read the ?frame param');
+  assert(
+    /DEMO_FRAME \?[\s\S]{0,160}device-status-bar/.test(app),
+    'device-status-bar is no longer gated behind DEMO_FRAME — demo chrome ships un-isolated',
+  );
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

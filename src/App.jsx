@@ -93,6 +93,31 @@ function debugNavEnabled() {
 
 const DEBUG_NAV = debugNavEnabled();
 
+// Demo shell flag (R-13): the iPhone status-bar mockup (9:41 · notch · dots) is
+// presentation chrome for demoing the prototype in a desktop browser — not
+// product UI. It stays ON by default while this repo is the demo, but sits
+// behind this one flag so a product cut ships the real shell without a double
+// frame: load once with ?frame=0 to drop it (persisted, like the debug nav, so
+// it survives in-app navigation); ?frame=1 restores it. The .device-frame
+// container itself always renders — it is the sheet anchoring plane (R-5) and
+// the layout shell, not mockup chrome.
+function demoFrameEnabled() {
+  if (typeof window === 'undefined') return true;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const q = params.get('frame');
+    if (q === '0' || q === '1') {
+      window.localStorage.setItem('nof_demo_frame', q);
+      return q === '1';
+    }
+    return window.localStorage.getItem('nof_demo_frame') !== '0';
+  } catch {
+    return true;
+  }
+}
+
+const DEMO_FRAME = demoFrameEnabled();
+
 // Discipline rules — P0.1 in-memory state lifted to App so Home / 최근 기록 /
 // 체크인 stay in sync. `status` holds the v2 internal enum (§0.6.2:
 // kept/missed/held/unrecorded); the UI renders the selectable label only, never
@@ -543,11 +568,13 @@ export default function App() {
         <ScreenSwitcher screens={SCREENS} value={screenId} onChange={setScreenId} />
       ) : null}
       <div className="device-frame">
-        <div className="device-status-bar">
-          <span>9:41</span>
-          <span className="device-notch" />
-          <span>● ● ●</span>
-        </div>
+        {DEMO_FRAME ? (
+          <div className="device-status-bar">
+            <span>9:41</span>
+            <span className="device-notch" />
+            <span>● ● ●</span>
+          </div>
+        ) : null}
         <main className="device-viewport" key={screenId}>
           <Screen
             onNavigate={setScreenId}
