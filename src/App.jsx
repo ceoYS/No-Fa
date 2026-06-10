@@ -448,8 +448,8 @@ export default function App() {
 
   // 오늘의 체크인 완료 (§0.6.9): the check-in includes the discipline check, so the
   // grant folds in a small bonus per 위기였지만 버텼어요 rule. The step-1 inputs
-  // (기분/충동/트리거) are persisted into today's record so 최근 기록 can show what
-  // was logged (§0.6.5). Persisting these fields does NOT affect reward eligibility
+  // (기분/충동/트리거/메모) are persisted into today's record so 최근 기록 and the
+  // check-in saved-summary can show what was logged (§0.6.5). Persisting these fields does NOT affect reward eligibility
   // — milestones unlock on streak day only (isMilestoneClaimable). The shard grant
   // is the existing 체크인 reward, gated to ONCE PER CALENDAR DAY (checkinRewardDay):
   // a later re-check-in the same day re-saves the fields but never re-grants — so
@@ -470,6 +470,9 @@ export default function App() {
         moodLabel: checkin.moodLabel ?? null,
         urge: typeof checkin.urge === 'number' ? checkin.urge : null,
         triggers: Array.isArray(checkin.triggers) ? checkin.triggers : [],
+        // Optional free-text journal line. Trim to drop whitespace-only notes to
+        // null so the saved-summary read-back stays clean (no empty quote block).
+        note: typeof checkin.note === 'string' && checkin.note.trim() ? checkin.note.trim() : null,
         completedAt: now,
       },
     }));

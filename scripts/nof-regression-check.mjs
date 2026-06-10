@@ -1245,6 +1245,51 @@ check('pet-room scene viewer stays a disclosed static preset display', () => {
   assert(screen.includes('PetSceneViewer'), 'PetRewardScreen does not render the scene viewer');
 });
 
+// Check-in / Journal v1: the daily capture flow writes the user's mood, urge,
+// trigger and a free-text note through onCompleteCheckin into today's record, which
+// App persists to localStorage ONLY (guard #38). Because it persists locally, the
+// screen MUST disclose the local-only storage in calm Korean and read today's saved
+// record back as a saved-state summary (no blank re-entry). It must NEVER imply
+// cloud sync, AI analysis, medical treatment, or real blocking, and must carry no
+// shaming / punishing / religious vocabulary (COPY_POLICY §0.5.8.1).
+check('check-in journal is honest: local-only disclosure, saved state, no fake cloud/AI/medical/shame', () => {
+  const screen = read('src/screens/CheckinScreen.jsx');
+
+  // (a) Local-only storage disclosure must be present in user-facing copy.
+  assert(
+    screen.includes('이 기기에만 저장'),
+    'CheckinScreen is missing the local-only storage disclosure (이 기기에만 저장…)',
+  );
+
+  // (b) The four daily journal fields exist (mood / urge / trigger / free note), and
+  // the note is threaded through onCompleteCheckin AND persisted by App.
+  assert(screen.includes('오늘 기분'), 'check-in mood field (오늘 기분) missing');
+  assert(screen.includes('충동 강도'), 'check-in urge field (충동 강도) missing');
+  assert(screen.includes('트리거'), 'check-in trigger field (트리거) missing');
+  assert(/<textarea/.test(screen), 'check-in free-text note (textarea) missing');
+  assert(/onCompleteCheckin\(\{[\s\S]*?note/.test(screen), 'check-in does not pass the note to onCompleteCheckin');
+  assert(/checkin:\s*\{[\s\S]*?note:/.test(read('src/App.jsx')), 'App.completeCheckin does not persist the check-in note');
+
+  // (c) Saved/empty state: re-opening after today's check-in reads the saved record
+  // back (todayRecord) instead of forcing a blank form.
+  assert(screen.includes('todayRecord'), 'CheckinScreen does not read todayRecord (no saved-state summary)');
+
+  // (d) No fake cloud-sync / AI-analysis / medical-treatment / real-blocking claims.
+  for (const fake of [
+    '클라우드', '동기화', '서버에 저장', '백업',
+    'AI가', 'AI 분석', '인공지능', '자동 분석',
+    '치료', '진단', '처방', '의학',
+    '차단했어요', '차단하고 있어요', '차단 중이에요',
+  ]) {
+    assert(!screen.includes(fake), `CheckinScreen makes a fake cloud/AI/medical/blocking claim: ${fake}`);
+  }
+
+  // (e) No shaming / punishing / religious vocabulary.
+  for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판']) {
+    assert(!screen.includes(bad), `CheckinScreen carries shaming/punishing/religious vocabulary: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
