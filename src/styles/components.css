@@ -2650,6 +2650,22 @@ button.room-token:active {
   color: var(--text-ember);
 }
 
+/* R-6: single consolidated honesty block — replaces three stacked amber boxes.
+ * The banner line leads; the quiet context line sits inside the same box. */
+.shield-honesty-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3) var(--sp-4);
+  border-radius: var(--r-md, 14px);
+  border: 1px dashed rgba(245, 164, 90, 0.3);
+  background: var(--accent-ember-soft);
+}
+
+.shield-honesty-lead {
+  color: var(--text-ember);
+}
+
 .shield-kind-row {
   display: flex;
   flex-wrap: wrap;

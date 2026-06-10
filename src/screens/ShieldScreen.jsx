@@ -115,11 +115,15 @@ export default function ShieldScreen({
           <span className="card-label">위험 신호 미리 정하기</span>
           <span className="pill shield-tag">{summary.total}개</span>
         </div>
-        <p className="hairline-note shield-safety-note">
-          {PLANNER_NOT_ENFORCED} {REAL_BLOCK_WHERE}
-        </p>
-        <p className="hairline-note shield-safety-note">{SAFETY_NOTE}</p>
-        <p className="hairline-note shield-planner-banner">{PLANNING_BANNER}</p>
+        {/* R-6: one consolidated disclosure block — the banner line leads, the
+            enforcement context follows quietly. The safety note moved inline
+            beside the input it protects. Guards #29–31 pin all four strings. */}
+        <div className="shield-honesty-block">
+          <p className="hairline-note shield-honesty-lead">{PLANNING_BANNER}</p>
+          <p className="hairline-note text-quiet">
+            {PLANNER_NOT_ENFORCED} {REAL_BLOCK_WHERE}
+          </p>
+        </div>
 
         <div className="shield-kind-row" role="group" aria-label="신호 종류 고르기">
           {BLOCK_KINDS.map((k) => (
@@ -145,6 +149,7 @@ export default function ShieldScreen({
           ))}
         </div>
 
+        <p className="hairline-note shield-safety-note">{SAFETY_NOTE}</p>
         <input
           type="text"
           className="sheet-input"
@@ -219,7 +224,7 @@ export default function ShieldScreen({
           </div>
         )}
         <p className="hairline-note text-quiet">
-          이 신호는 실드가 준비되면 그대로 옮겨와 쓸 거예요. 지금은 아무것도 차단하지 않아요.
+          이 신호는 실드가 준비되면 그대로 옮겨와 쓸 거예요.
         </p>
       </section>
 
