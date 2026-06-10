@@ -7,8 +7,9 @@ import { useCallback, useEffect, useRef, useState } from 'react';
  *   - No autoplay. play(name) is only ever called from a real user gesture
  *     (scene tap / 간식 주기) in the screen — never on mount or in an effect.
  *   - Local assets only, no external URLs. Paths resolve under /assets/sounds.
- *   - Silent fallback. If a file is missing (404) or the browser blocks
- *     playback, play() resolves quietly — the UI must never error or block.
+ *   - Silent fallback. If a file is missing (404, or an SPA fallback answering
+ *     200 text/html for a non-existent path) or the browser blocks playback,
+ *     play() resolves quietly — the UI must never error or block.
  *   - The files are NOT committed yet; until they land, every play() is a no-op
  *     and `missing` lists what the contract still needs.
  *
@@ -54,8 +55,13 @@ export default function usePetSound() {
       Object.entries(PET_SOUNDS).map(async ([key, src]) => {
         try {
           const res = await fetch(src, { method: 'HEAD' });
-          availability.current[key] = res.ok;
-          return res.ok ? null : src;
+          // res.ok alone is not proof: SPA dev/hosting fallbacks answer missing
+          // paths with 200 text/html (index.html). Only an audio/* content-type
+          // counts as a real file — anything else stays an honest "missing".
+          const type = (res.headers.get('content-type') ?? '').toLowerCase();
+          const present = res.ok && type.startsWith('audio/');
+          availability.current[key] = present;
+          return present ? null : src;
         } catch {
           availability.current[key] = false;
           return src;

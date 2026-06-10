@@ -60,7 +60,7 @@ const MIN_MS = 60 * 1000;
 function makeDefaultCounters() {
   const now = Date.now();
   return [
-    { id: 'c_nofap', name: '금딸', startMs: now - SEED_OFFSET_MS, targetDays: 30, longestDays: 27, status: 'active', history: [] },
+    { id: 'c_nofap', name: '콘텐츠 절제', startMs: now - SEED_OFFSET_MS, targetDays: 30, longestDays: 27, status: 'active', history: [] },
     { id: 'c_sns', name: 'SNS 줄이기', startMs: now - (4 * DAY_MS + 6 * HOUR_MS + 12 * MIN_MS), targetDays: 14, longestDays: 9, status: 'active', history: [] },
     { id: 'c_latenight', name: '야식 끊기', startMs: now - (2 * DAY_MS + 18 * HOUR_MS + 5 * MIN_MS), targetDays: 21, longestDays: 6, status: 'active', history: [] },
     { id: 'c_alcohol', name: '음주 줄이기', startMs: now - (6 * DAY_MS + 1 * HOUR_MS + 40 * MIN_MS), targetDays: 30, longestDays: 12, status: 'active', history: [] },
@@ -102,7 +102,7 @@ const DEBUG_NAV = debugNavEnabled();
 // `counterId` links each rule to an abstinence counter (rule↔counter link). A
 // rule is a *secondary commitment* that lowers a counter's relapse risk — never
 // the timer itself (a rule slip never resets a counter). The default rules are
-// seeded to sensible counters: the 충동/검색 rules support 금딸 (c_nofap); the
+// seeded to sensible counters: the 충동/검색 rules support 콘텐츠 절제 (c_nofap); the
 // late-night phone / 숏폼 rules support SNS 줄이기 (c_sns). A null counterId means
 // the rule is unlinked. This is the only thing that ties the two systems.
 const INITIAL_RULES = [

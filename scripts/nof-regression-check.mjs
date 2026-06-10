@@ -50,7 +50,9 @@
  *      CDN / external API, never reveals the visited target, and documents that it is
  *      Chrome-only (NOT mobile / SNS / image mosaic).
  *  33. The pet-room 소리/무음 toggle is hidden until real audio is probed present
- *      (usePetSound.hasSound) — no dead sound switch over a silent fallback.
+ *      (usePetSound.hasSound) — no dead sound switch over a silent fallback. The
+ *      HEAD probe must verify an audio/* content-type, because SPA dev/hosting
+ *      fallbacks answer missing files with 200 text/html and would fake presence.
  *  34. The 5-minute crisis pause (잠깐 멈춤) is in the persistent bottom nav and
  *      routes to the real UrgeScreen — reachable in one tap from every screen.
  *  35. The chrome-shield extension keeps LEAST PRIVILEGE: the manifest requests only
@@ -319,7 +321,7 @@ check('home relapse restart requires confirmation (never instant reset)', () => 
 check('multiple default abstinence counters exist', () => {
   const app = read('src/App.jsx');
   assert(/function makeDefaultCounters\(/.test(app), 'makeDefaultCounters() seed factory missing');
-  for (const name of ['금딸', 'SNS 줄이기', '야식 끊기', '음주 줄이기']) {
+  for (const name of ['콘텐츠 절제', 'SNS 줄이기', '야식 끊기', '음주 줄이기']) {
     assert(app.includes(name), `default counter missing: ${name}`);
   }
   for (const field of ['startMs', 'targetDays', 'longestDays']) {
@@ -371,11 +373,11 @@ check('relapse is scoped to the selected counter (no reset-all)', () => {
 });
 
 // 19 — the rule model must carry counterId, with the default rules linked to the
-// example counters (충동/검색 → 금딸 c_nofap; 밤 시간/숏폼 → SNS 줄이기 c_sns).
+// example counters (충동/검색 → 콘텐츠 절제 c_nofap; 밤 시간/숏폼 → SNS 줄이기 c_sns).
 check('rule model carries counterId linked to default counters', () => {
   const app = read('src/App.jsx');
   assert(app.includes('counterId'), 'rule model has no counterId field');
-  assert(app.includes("counterId: 'c_nofap'"), 'no default rule linked to 금딸 (c_nofap)');
+  assert(app.includes("counterId: 'c_nofap'"), 'no default rule linked to 콘텐츠 절제 (c_nofap)');
   assert(app.includes("counterId: 'c_sns'"), 'no default rule linked to SNS 줄이기 (c_sns)');
   // addRule must thread an explicit counterId into the new rule object.
   const m = app.match(/const addRule = \([\s\S]*?\n  \};/);
@@ -649,7 +651,7 @@ check('shield safe browser PoC is honest, in-app only, and routes a match to 잠
   assert(browser.includes("onNavigate('urge')"), 'SafeBrowserScreen does not route a matched signal to 잠깐 멈춤');
   assert(browser.includes('이 신호는 멀리 두기로 정했어요'), 'SafeBrowserScreen is missing the matched interstitial title');
   assert(browser.includes('지금은 열지 않고 5분만 늦춰볼까요'), 'SafeBrowserScreen is missing the matched 잠깐 멈춤 nudge');
-  assert(browser.includes('프로토타입에서는 실제 웹을 열지 않아요'), 'SafeBrowserScreen is missing the no-match "opens no real web" copy');
+  assert(browser.includes('이 실험에서는 실제 웹을 열지 않아요'), 'SafeBrowserScreen is missing the no-match "opens no real web" copy');
   // No present-tense claim that a real site/app/SNS is being blocked.
   for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
     assert(!browser.includes(fake), `SafeBrowserScreen makes a fake working-blocking claim: ${fake}`);
@@ -795,6 +797,17 @@ check('pet-room sound toggle is hidden until real audio is available (no dead sw
   );
   assert(/setHasSound\(/.test(hook), 'usePetSound never derives hasSound from the audio probe');
   assert(/return \{[^}]*hasSound[^}]*\}/.test(hook), 'usePetSound does not return the hasSound signal');
+  // The probe must verify the response is REAL audio, not an SPA fallback: dev /
+  // hosting servers answer missing paths with 200 text/html (index.html), which
+  // would silently resurrect the dead toggle. ok + content-type audio/* only.
+  assert(
+    hook.includes("res.headers.get('content-type')"),
+    'usePetSound probe never reads the content-type header — an SPA 200 text/html fallback would count as audio',
+  );
+  assert(
+    /res\.ok\s*&&\s*type\.startsWith\('audio\/'\)/.test(hook),
+    'usePetSound availability is not gated on BOTH res.ok and an audio/* content-type',
+  );
 
   const screen = read('src/screens/PetRewardScreen.jsx');
   assert(screen.includes('hasSound'), 'PetRewardScreen does not read the hasSound availability signal');

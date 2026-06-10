@@ -17,7 +17,7 @@ import { KIND_LABEL, matchSignals } from '../constants/shield.js';
 
 const MATCHED_TITLE = '이 신호는 멀리 두기로 정했어요.';
 const MATCHED_BODY = '지금은 열지 않고 5분만 늦춰볼까요?';
-const NO_MATCH = '프로토타입에서는 실제 웹을 열지 않아요.';
+const NO_MATCH = '이 실험에서는 실제 웹을 열지 않아요.';
 
 export default function SafeBrowserScreen({ onNavigate, blocklist = [] }) {
   const [text, setText] = useState('');

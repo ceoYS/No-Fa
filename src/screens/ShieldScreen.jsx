@@ -27,12 +27,12 @@ import {
 const PLANNED_LAYERS = [
   {
     name: '브라우저 확장 (Chrome)',
-    desc: '실제 브라우저 차단은 Chrome 확장 프로그램을 따로 설치해야 동작해요. 지금은 데스크톱용 프로토타입 단계예요.',
+    desc: '실제 브라우저 차단은 Chrome 확장 프로그램을 따로 설치해야 동작해요. 지금은 데스크톱용 테스트 단계예요.',
     phase: '1단계',
   },
   {
     name: 'NoF 안전 브라우저',
-    desc: '앱 안에서 위험한 곳을 열지 않는 자체 브라우저예요. 지금은 프로토타입 실험만 돼요.',
+    desc: '앱 안에서 위험한 곳을 열지 않는 자체 브라우저예요. 지금은 앱 안 실험만 돼요.',
     phase: '앱 안에서만 실험 가능',
   },
   {
@@ -246,7 +246,7 @@ export default function ShieldScreen({
       </section>
 
       <section className="card">
-        <span className="card-label">안전 브라우저 실험 (프로토타입)</span>
+        <span className="card-label">안전 브라우저 실험</span>
         <p className="hairline-note">
           앱 안에서만 동작하는 실험이에요. 실제 웹은 열지 않고, 내가 정한 위험 신호와
           닿는지 비교해 ‘잠깐 멈춤’으로 이어줘요.

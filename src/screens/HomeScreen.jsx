@@ -376,6 +376,21 @@ export default function HomeScreen({
             실드 준비 상황 보기
           </button>
         </section>
+
+        {/* 동행 티저 (PRD §0.6.8 P0) — 카피 전용 비기능 카드. 고정 문구만 쓴다:
+            실시간 인원수·가짜 사용자·랭킹/순위 어휘·기능 동작 클레임 전부 금지
+            (COPY_POLICY §10.7). 버튼 없음 — 누를 수 있는 척하지 않는다. */}
+        <section className="card">
+          <div className="card-row">
+            <span className="card-label">동행</span>
+            <span className="pill shield-tag">준비 중</span>
+          </div>
+          <p className="hairline-note">혼자가 아니에요 — 함께 버티는 사람들을 곧 만나요.</p>
+          <p className="hairline-note text-quiet">
+            같이 가는 사람들과 서로의 다짐을 조용히 지켜봐 주는 동행을 준비하고 있어요.
+            지금 기록은 밖으로 공유되지 않아요.
+          </p>
+        </section>
       </div>
 
       {/* 재발 확인 시트 — 즉시 리셋 금지. 실제 onRelapse()는 여기서만 호출된다. */}
@@ -480,7 +495,7 @@ function AddCounterSheet({ onCancel, onSubmit }) {
           className="sheet-input"
           value={name}
           onChange={(e) => setName(e.target.value)}
-          placeholder="예: 금딸, SNS 줄이기"
+          placeholder="예: 콘텐츠 절제, SNS 줄이기"
           maxLength={40}
           autoFocus
         />

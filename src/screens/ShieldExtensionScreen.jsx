@@ -33,7 +33,7 @@ export default function ShieldExtensionScreen({ onNavigate }) {
         <p className="hairline-note">실제 차단 테스트는 Chrome 확장에서만 동작해요.</p>
         <p className="hairline-note text-quiet">
           앱은 무엇을 멀리 둘지 정해두는 곳이고, 실제로 막아 보는 건 따로 설치하는
-          Chrome 확장 프로토타입이 맡아요. 둘은 아직 자동으로 이어져 있지 않아요.
+          테스트용 Chrome 확장이 맡아요. 둘은 아직 자동으로 이어져 있지 않아요.
         </p>
         <p className="hairline-note shield-safety-note">해롭지 않은 테스트 신호만 사용해요.</p>
       </section>

@@ -494,7 +494,7 @@ function AddRuleSheet({ categories, counters, selectedCounterId, onAddCategory, 
                 setNcName(e.target.value);
                 setNcNameTouched(true);
               }}
-              placeholder="예: 금딸, SNS 줄이기"
+              placeholder="예: 콘텐츠 절제, SNS 줄이기"
               maxLength={40}
             />
             <div className="field-row">
