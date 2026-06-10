@@ -59,7 +59,13 @@
 .device-viewport {
   flex: 1;
   overflow-y: auto;
-  position: relative;
+  /* Deliberately NOT position:relative — the viewport is the scroll container,
+   * and an absolutely positioned overlay anchored to a scroll container pins to
+   * the content origin, not the visible window (a .sheet-backdrop opened after
+   * scrolling would sit over the top of the page — R-5). Overlays must anchor
+   * to .device-frame instead; every in-flow absolute child (.pet-stage,
+   * .reward-stage, .inv-thumb, .feed-btn-wrap, .placement-stage,
+   * .shield-roadmap-item) carries its own position:relative. */
   scrollbar-width: thin;
   scrollbar-color: var(--ink-500) transparent;
   animation: viewport-in var(--dur-base) var(--ease-soft);
@@ -1182,6 +1188,9 @@
 
 /* add/delete bottom sheet ------------------------------------------ */
 .sheet-backdrop {
+  /* Anchors to .device-frame (the visible device, position:relative), NOT the
+   * scrolling .device-viewport — so the dim + bottom-anchored sheet always sit
+   * on the screen the user is looking at, however far the page is scrolled. */
   position: absolute;
   inset: 0;
   background: rgba(5, 4, 3, 0.65);
@@ -1200,6 +1209,12 @@
 
 .sheet {
   width: 100%;
+  /* Tall content (상점 catalog, add-rule form) scrolls inside the sheet instead
+   * of overflowing the frame top; the gap keeps the dim visible above. */
+  max-height: calc(100% - 44px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
   background: var(--bg-surface-raised);
   border-top: 1px solid var(--border-medium);
   border-radius: var(--r-xl) var(--r-xl) 0 0;
