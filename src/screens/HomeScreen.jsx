@@ -18,8 +18,10 @@ function formatElapsed(ms) {
   return { days, hh, mm, ss };
 }
 
-// Room Warmth band (§0.5.10 D) — shown as a word, never a number. A light inline
-// derivation; the full warmth index lands with the domains/ refactor.
+// Room Warmth (§0.5.10 D) — shown as a word, never a number. Only two states are
+// reachable from today's rule summary (잔잔함/안정) until the full 4-band warmth
+// index lands with the domains/ refactor — so the Home copy speaks exactly these
+// two and never implies a finer measurement (R-11).
 function warmthBand(summary, relapsed) {
   if (relapsed || summary.missed > 0) return '잔잔함';
   if (summary.keeping > 0) return '안정';
@@ -349,7 +351,9 @@ export default function HomeScreen({
           <p className="hairline-note text-quiet">
             {relapsedToday
               ? '잔불이 잠깐 약해졌어요. 다시 이어가면 곧 따뜻해져요.'
-              : `방 온기 · ${warmthBand(summary, relapsedToday)} · 오늘의 절제가 방을 데우고 있어요.`}
+              : warmthBand(summary, relapsedToday) === '안정'
+                ? '방 온기 · 안정 — 오늘 지키는 규율이 방을 데우고 있어요.'
+                : '방 온기 · 잔잔함 — 오늘의 규율 기록이 그대로 방에 비쳐요.'}
           </p>
           <button
             type="button"

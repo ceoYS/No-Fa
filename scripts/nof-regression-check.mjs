@@ -1174,6 +1174,19 @@ check('home speaks one counter vocabulary (절제 카운터, no 금욕 on the Ho
   assert(!home.includes('금욕'), 'Home surface still uses 금욕 vocabulary (R-10)');
 });
 
+// R-11: the room-warmth line may only speak the states its derivation can
+// actually reach. warmthBand() returns 잔잔함/안정 (two states) until the full
+// §0.5.10 4-band index exists — so the Home copy must pin exactly those two
+// band labels and never surface the unreachable ones (약함/따뜻함) as bands.
+check('home warmth copy speaks only the two reachable states (no fake 4-band gauge)', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes('방 온기 · 안정'), 'reachable band label 방 온기 · 안정 missing');
+  assert(home.includes('방 온기 · 잔잔함'), 'reachable band label 방 온기 · 잔잔함 missing');
+  for (const fake of ['방 온기 · 따뜻함', '방 온기 · 약함']) {
+    assert(!home.includes(fake), `unreachable band label surfaced: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
