@@ -1111,6 +1111,50 @@ check('pet feed surfaces persisted count + honest label; rule sheet auto-suggest
   );
 });
 
+// 40 — internal stage vocabulary must never reach user-facing product copy. Words
+// like 프로토타입 / MVP / P0 / WIP are team-stage labels (COPY_POLICY §4.1); honest
+// boundaries are said in user words instead (실험, 준비 중). Product surfaces =
+// src/screens + src/components + src/constants + src/App.jsx. Excluded on purpose:
+// the dev-only ScreenSwitcher — but ONLY while it stays gated behind DEBUG_NAV
+// (debugNavEnabled(): DEV / explicit ?dev=1), which is asserted here so un-gating
+// it fails this check; and extensions/chrome-shield, a separately installed
+// desktop test artifact whose 프로토타입 label guard #32 REQUIRES. Comments are
+// exempt: block comments are blanked line-preservingly, and a // line comment is
+// cut only when preceded by line start or whitespace so 'https://…' literals survive.
+check('no internal stage vocabulary (프로토타입/MVP/P0/WIP) in user-facing product source', () => {
+  const app = read('src/App.jsx');
+  assert(/function debugNavEnabled\(/.test(app), 'debugNavEnabled() gate missing from App.jsx');
+  assert(
+    /DEBUG_NAV \?[\s\S]{0,120}<ScreenSwitcher/.test(app),
+    'ScreenSwitcher is no longer gated behind DEBUG_NAV — an un-gated switcher ships stage labels to users',
+  );
+
+  const files = [
+    ...walk(join(ROOT, 'src/screens'), ['.jsx', '.js']),
+    ...walk(join(ROOT, 'src/components'), ['.jsx', '.js']),
+    ...walk(join(ROOT, 'src/constants'), ['.jsx', '.js']),
+    join(ROOT, 'src/App.jsx'),
+  ].filter((f) => !f.endsWith('ScreenSwitcher.jsx'));
+
+  const stripComments = (s) =>
+    s
+      .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+      .split('\n')
+      .map((line) => line.replace(/(^|\s)\/\/.*$/, '$1'))
+      .join('\n');
+
+  const offenders = [];
+  for (const f of files) {
+    stripComments(readFileSync(f, 'utf8')).split('\n').forEach((line, i) => {
+      if (line.includes('프로토타입')) offenders.push(`${rel(f)}:${i + 1} (프로토타입)`);
+      for (const word of ['MVP', 'P0', 'WIP']) {
+        if (new RegExp(`\\b${word}\\b`).test(line)) offenders.push(`${rel(f)}:${i + 1} (${word})`);
+      }
+    });
+  }
+  assert(offenders.length === 0, `internal stage vocabulary in product source: ${offenders.join('; ')}`);
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
