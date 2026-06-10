@@ -48,8 +48,14 @@
   --accent-ember-glow: rgba(245, 164, 90, 0.35);
 
   /* Typography */
+  /* R-9: Pretendard/Inter arrive from CDN <link>s in index.html and are blocked
+   * on managed/offline networks — the stack below is the real face there.
+   * 'Malgun Gothic' makes the Windows Hangul fallback deterministic (Segoe UI
+   * via system-ui has no Hangul; Noto Sans KR is usually absent on Windows).
+   * Self-hosting woff2 stays HOLD until font files land in the repo. */
   --font-kr: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
-    system-ui, 'Apple SD Gothic Neo', Roboto, 'Noto Sans KR', sans-serif;
+    system-ui, 'Apple SD Gothic Neo', Roboto, 'Noto Sans KR', 'Malgun Gothic',
+    sans-serif;
   --font-en: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
   --font-base: var(--font-kr);
 

@@ -11,6 +11,7 @@
 
 - [ ] `npm run dev` 기동, headless/실브라우저에서 390×844 뷰포트로 열기
 - [ ] 한글 폰트 실제 로드 확인 (□ 토푸가 보이면 환경 문제부터 기록 — CDN 차단/로컬 폰트 부재)
+- [ ] CDN 차단 환경에서도 한글이 시스템 폰트(Apple SD Gothic Neo / Noto Sans KR / Malgun Gothic)로 토푸 없이 렌더 (R-9 폴백 스택 — Windows는 Malgun Gothic이 받는다)
 - [ ] 콘솔 에러 0건 (외부 리소스 실패는 별도 기록 — R-9 추적)
 - [ ] 화면당 스크린샷 저장: `references/visual-qa/<YYYY-MM-DD>/qa-NN-<screen>.png`
 - [ ] 탭 가능해 *보이는* 모든 요소를 실제로 탭 — 반응 없는 요소 발견 시 `[!]`
