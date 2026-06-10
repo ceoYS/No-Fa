@@ -286,7 +286,7 @@ export default function ShieldScreen({
           실드는 따로 도는 기능이 아니라, 지금 쓰는 절제 도구와 연결돼요.
         </p>
         <ul className="shield-link-list">
-          <li className="hairline-note">· 금욕 카운터({counters.length}개)별로 무엇을 멀리 둘지 정해둘 수 있어요.</li>
+          <li className="hairline-note">· 절제 카운터({counters.length}개)별로 무엇을 멀리 둘지 정해둘 수 있어요.</li>
           <li className="hairline-note">· 규율({rules.length}개)에 ‘이 종류는 멀리 두기’ 같은 약속을 이어붙이게 할 거예요.</li>
           <li className="hairline-note">· 차단에 막힌 순간엔 ‘잠깐 멈춤’ 5분으로 바로 이어지게 할 거예요.</li>
           <li className="hairline-note">· 멀리 둔 순간들을 기록에 남겨 흐름을 돌아보게 할 거예요.</li>

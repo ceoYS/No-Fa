@@ -158,7 +158,7 @@ export default function DisciplineScreen({
       <section className="card">
         <span className="card-label">오늘의 규율 상태</span>
 
-        {/* 카운터별 보기 — 규율을 연결된 금욕 카운터로 묶어 보거나 거른다. 요약은
+        {/* 카운터별 보기 — 규율을 연결된 절제 카운터로 묶어 보거나 거른다. 요약은
             오늘의 규율 상태만 센다(경과 시간 아님). */}
         {counters.length > 0 ? (
           <div className="rule-filter-row" role="group" aria-label="카운터별 보기">
@@ -235,7 +235,7 @@ export default function DisciplineScreen({
         <span className="card-label">규율을 다루는 방식</span>
         <ul className="stack" style={{ '--gap': 'var(--sp-2)' }}>
           <li className="hairline-note">· 상태 칩을 누르면 지켰어요 · 위기였지만 버텼어요 · 못 지켰어요 중에서 고를 수 있어요.</li>
-          <li className="hairline-note">· 규율은 금욕 카운터에 연결되는 보조 약속이에요. 못 지켜도 절제 시간(타이머)은 리셋되지 않아요.</li>
+          <li className="hairline-note">· 규율은 절제 카운터에 연결되는 보조 약속이에요. 못 지켜도 절제 시간(타이머)은 리셋되지 않아요.</li>
           <li className="hairline-note">· 못 지킨 날은 가볍게 복기하면 “복기 완료” 같은 표시가 붙어요.</li>
           <li className="hairline-note">· 규율 카테고리는 직접 추가할 수 있어요. 편집·알림 연동은 다음 단계에서 준비하고 있어요.</li>
           <li className="hairline-note">· 규율은 나와의 약속이라 유지돼요. 삭제는 아직 지원하지 않고, 수정 기능은 다음 단계에서 다듬을게요.</li>
@@ -320,7 +320,7 @@ function StatusSheet({ rule, onCancel, onPick }) {
   );
 }
 
-// 규율 추가 시트 — 규율 라벨 + 카테고리 + 연결할 금욕 카운터.
+// 규율 추가 시트 — 규율 라벨 + 카테고리 + 연결할 절제 카운터.
 // 카운터는 기존 카운터 연결 / 연결 안 함 / "새 카운터도 함께 만들기" 중 하나.
 // 새 카운터를 고르면 이름·시작 일·시작 시간·목표 일수를 입력해 규율과 함께 만든다.
 function AddRuleSheet({ categories, counters, selectedCounterId, onAddCategory, onCancel, onSubmit }) {
@@ -444,8 +444,8 @@ function AddRuleSheet({ categories, counters, selectedCounterId, onAddCategory, 
           />
         ) : null}
 
-        {/* 연결할 금욕 카운터 — 규율은 카운터를 돕는 보조 약속이에요. */}
-        <p className="sheet-help">연결할 금욕 카운터 — 이 규율이 어떤 절제를 도울까요?</p>
+        {/* 연결할 절제 카운터 — 규율은 카운터를 돕는 보조 약속이에요. */}
+        <p className="sheet-help">연결할 절제 카운터 — 이 규율이 어떤 절제를 도울까요?</p>
         <div className="sheet-chip-grid">
           {counters.map((c) => (
             <button

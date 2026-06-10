@@ -389,7 +389,7 @@ check('rule model carries counterId linked to default counters', () => {
 // renders the counters as choices and submits a counterId.
 check('add-rule flow links a rule to an existing counter', () => {
   const screen = read('src/screens/DisciplineScreen.jsx');
-  assert(screen.includes('연결할 금욕 카운터'), 'add-rule counter section (연결할 금욕 카운터) missing');
+  assert(screen.includes('연결할 절제 카운터'), 'add-rule counter section (연결할 절제 카운터) missing');
   assert(screen.includes('counters.map('), 'add-rule sheet does not list counters to link');
   assert(/counterId:/.test(screen), 'add-rule submit never sends a counterId');
   assert(screen.includes('onAddRule'), 'DisciplineScreen does not call onAddRule');
@@ -1163,15 +1163,19 @@ check('no internal stage vocabulary (프로토타입/MVP/P0/WIP) in user-facing 
   assert(offenders.length === 0, `internal stage vocabulary in product source: ${offenders.join('; ')}`);
 });
 
-// R-10: Home names the multi-counter concept with ONE vocabulary family. The
-// screen title says 절제 시간, so the counter section must say 절제 카운터 — the
-// 금욕 family is search/community vocabulary (COPY_POLICY) and stays off the
-// Home surface entirely. (DisciplineScreen/ShieldScreen still carry 금욕 카운터
-// in helper copy; sweeping those is a separate, later batch.)
-check('home speaks one counter vocabulary (절제 카운터, no 금욕 on the Home surface)', () => {
+// R-10: the product names the multi-counter concept with ONE vocabulary family.
+// The Home title says 절제 시간, so every product surface says 절제 카운터 — the
+// 금욕 family is search/community vocabulary (COPY_POLICY) and stays out of
+// product copy entirely (Home R-10, then DisciplineScreen/ShieldScreen helper
+// copy in the residual-cleanup batch). User free-naming is not restricted —
+// this pins NoF-authored strings only.
+check('product speaks one counter vocabulary (절제 카운터, no 금욕 in product copy)', () => {
   const home = read('src/screens/HomeScreen.jsx');
   assert(home.includes('절제 카운터'), 'Home counter section label 절제 카운터 missing');
   assert(!home.includes('금욕'), 'Home surface still uses 금욕 vocabulary (R-10)');
+  for (const file of ['src/screens/DisciplineScreen.jsx', 'src/screens/ShieldScreen.jsx']) {
+    assert(!read(file).includes('금욕'), `${file} still uses 금욕 vocabulary (residual cleanup)`);
+  }
 });
 
 // R-11: the room-warmth line may only speak the states its derivation can
