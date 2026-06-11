@@ -169,6 +169,16 @@ function DayDetailSheet({ day, onClose }) {
                 ))}
               </div>
             ) : null}
+            {day.checkin.note ? (
+              <p className="day-detail-reflection">“{day.checkin.note}”</p>
+            ) : null}
+          </div>
+        ) : day.isToday ? (
+          <div className="day-detail-block">
+            <span className="card-label">오늘의 체크인</span>
+            <p className="hairline-note">
+              아직 오늘 체크인을 남기지 않았어요. 홈에서 ‘오늘 상태 남기기’로 1분이면 남길 수 있어요.
+            </p>
           </div>
         ) : null}
 

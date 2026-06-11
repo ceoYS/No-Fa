@@ -1290,6 +1290,46 @@ check('check-in journal is honest: local-only disclosure, saved state, no fake c
   }
 });
 
+// Records / 최근 기록 v2: the Calendar day-detail sheet reads today's saved check-in
+// back (mood / urge / trigger / note). The note is the field that was captured in
+// Check-in v1 but never surfaced in Records — it must now render. Today's detail also
+// shows a calm, non-shaming empty state when no check-in exists yet. Like the capture
+// screen, Records must NEVER imply cloud sync, AI analysis, medical treatment, or real
+// blocking, and must carry no shaming / religious vocabulary (COPY_POLICY §0.5.8.1).
+check('records day-detail surfaces the check-in note + calm empty state, no fake cloud/AI/medical/shame', () => {
+  const screen = read('src/screens/CalendarScreen.jsx');
+
+  // (a) The day-detail check-in block reads the persisted note back (the v2 gap).
+  assert(/day\.checkin\.note/.test(screen), 'CalendarScreen day-detail does not read the check-in note (day.checkin.note)');
+
+  // (b) Mood / urge / trigger read-back stays present alongside the note.
+  assert(screen.includes('오늘의 체크인'), 'CalendarScreen is missing the 오늘의 체크인 detail block');
+  assert(/day\.checkin\.moodLabel/.test(screen), 'CalendarScreen day-detail dropped the mood read-back');
+  assert(/day\.checkin\.urge/.test(screen), 'CalendarScreen day-detail dropped the urge read-back');
+  assert(/day\.checkin\.triggers/.test(screen), 'CalendarScreen day-detail dropped the trigger read-back');
+
+  // (c) A calm empty state exists for today when no check-in is saved yet.
+  assert(
+    /day\.isToday/.test(screen) && screen.includes('아직 오늘 체크인을 남기지 않았어요'),
+    'CalendarScreen is missing the calm today empty state for an unsaved check-in',
+  );
+
+  // (d) No fake cloud-sync / AI-analysis / medical-treatment / real-blocking claims.
+  for (const fake of [
+    '클라우드', '동기화', '서버에 저장', '백업',
+    'AI가', 'AI 분석', '인공지능', '자동 분석',
+    '치료', '진단', '처방', '의학',
+    '차단했어요', '차단하고 있어요', '차단 중이에요',
+  ]) {
+    assert(!screen.includes(fake), `CalendarScreen makes a fake cloud/AI/medical/blocking claim: ${fake}`);
+  }
+
+  // (e) No shaming / punishing / religious vocabulary.
+  for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판']) {
+    assert(!screen.includes(bad), `CalendarScreen carries shaming/punishing/religious vocabulary: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
