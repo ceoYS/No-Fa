@@ -24,3 +24,11 @@ things that actually cost a loop iteration and are worth not repeating.
   from check 6 (eating / 먹었 / 먹는 / 움직였 / 기지개 / 꼬리 / 파도처럼). The guard scans the
   full source string, so even a negated mention fails." (Record only — do not create
   `.claude/skills` without explicit approval.)
+- Recurrence (same day, while writing the Records ledger): the SAME principle bit a
+  second time from the other side — a NEW negative guard `!/…XMLHttpRequest…/` false-
+  failed because `src/utils/storage.js`'s privacy comment NAMES "fetch / XMLHttpRequest
+  / WebSocket" to promise it makes none. Generalized rule: when a guard asserts the
+  ABSENCE of an API, match CALL-form (`fetch(`, `new WebSocket(`, `sendBeacon(`), never
+  the bare word — honest disclaimers mention the very thing they forswear. Both halves
+  of the lesson (writing copy AND writing guards) share one root: these checks scan raw
+  source, comments included.
