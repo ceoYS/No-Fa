@@ -1434,6 +1434,42 @@ check('check-in ledger is localStorage-only + day-keyed, no fabricated history',
   );
 });
 
+// Records history read (Records / Calendar): the day-ledger must read REAL past-day
+// check-ins from the rolling checkinLedger and NEVER fabricate them. recentDays reads
+// the ledger entry for a day with an honest null fallback (no invented history);
+// CalendarScreen threads the ledger into the builder and labels a past day's check-in
+// block day-aware ("그 날의 체크인"), not the hardcoded "오늘의". No fake cloud/AI/medical
+// claims and no shaming vocabulary on the read surface (COPY_POLICY §0.5.8.1).
+check('records reads historical check-ins from the ledger, no fabricated history', () => {
+  const rd = read('src/constants/recentDays.js');
+  const cal = read('src/screens/CalendarScreen.jsx');
+
+  // (a) recentDays reads the ledger entry for the day, defaulting to null (honest absence).
+  assert(/checkinLedger/.test(rd), 'recentDays does not consult the check-in ledger');
+  assert(
+    /checkinLedger\[dateMs\] \?\? null/.test(rd),
+    'recentDays does not read ledger[dateMs] with an honest null fallback (risk of fabricated history)',
+  );
+
+  // (b) CalendarScreen threads the ledger into the day-record builder.
+  assert(/checkinLedger/.test(cal), 'CalendarScreen does not pass the check-in ledger');
+  assert(/buildDayRecords\(\s*\{[\s\S]*checkinLedger/.test(cal), 'CalendarScreen does not feed checkinLedger into buildDayRecords');
+
+  // (c) A past day's check-in block is labelled day-aware, not hardcoded "오늘의 체크인".
+  assert(
+    /day\.isToday \? '오늘의 체크인' : '그 날의 체크인'/.test(cal),
+    'CalendarScreen does not label a past-day check-in as 그 날의 체크인',
+  );
+
+  // (d) No fake cloud/AI/medical/blocking + no shaming vocabulary on the read surface.
+  for (const fake of ['클라우드', '동기화', '서버에 저장', 'AI가', 'AI 분석', '인공지능', '자동 분석', '치료', '진단', '처방', '차단했어요']) {
+    assert(!cal.includes(fake), `CalendarScreen makes a fake cloud/AI/medical/blocking claim: ${fake}`);
+  }
+  for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판']) {
+    assert(!cal.includes(bad), `CalendarScreen carries shaming/punishing/religious vocabulary: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

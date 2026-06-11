@@ -21,6 +21,7 @@ export default function CalendarScreen({
   rules = [],
   abstinenceStartMs = Date.now(),
   todayRecord = null,
+  checkinLedger = null,
 }) {
   const now = Date.now();
   const [rangeId, setRangeId] = useState('7d');
@@ -29,11 +30,11 @@ export default function CalendarScreen({
   const days = useMemo(
     () =>
       buildDayRecords(
-        { rules, todayRecord, abstinence: { startMs: abstinenceStartMs, now } },
+        { rules, todayRecord, checkinLedger, abstinence: { startMs: abstinenceStartMs, now } },
         rangeDays(rangeId, now),
       ),
     // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rules, todayRecord, abstinenceStartMs, rangeId],
+    [rules, todayRecord, checkinLedger, abstinenceStartMs, rangeId],
   );
   const [selected, setSelected] = useState(days.length - 1);
 
@@ -153,7 +154,7 @@ function DayDetailSheet({ day, onClose }) {
 
         {day.checkin ? (
           <div className="day-detail-block">
-            <span className="card-label">오늘의 체크인</span>
+            <span className="card-label">{day.isToday ? '오늘의 체크인' : '그 날의 체크인'}</span>
             <p className="discipline-summary">
               {[
                 day.checkin.moodLabel ? `기분 ${day.checkin.moodLabel}` : null,

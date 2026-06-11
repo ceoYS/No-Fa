@@ -94,11 +94,15 @@ function todayDotState(rules, todayRecord) {
 }
 
 function buildOneDay(offset, ctx) {
-  const { rules, todayRecord, now, todayStreak } = ctx;
+  const { rules, todayRecord, now, todayStreak, checkinLedger } = ctx;
   const dateMs = startOfDay(now - offset * DAY_MS);
   const date = new Date(dateMs);
   const wd = WEEKDAY[date.getDay()];
   const isToday = offset === 0;
+  // Real saved check-in for this calendar day, read from the rolling ledger (Records
+  // history). null when the user did not check in that day — we never fabricate one.
+  // Today's branch below re-reads the live todayRecord instead (same entry, freshest).
+  const ledgerCheckin = checkinLedger ? checkinLedger[dateMs] ?? null : null;
   const base = {
     dateMs,
     label: wd,
@@ -112,7 +116,7 @@ function buildOneDay(offset, ctx) {
     reflection: null,
     nextAction: null,
     badges: emptyBadges(),
-    checkin: null,
+    checkin: ledgerCheckin,
   };
   const streakForDay = todayStreak - offset;
 
@@ -177,11 +181,14 @@ function buildOneDay(offset, ctx) {
 }
 
 // Build the day-ledger oldest → today (today is the last element).
-export function buildDayRecords({ rules = [], todayRecord = null, abstinence } = {}, count = 7) {
+export function buildDayRecords(
+  { rules = [], todayRecord = null, checkinLedger = null, abstinence } = {},
+  count = 7,
+) {
   const now = abstinence?.now ?? Date.now();
   const startMs = abstinence?.startMs ?? now;
   const todayStreak = Math.max(0, Math.floor((startOfDay(now) - startOfDay(startMs)) / DAY_MS));
-  const ctx = { rules, todayRecord, now, todayStreak };
+  const ctx = { rules, todayRecord, now, todayStreak, checkinLedger };
   const out = [];
   for (let offset = count - 1; offset >= 0; offset -= 1) {
     out.push(buildOneDay(offset, ctx));
