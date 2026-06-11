@@ -726,6 +726,34 @@
   transition: width var(--dur-base) var(--ease-soft);
 }
 
+/* C2 recovery read-back — honest summary of what the user just did in the crisis
+ * routine (post-routine reflection). An ember dot marks each completed action. */
+.recap-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin-top: var(--sp-2);
+}
+
+.recap-list li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: flex-start;
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  line-height: var(--lh-snug);
+}
+
+.recap-list li::before {
+  content: '';
+  flex: none;
+  width: 6px;
+  height: 6px;
+  margin-top: 8px;
+  border-radius: 50%;
+  background: var(--ember-300);
+}
+
 /* calendar (최근 기록 — tapped-day summary + legend) ----------------- */
 .calendar-summary {
   font-size: var(--fs-body);

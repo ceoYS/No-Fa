@@ -1505,13 +1505,40 @@ check('crisis routine is an honest guided 5-step flow routed to the gated 마치
     assert(!urge.includes(fake), `crisis routine makes a fake media/cloud/medical claim: ${fake}`);
   }
   assert(
-    urge.includes('단계 기록은 남지 않아요'),
+    urge.includes('세부 단계 진행은 저장하지 않아요'),
     'routine does not disclose that step progress is not saved (durable-history honesty)',
   );
 
   // (e) Tone stays self-control recovery — no shame/punishment/religious vocabulary.
   for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판']) {
     assert(!urge.includes(bad), `crisis routine carries shaming/punishing/religious vocabulary: ${bad}`);
+  }
+});
+
+// 53 — C2 recovery read-back: completing the crisis routine shows an honest
+// "방금 해낸 것" summary of what the user actually did, discloses that step progress is
+// NOT saved (only the once-per-day onCrisisHeld completion persists), offers a real
+// next action (체크인으로 이어가기 → checkin) and never fakes analysis/AI/medical/shame.
+check('crisis routine read-back is honest (no saved-step claim, real next action)', () => {
+  const urge = read('src/screens/UrgeScreen.jsx');
+
+  // (a) Read-back summary of the real actions taken in the routine.
+  assert(urge.includes('방금 해낸 것'), 'read-back summary header (방금 해낸 것) missing');
+  for (const line of ['5분 위기 루틴을 끝냈어요', '자극에서 한 걸음 떨어졌어요', '안전한 대체 행동을 골랐어요']) {
+    assert(urge.includes(line), `read-back summary line missing: ${line}`);
+  }
+
+  // (b) Honest persistence disclosure: steps are not saved; only today's completion records.
+  assert(urge.includes('세부 단계 진행은 저장하지 않아요'), 'read-back does not disclose step progress is not saved');
+  assert(urge.includes('오늘 완료로 기록돼요'), 'read-back does not state that completion is what gets recorded');
+
+  // (c) A real next action that routes to an existing screen (no dead end).
+  assert(urge.includes('체크인으로 이어가기'), 'read-back next action (체크인으로 이어가기) missing');
+  assert(/onNavigate\('checkin'\)/.test(urge), 'read-back does not route to the real check-in screen');
+
+  // (d) No fake analysis / AI / medical / religious / shaming claims on the read-back.
+  for (const bad of ['분석 완료', 'AI 분석', '자동 분석', '인공지능', '치료', '중독 치료', '진단', '처방', '타락', '실패자', '회개', '심판', '위반', '벌점']) {
+    assert(!urge.includes(bad), `read-back carries a fake-analysis / medical / shaming claim: ${bad}`);
   }
 });
 

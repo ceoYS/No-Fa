@@ -34,7 +34,7 @@ const ROUTINE_STEPS = [
     title: '짧은 대체 행동 하나 고르기',
     body: '지금 할 수 있는 행동 하나를 골라요.\n작아도 괜찮아요.',
   },
-  { id: 'done', title: '여기까지 잘 왔어요', body: '5분을 넘기는 이 선택이 가장 큰 한 걸음이에요.' },
+  { id: 'done', title: '위기 루틴 완료', body: '5분을 넘기는 이 선택이 가장 큰 한 걸음이에요.' },
 ];
 
 // 잠깐 멈춤은 "5분 지연 도구"다 (refocus memo §2 — 충동 멈추기). 타이머는 5분(300초)
@@ -103,6 +103,9 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
   const step = ROUTINE_STEPS[routineStep];
   const isLastStep = routineStep === ROUTINE_STEPS.length - 1;
   const replaceStepNeedsPick = step.id === 'replace' && !routinePick;
+  // C2 read-back: surface the replacement the user actually chose (honest summary,
+  // not a fabricated history — it reflects this in-memory routine only).
+  const pickedLabel = ALT_ACTIONS.find((a) => a.id === routinePick)?.label ?? '';
 
   return (
     <div className="screen" style={{ gap: 'var(--sp-3)' }}>
@@ -178,23 +181,48 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
               </div>
             ) : null}
 
-            {isLastStep ? (
-              <p className="hairline-note" style={{ marginTop: 'var(--sp-3)' }}>
-                이 화면을 벗어나면 단계 기록은 남지 않아요. 지금 이 시간을 넘긴 것만으로 충분해요.
-              </p>
-            ) : null}
           </section>
 
-          <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
-            {isLastStep ? (
-              <button
-                type="button"
-                className="btn btn-primary btn-block"
-                onClick={() => onCrisisHeld?.()}
-              >
-                완료했어요 · 마치기
-              </button>
-            ) : (
+          {isLastStep ? (
+            <>
+              <section className="card">
+                <span className="card-label">방금 해낸 것</span>
+                <ul className="recap-list">
+                  <li>5분 위기 루틴을 끝냈어요</li>
+                  <li>자극에서 한 걸음 떨어졌어요</li>
+                  <li>안전한 대체 행동을 골랐어요{pickedLabel ? ` — ${pickedLabel}` : ''}</li>
+                </ul>
+                <p className="hairline-note" style={{ marginTop: 'var(--sp-3)' }}>
+                  세부 단계 진행은 저장하지 않아요. 마치기를 누르면 오늘 완료로 기록돼요.
+                </p>
+              </section>
+
+              <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-block"
+                  onClick={() => onCrisisHeld?.()}
+                >
+                  완료했어요 · 마치기
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={() => onNavigate('checkin')}
+                >
+                  체크인으로 이어가기
+                </button>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={() => onNavigate('home')}
+                >
+                  다시 하루로 돌아가기
+                </button>
+              </div>
+            </>
+          ) : (
+            <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
               <button
                 type="button"
                 className="btn btn-primary btn-block"
@@ -205,18 +233,18 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
               >
                 다음
               </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-ghost btn-block"
-              onClick={() => {
-                if (routineStep === 0) setView('breath');
-                else setRoutineStep((s) => Math.max(s - 1, 0));
-              }}
-            >
-              {routineStep === 0 ? '호흡으로 돌아가기' : '이전 단계'}
-            </button>
-          </div>
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={() => {
+                  if (routineStep === 0) setView('breath');
+                  else setRoutineStep((s) => Math.max(s - 1, 0));
+                }}
+              >
+                {routineStep === 0 ? '호흡으로 돌아가기' : '이전 단계'}
+              </button>
+            </div>
+          )}
         </>
       ) : view === 'alt' ? (
         <>
