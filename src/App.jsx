@@ -207,6 +207,11 @@ export default function App() {
   // Last grant, for a calm "방금 받았어요" note: { kind:'shards'|'snack', amount, reason }.
   // Transient — intentionally NOT persisted (a reload should not re-announce a grant).
   const [lastEarn, setLastEarn] = useState(null);
+  // C3 recovery reflection hand-off: a one-line note typed on the crisis read-back,
+  // buffered here so the next 체크인 can prefill it. Transient like reflectionCtx/lastEarn —
+  // intentionally NOT persisted as its own slice; it becomes durable only when the user
+  // finishes that check-in, which writes it through the existing note → ledger path.
+  const [checkinNoteDraft, setCheckinNoteDraft] = useState(null);
 
   // Save-on-change: persist exactly the domain slices above to localStorage on any
   // change. Transient nav state (screenId / reflectionCtx / lastEarn) is excluded.
@@ -458,6 +463,14 @@ export default function App() {
     setScreenId('reward');
   };
 
+  // Stash the one-line reflection from the crisis read-back so the next 체크인 prefills
+  // it (C3). The line is saved only when that check-in is completed (note → ledger);
+  // here it is just a transient hand-off buffer. Empty/whitespace clears it.
+  const stashCheckinNote = (text) => {
+    const line = (text ?? '').trim();
+    setCheckinNoteDraft(line || null);
+  };
+
   // 오늘의 체크인 완료 (§0.6.9): the check-in includes the discipline check, so the
   // grant folds in a small bonus per 위기였지만 버텼어요 rule. The step-1 inputs
   // (기분/충동/트리거/메모) are persisted into today's record so 최근 기록 and the
@@ -499,6 +512,9 @@ export default function App() {
       earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 체크인');
       setCheckinRewardDay(todayKey);
     }
+    // The reflection hand-off (if any) has now landed in savedCheckin.note → clear the
+    // transient buffer so it can't bleed into a later, unrelated check-in this session.
+    setCheckinNoteDraft(null);
     setScreenId('reward');
   };
 
@@ -626,6 +642,8 @@ export default function App() {
             onCompleteReflection={completeReflection}
             onCompleteCheckin={completeCheckin}
             onCrisisHeld={crisisHeld}
+            checkinNoteDraft={checkinNoteDraft}
+            onStashCheckinNote={stashCheckinNote}
             reflectionCtx={reflectionCtx}
             todayRecord={todayRecord}
             checkinLedger={checkinLedger}

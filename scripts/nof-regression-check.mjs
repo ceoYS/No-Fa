@@ -1542,6 +1542,55 @@ check('crisis routine read-back is honest (no saved-step claim, real next action
   }
 });
 
+// 54 — C3 recovery reflection note: after the C2 read-back the user may leave a one-line
+// reflection ("오늘 나에게 남길 한마디"). It is NOT saved on the urge screen — it persists
+// ONLY by being carried into the existing check-in note (the real localStorage ledger
+// path, guards #38 + check-in ledger). So the read-back must (a) invite the line, (b)
+// disclose honestly that it saves only when the check-in is finished, (c) carry the draft
+// into the check-in via onStashCheckinNote while still routing to the real check-in, and
+// (d) never claim the line is already saved. App must keep the draft TRANSIENT (never its
+// own persisted slice) and CheckinScreen must seed its note from it. No shame/medical/AI.
+check('recovery reflection note is honest: transient until the check-in saves it (no fake save claim)', () => {
+  const urge = read('src/screens/UrgeScreen.jsx');
+  const app = read('src/App.jsx');
+  const checkin = read('src/screens/CheckinScreen.jsx');
+
+  // (a) The reflection invite exists on the read-back.
+  assert(urge.includes('오늘 나에게 남길 한마디'), 'C3 reflection invite (오늘 나에게 남길 한마디) missing from the read-back');
+
+  // (b) Honest disclosure: the line persists only when the check-in is finished.
+  assert(
+    urge.includes('체크인을 마치면 오늘 기록에 저장돼요'),
+    'C3 reflection note is missing the honest "saved only when the check-in is finished" disclosure',
+  );
+
+  // (c) The draft is carried into the existing check-in note path, and the read-back still
+  //     routes to the real check-in screen (no dead end; reuses the real persistence path).
+  assert(/onStashCheckinNote\?\.\(/.test(urge), 'read-back does not hand the reflection line to the check-in (onStashCheckinNote)');
+  assert(/onNavigate\('checkin'\)/.test(urge), 'read-back reflection path does not continue to the real check-in screen');
+
+  // (d) The urge screen must NOT claim the line is already saved — only the check-in
+  //     ledger persists it. Ban present/past fake-save claims (future "저장돼요" is allowed).
+  for (const fake of ['저장했어요', '저장되었어요', '저장 완료', '기록했어요', '기록되었어요', '메모가 저장']) {
+    assert(!urge.includes(fake), `read-back falsely claims the reflection line is already saved: ${fake}`);
+  }
+
+  // (e) App keeps the draft TRANSIENT — a hand-off buffer, never its own persisted slice
+  //     (it persists only through the check-in note). It must not enter the saveState bundle.
+  assert(/checkinNoteDraft/.test(app), 'App has no checkinNoteDraft hand-off state for the reflection line');
+  const m = app.match(/saveState\(\{[\s\S]*?\}\)/);
+  assert(m, 'could not locate the saveState({...}) bundle in App.jsx');
+  assert(!m[0].includes('checkinNoteDraft'), 'checkinNoteDraft must stay transient — it must not be persisted as its own slice');
+
+  // (f) CheckinScreen seeds its note from the carried draft so the line actually lands.
+  assert(/checkinNoteDraft/.test(checkin), 'CheckinScreen does not seed its note from the carried reflection draft');
+
+  // (g) Tone: no shame / medical / AI / religious vocabulary on the new path.
+  for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판', 'AI 분석', '자동 분석', '치료', '진단', '처방']) {
+    assert(!urge.includes(bad), `C3 reflection note carries forbidden vocabulary: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

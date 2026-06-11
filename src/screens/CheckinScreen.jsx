@@ -37,6 +37,7 @@ export default function CheckinScreen({
   onSetRuleStatus,
   onCompleteCheckin,
   todayRecord = null,
+  checkinNoteDraft = null,
 }) {
   // Today's already-saved check-in, restored by App only for the current calendar
   // day (§0.6.5). When it exists we open on a calm saved-summary read-back instead
@@ -50,7 +51,9 @@ export default function CheckinScreen({
   const [mood, setMood] = useState(() => moodIdFromLabel(savedCheckin?.moodLabel));
   const [triggers, setTriggers] = useState(() => triggerIdsFromLabels(savedCheckin?.triggers));
   const [urge, setUrge] = useState(() => (typeof savedCheckin?.urge === 'number' ? savedCheckin.urge : null));
-  const [note, setNote] = useState(() => savedCheckin?.note ?? '');
+  // Seed the note from today's saved check-in if present; otherwise prefill the one-line
+  // reflection carried from the crisis read-back (C3) so 체크인으로 이어가기 doesn't drop it.
+  const [note, setNote] = useState(() => savedCheckin?.note ?? checkinNoteDraft ?? '');
 
   // '특별히 없음'(none) is mutually exclusive: picking it clears the others, and
   // picking any real trigger clears 'none'. Keeps the saved record honest — no

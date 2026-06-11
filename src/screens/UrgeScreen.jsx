@@ -42,9 +42,15 @@ const ROUTINE_STEPS = [
 // 권장 고비일 뿐이라 멈췄다가 다시 이어가도 된다.
 const TARGET_SECONDS = 300;
 
+// C3 — optional one-line reflection on the crisis read-back ("오늘 나에게 남길 한마디").
+// Capped to match the check-in 한 줄 메모 (CheckinScreen NOTE_MAX = 140): the line is
+// carried into that field and persists ONLY when the user finishes the check-in, so the
+// caps must agree or the carried text would clip on the next screen.
+const REFLECT_MAX = 140;
+
 // Urge는 "지금 선택한 카운터"의 충동을 함께 넘기는 도구다 (counter-management). 어떤
 // 절제를 붙잡고 있는지 selectedCounterName으로 보여줘 맥락을 잃지 않게 한다.
-export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterName = '' }) {
+export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNote, selectedCounterName = '' }) {
   const [remaining, setRemaining] = useState(TARGET_SECONDS);
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
@@ -53,6 +59,10 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
   // C1 guided routine progress — transient, in-the-moment only (never persisted).
   const [routineStep, setRoutineStep] = useState(0);
   const [routinePick, setRoutinePick] = useState(null);
+  // C3 reflection line typed on the read-back. Transient like the routine steps; it is
+  // NOT saved here — 체크인으로 이어가기 carries it into the check-in note, which persists
+  // it only when that check-in is finished.
+  const [reflectNote, setReflectNote] = useState('');
   const tickRef = useRef(null);
 
   useEffect(() => {
@@ -197,6 +207,27 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
                 </p>
               </section>
 
+              <section className="card">
+                <div className="card-row">
+                  <span className="card-label">오늘 나에게 남길 한마디</span>
+                  <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
+                    {reflectNote.length}/{REFLECT_MAX}
+                  </span>
+                </div>
+                <textarea
+                  className="sheet-input reflect-input"
+                  value={reflectNote}
+                  onChange={(e) => setReflectNote(e.target.value.slice(0, REFLECT_MAX))}
+                  placeholder="방금 버틴 흐름을 한 줄로 남겨볼까요? 비워둬도 괜찮아요."
+                  maxLength={REFLECT_MAX}
+                  rows={2}
+                  aria-label="오늘 나에게 남길 한마디"
+                />
+                <p className="hairline-note">
+                  ‘체크인으로 이어가기’를 누르면 이 한 줄을 가져가서, 체크인을 마치면 오늘 기록에 저장돼요. 저장 전에는 이 화면에만 남아요.
+                </p>
+              </section>
+
               <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
                 <button
                   type="button"
@@ -208,7 +239,11 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
                 <button
                   type="button"
                   className="btn btn-ghost btn-block"
-                  onClick={() => onNavigate('checkin')}
+                  onClick={() => {
+                    const line = reflectNote.trim();
+                    if (line) onStashCheckinNote?.(line);
+                    onNavigate('checkin');
+                  }}
                 >
                   체크인으로 이어가기
                 </button>
