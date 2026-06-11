@@ -12,6 +12,7 @@ import {
 } from '../constants/petAssets.js';
 import {
   RESOURCE,
+  EARN,
   REWARD_DISCLAIMER,
   MILESTONES,
   milestoneReward,
@@ -21,6 +22,7 @@ import {
 import {
   DECOR_ITEMS,
   ITEM_BY_ID,
+  ROOM_THEMES,
   SHOP_CATEGORIES,
   catalogForCategory,
 } from '../constants/roomItems.js';
@@ -53,6 +55,16 @@ const SCENE_FEED_MESSAGE = '간식을 고양이 곁에 놓아두었어요.';
 const SCENE_REWARD_MESSAGE = '오늘의 절제를 조용히 기억했어요.';
 const NO_SNACK_MESSAGE = '보유한 간식이 없어요. 오늘의 보상으로 다시 받을 수 있어요.';
 
+// Character growth v1 — DERIVED warmth labels read from LOCAL records (today's
+// check-in + the abstinence streak). This is a calm summary, NOT a pet evolution
+// level and NOT a live reaction: the cat stays a static composite and nothing here
+// animates or grows by itself. The card's disclosure line states this plainly.
+const ROOM_WARMTH = {
+  base: { label: '기본', tone: 'pill', note: '아직 오늘 기록 전이에요. 체크인을 남기면 방이 조금 더 따뜻해져요.' },
+  warmer: { label: '조금 따뜻해짐', tone: 'pill-ember', note: '오늘 기록을 남겨서 방이 조금 더 따뜻해졌어요.' },
+  sustained: { label: '온기 유지 중', tone: 'pill-moss', note: '절제를 이어가고 오늘 기록도 남겨서 온기가 유지되고 있어요.' },
+};
+
 export default function PetRewardScreen({
   onNavigate,
   emberShards = 0,
@@ -62,6 +74,7 @@ export default function PetRewardScreen({
   activeRoomTheme = 'empty',
   petCareState = {},
   streakDays = 0,
+  todayRecord = null,
   claimedRewardIds = [],
   lastEarn = null,
   onClaimReward,
@@ -120,6 +133,23 @@ export default function PetRewardScreen({
   const fedCount = petCareState.fedCount ?? 0;
   const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
   const lockedNext = nextLockedMilestone(streakDays);
+
+  // Character growth v1 — derive the room's warmth from LOCAL records only: today's
+  // saved check-in (todayRecord.checkin) and the abstinence streak. Summary label
+  // only; no live reaction, no auto-grow (see ROOM_WARMTH + the card disclosure).
+  const checkinDoneToday = todayRecord?.checkin != null;
+  const warmthLevel = !checkinDoneToday ? 'base' : streakDays > 0 ? 'sustained' : 'warmer';
+  const warmth = ROOM_WARMTH[warmthLevel];
+  // Next room state the user can honestly reach: the cheapest unowned theme, priced
+  // in the same earned 잔불 조각 (no new currency, no random unlock).
+  const nextRoom = ROOM_THEMES.filter((t) => t.cost > 0 && !ownedItems.includes(t.id)).sort(
+    (a, b) => a.cost - b.cost,
+  )[0];
+  const nextRoomNote = !nextRoom
+    ? '방 테마를 모두 열었어요.'
+    : emberShards >= nextRoom.cost
+      ? `다음 방 ‘${nextRoom.name}’으로 바꿀 수 있어요. 상점에서 데려와요.`
+      : `다음 방 ‘${nextRoom.name}’까지 ${nextRoom.cost - emberShards}${RESOURCE.unit} 남았어요.`;
   const placedIds = new Set(placements.map((p) => p.itemId));
   const ownedDecor = DECOR_ITEMS.filter((it) => ownedItems.includes(it.id));
   const selectedItem = selectedId ? ITEM_BY_ID[selectedId] : null;
@@ -297,6 +327,32 @@ export default function PetRewardScreen({
             : `방금 ${lastEarn.reason} · ${RESOURCE.name} ${lastEarn.amount}${RESOURCE.unit}을 모았어요.`
           : '오늘의 절제로 방이 조금 더 따뜻해졌어요.'}
       </p>
+
+      <section className="card">
+        <div className="card-row">
+          <span className="card-label">고양이 방 온기</span>
+          <span className={`pill ${warmth.tone}`} style={{ fontSize: 'var(--fs-small)' }}>
+            {warmth.label}
+          </span>
+        </div>
+        <p className="discipline-summary">{warmth.note}</p>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <p className="hairline-note">
+            ·{' '}
+            {checkinDoneToday
+              ? `오늘 체크인을 남겨서 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모았어요.`
+              : `오늘 체크인을 남기면 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모을 수 있어요.`}
+          </p>
+          <p className="hairline-note">
+            · 지금까지 모은 {RESOURCE.name} {emberShards}{RESOURCE.unit}
+          </p>
+          <p className="hairline-note">· {nextRoomNote}</p>
+        </div>
+        <p className="hairline-note text-quiet">
+          이 온기는 기기에 저장된 오늘의 기록으로 표시해요. 고양이가 실시간으로 반응하거나 저절로 자라는 건
+          아니에요.
+        </p>
+      </section>
 
       <div className="room-action-row">
         <button type="button" className="btn btn-primary" onClick={() => setSheet('inventory')}>

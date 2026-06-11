@@ -1330,6 +1330,41 @@ check('records day-detail surfaces the check-in note + calm empty state, no fake
   }
 });
 
+// Character Growth Loop v1: the pet room surfaces a DERIVED warmth/growth status from
+// LOCAL records only (today's check-in + the abstinence streak + earned 잔불 조각). It
+// must read today's check-in from todayRecord, disclose the local-record basis, and
+// explicitly deny a live pet reaction AND automatic growth/evolution — the cat is a
+// static composite (no animation/sound/eating claim). No AI/cloud/medical claims, no
+// shaming / punishing / decay copy (COPY_POLICY §0.5.8.1).
+check('pet growth surface is honest: local-record basis, no fake evolution/live-reaction/AI/cloud/shame', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+
+  // (a) The derived warmth/growth surface exists and reads today's check-in locally.
+  assert(screen.includes('고양이 방 온기'), 'PetRewardScreen is missing the 고양이 방 온기 growth surface');
+  assert(/todayRecord\?\.checkin/.test(screen), 'pet growth does not derive today check-in from local todayRecord');
+
+  // (b) Discloses the local-record basis AND denies live reaction + auto-growth.
+  assert(screen.includes('기기에 저장된'), 'pet growth surface does not disclose the local-record basis');
+  assert(/실시간으로\s+반응/.test(screen) && screen.includes('아니'), 'pet growth surface does not deny a live pet reaction');
+  assert(/저절로\s+자라/.test(screen) && screen.includes('아니'), 'pet growth surface does not deny automatic growth/evolution');
+
+  // (c) No fake evolution / live-reaction / AI / cloud / medical claims.
+  for (const fake of [
+    '성장했어요', '성장했습니다', '진화', '레벨업',
+    '실시간으로 반응해요', '실시간 반응',
+    'AI가', 'AI 분석', '인공지능', '자동 분석',
+    '클라우드', '동기화', '서버에 저장',
+    '치료', '진단', '처방',
+  ]) {
+    assert(!screen.includes(fake), `pet growth surface makes a fake evolution/AI/cloud/medical claim: ${fake}`);
+  }
+
+  // (d) No shaming / punishing / decay / religious vocabulary.
+  for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판', '망가져']) {
+    assert(!screen.includes(bad), `pet growth surface carries shaming/punishing/decay vocabulary: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
