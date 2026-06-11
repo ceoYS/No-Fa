@@ -11,6 +11,32 @@ const ALT_ACTIONS = [
   { id: 'stand', label: '자리에서 일어나기' },
 ];
 
+// C1 — guided 5분 위기 대응 루틴. An honest, text/action-only walkthrough (no fake
+// video/audio, no fake durable history): breathe → step away from the trigger →
+// move the body briefly → pick one safe replacement action → finish. The final step
+// reuses the SAME once-per-day crisisHeld 마치기 (onCrisisHeld) as the breath timer,
+// so the routine cannot farm 잔불 조각 and claims no separate saved log. Step 4 reuses
+// ALT_ACTIONS so the "choose a replacement" copy stays a concrete, real choice.
+const ROUTINE_STEPS = [
+  { id: 'breathe', title: '숨 고르기', body: '눈을 감고 천천히 네 번 숨을 쉬어요.\n들이쉬고… 길게 내쉬고.' },
+  {
+    id: 'step_away',
+    title: '자극에서 한 걸음 떨어지기',
+    body: '지금 있는 자리에서 잠깐 벗어나요.\n다른 방, 창가, 현관 — 어디든 좋아요.',
+  },
+  {
+    id: 'move',
+    title: '몸을 짧게 움직이기',
+    body: '제자리에서 30초만 움직여요.\n가벼운 스트레칭이나 제자리 걷기면 충분해요.',
+  },
+  {
+    id: 'replace',
+    title: '짧은 대체 행동 하나 고르기',
+    body: '지금 할 수 있는 행동 하나를 골라요.\n작아도 괜찮아요.',
+  },
+  { id: 'done', title: '여기까지 잘 왔어요', body: '5분을 넘기는 이 선택이 가장 큰 한 걸음이에요.' },
+];
+
 // 잠깐 멈춤은 "5분 지연 도구"다 (refocus memo §2 — 충동 멈추기). 타이머는 5분(300초)
 // 에서 0까지 카운트다운하고, 다 채우면 마치기를 권한다. 5분은 강제 종료가 아니라
 // 권장 고비일 뿐이라 멈췄다가 다시 이어가도 된다.
@@ -22,8 +48,11 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
   const [remaining, setRemaining] = useState(TARGET_SECONDS);
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
-  const [view, setView] = useState('breath'); // 'breath' | 'alt'
+  const [view, setView] = useState('breath'); // 'breath' | 'alt' | 'routine'
   const [altNote, setAltNote] = useState(null);
+  // C1 guided routine progress — transient, in-the-moment only (never persisted).
+  const [routineStep, setRoutineStep] = useState(0);
+  const [routinePick, setRoutinePick] = useState(null);
   const tickRef = useRef(null);
 
   useEffect(() => {
@@ -64,6 +93,17 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
     setView('breath');
   };
 
+  // Open the guided routine from the start (step 0, no replacement picked yet).
+  const openRoutine = () => {
+    setRoutineStep(0);
+    setRoutinePick(null);
+    setView('routine');
+  };
+
+  const step = ROUTINE_STEPS[routineStep];
+  const isLastStep = routineStep === ROUTINE_STEPS.length - 1;
+  const replaceStepNeedsPick = step.id === 'replace' && !routinePick;
+
   return (
     <div className="screen" style={{ gap: 'var(--sp-3)' }}>
       <header className="screen-header">
@@ -88,7 +128,125 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
         </div>
       </header>
 
-      {view === 'breath' ? (
+      {view === 'routine' ? (
+        <>
+          <p className="screen-subtitle" style={{ marginTop: 0 }}>
+            지금은 5분만 버티면 됩니다. 한 단계씩 같이 해봐요.
+          </p>
+
+          <section className="card">
+            <div className="card-row">
+              <span className="card-label">{step.title}</span>
+              <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
+                단계 {routineStep + 1} / {ROUTINE_STEPS.length}
+              </span>
+            </div>
+
+            <div
+              className="urge-progress"
+              role="progressbar"
+              aria-valuemin={1}
+              aria-valuemax={ROUTINE_STEPS.length}
+              aria-valuenow={routineStep + 1}
+              aria-label="5분 루틴 진행"
+              style={{ marginTop: 'var(--sp-2)' }}
+            >
+              <span
+                className="urge-progress-fill"
+                style={{ width: `${((routineStep + 1) / ROUTINE_STEPS.length) * 100}%` }}
+              />
+            </div>
+
+            <p className="urge-hint" style={{ maxWidth: 'none', marginTop: 'var(--sp-3)' }}>
+              {step.body}
+            </p>
+
+            {step.id === 'replace' ? (
+              <div className="chip-grid" style={{ marginTop: 'var(--sp-2)' }}>
+                {ALT_ACTIONS.map((a) => (
+                  <button
+                    key={a.id}
+                    type="button"
+                    className="chip"
+                    data-selected={routinePick === a.id}
+                    aria-pressed={routinePick === a.id}
+                    onClick={() => setRoutinePick(a.id)}
+                  >
+                    <span>{a.label}</span>
+                  </button>
+                ))}
+              </div>
+            ) : null}
+
+            {isLastStep ? (
+              <p className="hairline-note" style={{ marginTop: 'var(--sp-3)' }}>
+                이 화면을 벗어나면 단계 기록은 남지 않아요. 지금 이 시간을 넘긴 것만으로 충분해요.
+              </p>
+            ) : null}
+          </section>
+
+          <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
+            {isLastStep ? (
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                onClick={() => onCrisisHeld?.()}
+              >
+                완료했어요 · 마치기
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-primary btn-block"
+                disabled={replaceStepNeedsPick}
+                onClick={() =>
+                  setRoutineStep((s) => Math.min(s + 1, ROUTINE_STEPS.length - 1))
+                }
+              >
+                다음
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => {
+                if (routineStep === 0) setView('breath');
+                else setRoutineStep((s) => Math.max(s - 1, 0));
+              }}
+            >
+              {routineStep === 0 ? '호흡으로 돌아가기' : '이전 단계'}
+            </button>
+          </div>
+        </>
+      ) : view === 'alt' ? (
+        <>
+          <section className="card">
+            <span className="card-label">잠깐 다른 행동으로 시간을 벌어요</span>
+            <p className="hairline-note">
+              하나만 골라 지금 해봐요. 끝나면 다시 돌아와 남은 시간을 넘겨요.
+            </p>
+            <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+              {ALT_ACTIONS.map((a) => (
+                <button
+                  key={a.id}
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={() => completeAlt(a)}
+                >
+                  {a.label}
+                </button>
+              ))}
+            </div>
+          </section>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => setView('breath')}
+          >
+            호흡으로 돌아가기
+          </button>
+        </>
+      ) : (
         <>
           <div className="urge-stage">
             <div className="urge-breath" aria-hidden="true">
@@ -152,39 +310,18 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, selectedCounterNa
             <button
               type="button"
               className="btn btn-ghost btn-block"
+              onClick={openRoutine}
+            >
+              5분 루틴 따라가기
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
               onClick={() => setView('alt')}
             >
               대체 활동 해보기
             </button>
           </div>
-        </>
-      ) : (
-        <>
-          <section className="card">
-            <span className="card-label">잠깐 다른 행동으로 시간을 벌어요</span>
-            <p className="hairline-note">
-              하나만 골라 지금 해봐요. 끝나면 다시 돌아와 남은 시간을 넘겨요.
-            </p>
-            <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-              {ALT_ACTIONS.map((a) => (
-                <button
-                  key={a.id}
-                  type="button"
-                  className="btn btn-ghost btn-block"
-                  onClick={() => completeAlt(a)}
-                >
-                  {a.label}
-                </button>
-              ))}
-            </div>
-          </section>
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            onClick={() => setView('breath')}
-          >
-            호흡으로 돌아가기
-          </button>
         </>
       )}
     </div>

@@ -1470,6 +1470,51 @@ check('records reads historical check-ins from the ledger, no fabricated history
   }
 });
 
+// 52 — C1 crisis routine: the 잠깐 멈춤 screen offers an honest, guided 5-step
+// alternative-activity routine (breathe → step away → move → pick a replacement →
+// finish). It must stay text/action-only (no fake video/audio), must NOT claim a
+// durable saved log of the routine, and its 마치기 must delegate to the SAME
+// once-per-day onCrisisHeld grant — UrgeScreen can never earn/grant on its own, so
+// the routine cannot farm 잔불 조각. Tone stays self-control, never shame/medical.
+check('crisis routine is an honest guided 5-step flow routed to the gated 마치기', () => {
+  const urge = read('src/screens/UrgeScreen.jsx');
+
+  // (a) Guided routine exists and is reachable from the crisis screen.
+  assert(urge.includes('ROUTINE_STEPS'), 'crisis routine steps (ROUTINE_STEPS) missing');
+  assert(urge.includes("setView('routine')"), 'no entry into the guided routine (setView(routine))');
+  assert(urge.includes('5분 루틴 따라가기'), 'routine entry button (5분 루틴 따라가기) missing');
+
+  // (b) The 5 ordered steps are present. breathe's id is shared with an ALT_ACTION,
+  //     so the other four distinctive ids pin the routine shape.
+  for (const id of ['step_away', 'move', 'replace', 'done']) {
+    assert(new RegExp(`id: '${id}'`).test(urge), `crisis routine step missing: ${id}`);
+  }
+  assert(urge.includes('지금은 5분만 버티면 됩니다'), 'routine 5분 framing copy missing');
+
+  // (c) Completion delegates to the once-per-day crisis grant — UrgeScreen itself
+  //     must never earn/grant (no farm, no self-owned fake reward path).
+  assert(urge.includes('완료했어요 · 마치기'), 'routine completion button (완료했어요 · 마치기) missing');
+  assert(/onCrisisHeld\?\.\(\)/.test(urge), 'routine completion does not call onCrisisHeld');
+  for (const grant of ['earn(', 'EARN.', 'setCrisisRewardDay']) {
+    assert(!urge.includes(grant), `UrgeScreen fakes its own grant (${grant}) instead of delegating to onCrisisHeld`);
+  }
+
+  // (d) Honest media + history: no fake video/audio guide or cloud/medical claim, and
+  //     the no-durable-log disclosure is present (routine must not claim saved history).
+  for (const fake of ['동영상', '영상 가이드', '음성 가이드', '자동 재생', '클라우드', 'AI가', '치료', '진단', '처방']) {
+    assert(!urge.includes(fake), `crisis routine makes a fake media/cloud/medical claim: ${fake}`);
+  }
+  assert(
+    urge.includes('단계 기록은 남지 않아요'),
+    'routine does not disclose that step progress is not saved (durable-history honesty)',
+  );
+
+  // (e) Tone stays self-control recovery — no shame/punishment/religious vocabulary.
+  for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판']) {
+    assert(!urge.includes(bad), `crisis routine carries shaming/punishing/religious vocabulary: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

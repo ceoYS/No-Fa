@@ -229,6 +229,11 @@
   transform: scale(0.985);
 }
 
+.btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
 .btn-primary {
   background: linear-gradient(180deg, var(--ember-300) 0%, var(--ember-400) 100%);
   color: #1a0f06;
