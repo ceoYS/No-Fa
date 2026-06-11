@@ -1268,7 +1268,13 @@ check('check-in journal is honest: local-only disclosure, saved state, no fake c
   assert(screen.includes('트리거'), 'check-in trigger field (트리거) missing');
   assert(/<textarea/.test(screen), 'check-in free-text note (textarea) missing');
   assert(/onCompleteCheckin\(\{[\s\S]*?note/.test(screen), 'check-in does not pass the note to onCompleteCheckin');
-  assert(/checkin:\s*\{[\s\S]*?note:/.test(read('src/App.jsx')), 'App.completeCheckin does not persist the check-in note');
+  // App normalizes the note into savedCheckin and writes that object to today's record
+  // (and, since Records history, the rolling ledger) — so the note is persisted.
+  const appSrc = read('src/App.jsx');
+  assert(
+    /note:\s*typeof checkin\.note === 'string'/.test(appSrc) && /checkin:\s*savedCheckin/.test(appSrc),
+    'App.completeCheckin does not persist the check-in note',
+  );
 
   // (c) Saved/empty state: re-opening after today's check-in reads the saved record
   // back (todayRecord) instead of forcing a blank form.
@@ -1394,6 +1400,38 @@ check('pet feed signal is day-scoped + honest: fedDay stamped by dayKey, no fake
   for (const fake of ['고양이가 먹었', '먹었어요', '실시간으로 반응해요', '성장했어요', '성장했습니다', '진화', '레벨업']) {
     assert(!screen.includes(fake), `pet feed surface makes a fake eating/reaction/evolution claim: ${fake}`);
   }
+});
+
+// Rolling check-in ledger (Records history, storage integration): completeCheckin must
+// persist each day's check-in into a localStorage-only map keyed by the calendar day
+// (dayKey), so Records can later read REAL past-day entries. The ledger must start EMPTY
+// (no fabricated history), ride the same no-network storage box as the rest of the
+// bundle (guard #38), and store the same normalized fields shown in the live read-back.
+check('check-in ledger is localStorage-only + day-keyed, no fabricated history', () => {
+  const app = read('src/App.jsx');
+  const store = read('src/utils/storage.js');
+
+  // (a) The ledger exists and starts empty — no seeded/fabricated past check-ins.
+  assert(/checkinLedger/.test(app), 'App has no checkinLedger state');
+  assert(/persisted\?\.checkinLedger \?\? \{\}/.test(app), 'checkinLedger does not start empty (risk of fabricated history)');
+
+  // (b) Entries are keyed by the calendar-day key and written from a real check-in.
+  assert(/todayKey = dayKey\(/.test(app), 'completeCheckin does not derive a dayKey for the ledger key');
+  assert(
+    /setCheckinLedger\(\(prev\) => \(\{ \.\.\.prev, \[todayKey\]: savedCheckin \}\)\)/.test(app),
+    'completeCheckin does not append the saved check-in to the ledger under its dayKey',
+  );
+
+  // (c) The ledger is in the persisted bundle (survives reload) and rides the
+  // localStorage-only, no-network storage box (guard #38).
+  assert(/saveState\(\{[\s\S]*checkinLedger[\s\S]*\}\)/.test(app), 'checkinLedger is not included in the persisted bundle');
+  // Match CALL-form network primitives, not bare words — storage.js's privacy comment
+  // names "fetch / XMLHttpRequest / WebSocket" to PROMISE it makes none, and a bare-word
+  // scan would false-positive on that disclosure (see docs/NOF_LOOP_FAILURE_LOG.md).
+  assert(
+    !/fetch\(|new XMLHttpRequest|new WebSocket\(|sendBeacon\(/.test(store),
+    'storage box must stay localStorage-only (no network) for the check-in ledger',
+  );
 });
 
 let failed = 0;

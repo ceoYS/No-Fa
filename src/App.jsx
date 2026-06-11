@@ -166,6 +166,13 @@ export default function App() {
       : null,
   );
 
+  // Rolling check-in ledger (Records history): a localStorage-only map keyed by the
+  // check-in's calendar day (dayKey) → its saved fields, so 최근 기록 can read REAL
+  // past-day check-ins, not only today's. Starts EMPTY — no fabricated history; every
+  // entry is written by an actual completeCheckin below. Persisted through the same
+  // no-network storage box as the rest of the bundle (src/utils/storage.js, guard #38).
+  const [checkinLedger, setCheckinLedger] = useState(() => persisted?.checkinLedger ?? {});
+
   // Shield blocklist planner (P0.5). Persisted, but it still does NOT block
   // anything — it is the abstract plan (no URLs) a future P1 engine will consume.
   const [blocklist, setBlocklist] = useState(() => persisted?.blocklist ?? DEFAULT_BLOCKLIST);
@@ -213,6 +220,7 @@ export default function App() {
       categories,
       todayRecord,
       todayRecordDay: todayRecord ? dayKey(Date.now()) : null,
+      checkinLedger,
       blocklist,
       emberShards,
       inventory,
@@ -231,6 +239,7 @@ export default function App() {
     rules,
     categories,
     todayRecord,
+    checkinLedger,
     blocklist,
     emberShards,
     inventory,
@@ -462,6 +471,17 @@ export default function App() {
     const now = Date.now();
     const todayKey = dayKey(now);
     const rewardAlreadyGivenToday = checkinRewardDay === todayKey;
+    // Normalize the saved fields once so today's record AND the rolling ledger store
+    // the exact same entry (no drift between the live read-back and the history read).
+    const savedCheckin = {
+      moodLabel: checkin.moodLabel ?? null,
+      urge: typeof checkin.urge === 'number' ? checkin.urge : null,
+      triggers: Array.isArray(checkin.triggers) ? checkin.triggers : [],
+      // Optional free-text journal line. Trim to drop whitespace-only notes to
+      // null so the saved-summary read-back stays clean (no empty quote block).
+      note: typeof checkin.note === 'string' && checkin.note.trim() ? checkin.note.trim() : null,
+      completedAt: now,
+    };
     setTodayRecord((prev) => ({
       abstinenceState: prev?.abstinenceState ?? 'clean',
       reflection: prev?.reflection ?? null,
@@ -469,16 +489,12 @@ export default function App() {
       triggers: prev?.triggers ?? [],
       failureReason: prev?.failureReason ?? null,
       badges: { ...EMPTY_BADGES, ...(prev?.badges ?? {}) },
-      checkin: {
-        moodLabel: checkin.moodLabel ?? null,
-        urge: typeof checkin.urge === 'number' ? checkin.urge : null,
-        triggers: Array.isArray(checkin.triggers) ? checkin.triggers : [],
-        // Optional free-text journal line. Trim to drop whitespace-only notes to
-        // null so the saved-summary read-back stays clean (no empty quote block).
-        note: typeof checkin.note === 'string' && checkin.note.trim() ? checkin.note.trim() : null,
-        completedAt: now,
-      },
+      checkin: savedCheckin,
     }));
+    // Append to the rolling check-in ledger keyed by this calendar day (Records
+    // history). A re-check-in the same day OVERWRITES today's entry — never appends a
+    // duplicate, and never invents a day the user didn't check in on.
+    setCheckinLedger((prev) => ({ ...prev, [todayKey]: savedCheckin }));
     if (!rewardAlreadyGivenToday) {
       earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 체크인');
       setCheckinRewardDay(todayKey);
@@ -612,6 +628,7 @@ export default function App() {
             onCrisisHeld={crisisHeld}
             reflectionCtx={reflectionCtx}
             todayRecord={todayRecord}
+            checkinLedger={checkinLedger}
             emberShards={emberShards}
             inventory={inventory}
             ownedItems={ownedItems}
