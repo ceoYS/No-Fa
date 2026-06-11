@@ -1365,6 +1365,37 @@ check('pet growth surface is honest: local-record basis, no fake evolution/live-
   }
 });
 
+// Pet feed day-scoping (Character Growth): the snack hand-off must produce a
+// DAY-SCOPED "fed today" signal, not only a cumulative lifetime fedCount. App stamps
+// the calendar day of the hand-off (fedDay via dayKey) and derives petFedToday by
+// comparing that stamp to today's dayKey, so a stale yesterday stamp reads false. The
+// pet room consumes that signal and reflects today's hand-off as an honest delivery —
+// never an eating, live-reaction, or auto-growth/evolution claim.
+check('pet feed signal is day-scoped + honest: fedDay stamped by dayKey, no fake eating/live-reaction', () => {
+  const app = read('src/App.jsx');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+
+  // (a) feedSnack stamps a calendar-day key (day-scoped), not just a cumulative count.
+  assert(/fedDay:\s*dayKey\(/.test(app), 'feedSnack does not stamp a day-scoped fedDay via dayKey');
+
+  // (b) App derives "fed today" by comparing the stored fedDay to today's dayKey and
+  // passes it down — so the signal can't be faked from the cumulative tally alone.
+  assert(/fedDay === dayKey\(/.test(app), 'App does not derive petFedToday from fedDay === dayKey(today)');
+  assert(/petFedToday/.test(app), 'App does not pass a petFedToday signal to the pet room');
+
+  // (c) The pet room consumes the day-scoped signal and reflects today's hand-off honestly.
+  assert(/petFedToday/.test(screen), 'PetRewardScreen does not consume the day-scoped petFedToday signal');
+  assert(
+    screen.includes('오늘 간식 놓아주기 완료') || screen.includes('오늘의 방 온기에 반영'),
+    "pet feed surface does not honestly reflect today's snack hand-off",
+  );
+
+  // (d) Still no fake eating / live-reaction / auto-growth/evolution claim.
+  for (const fake of ['고양이가 먹었', '먹었어요', '실시간으로 반응해요', '성장했어요', '성장했습니다', '진화', '레벨업']) {
+    assert(!screen.includes(fake), `pet feed surface makes a fake eating/reaction/evolution claim: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

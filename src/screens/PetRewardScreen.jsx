@@ -73,6 +73,7 @@ export default function PetRewardScreen({
   placements = [],
   activeRoomTheme = 'empty',
   petCareState = {},
+  petFedToday = false,
   streakDays = 0,
   todayRecord = null,
   claimedRewardIds = [],
@@ -346,6 +347,12 @@ export default function PetRewardScreen({
           <p className="hairline-note">
             · 지금까지 모은 {RESOURCE.name} {emberShards}{RESOURCE.unit}
           </p>
+          <p className="hairline-note">
+            ·{' '}
+            {petFedToday
+              ? '오늘 간식 놓아주기 완료 · 오늘의 방 온기에 반영돼요.'
+              : '오늘 간식을 놓아주면 오늘의 방 온기에 반영돼요.'}
+          </p>
           <p className="hairline-note">· {nextRoomNote}</p>
         </div>
         <p className="hairline-note text-quiet">
@@ -371,6 +378,9 @@ export default function PetRewardScreen({
         <p className="hairline-note" aria-live="polite">
           {feedCardMessage}
         </p>
+        {petFedToday ? (
+          <p className="hairline-note">오늘 간식 놓아주기 완료 · 오늘의 방 온기에 반영돼요.</p>
+        ) : null}
         {fedCount > 0 ? (
           <p className="hairline-note text-quiet">지금까지 놓아준 간식 {fedCount}번</p>
         ) : null}

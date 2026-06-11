@@ -180,7 +180,10 @@ export default function App() {
     persisted?.placements ?? DEFAULT_PLACEMENTS.map((p) => ({ ...p })),
   );
   const [activeRoomTheme, setActiveRoomTheme] = useState(() => persisted?.activeRoomTheme ?? DEFAULT_THEME);
-  const [petCareState, setPetCareState] = useState(() => persisted?.petCareState ?? { fedCount: 0, reaction: null });
+  // fedCount stays the cumulative lifetime count; fedDay stamps the calendar day of
+  // the last snack hand-off so the room can honestly show a DAY-SCOPED "오늘 놓아줌"
+  // signal (not just a lifetime tally). null until the first ever feed.
+  const [petCareState, setPetCareState] = useState(() => persisted?.petCareState ?? { fedCount: 0, fedDay: null, reaction: null });
   const [claimedRewardIds, setClaimedRewardIds] = useState(() => persisted?.claimedRewardIds ?? []);
   // Calendar-day key of the last check-in shard grant, so the daily check-in
   // reward is given once per day even if the user re-opens/re-submits the check-in.
@@ -555,15 +558,22 @@ export default function App() {
     setActiveRoomTheme(id);
   };
 
-  // 고양이에게 간식 주기 (§0.6.9): consume one snack, show a warm fixed response.
+  // 고양이에게 간식 주기 (§0.6.9): consume one snack, show a warm fixed response, and
+  // stamp the calendar day of the hand-off (fedDay) so the room can honestly reflect
+  // a snack placed TODAY — a delivery cue, never a consume or live-reaction claim.
   const feedSnack = () => {
     if ((inventory.snack ?? 0) <= 0) return;
     setInventory((inv) => ({ ...inv, snack: inv.snack - 1 }));
     setPetCareState((p) => {
       const fedCount = (p.fedCount ?? 0) + 1;
-      return { fedCount, reaction: feedReaction(fedCount - 1) };
+      return { fedCount, fedDay: dayKey(Date.now()), reaction: feedReaction(fedCount - 1) };
     });
   };
+
+  // Day-scoped "fed today" signal for the pet room (Character Growth). True only when
+  // the last hand-off was stamped for the current calendar day — a stale yesterday
+  // fedDay reads false, so the room never claims a snack was placed today when it wasn't.
+  const petFedToday = petCareState?.fedDay != null && petCareState.fedDay === dayKey(Date.now());
 
   return (
     <div className="app-shell">
@@ -608,6 +618,7 @@ export default function App() {
             placements={placements}
             activeRoomTheme={activeRoomTheme}
             petCareState={petCareState}
+            petFedToday={petFedToday}
             claimedRewardIds={claimedRewardIds}
             lastEarn={lastEarn}
             onClaimReward={claimReward}
