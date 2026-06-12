@@ -1334,6 +1334,21 @@ check('records day-detail surfaces the check-in note + calm empty state, no fake
   for (const bad of ['위반', '벌점', '실패자', '강등', '랭킹', '점수', '회개', '심판']) {
     assert(!screen.includes(bad), `CalendarScreen carries shaming/punishing/religious vocabulary: ${bad}`);
   }
+
+  // (f) C4: the record surface speaks the one counter vocabulary too — no 금욕 in the
+  // day-detail screen or the day-record builder (R-10 covers Home/Discipline/Shield;
+  // this pins the Records surface the saved note reads back on).
+  const builder = read('src/constants/recentDays.js');
+  assert(!screen.includes('금욕'), 'CalendarScreen uses 금욕 vocabulary (one-vocabulary policy)');
+  assert(!builder.includes('금욕'), 'recentDays.js uses 금욕 vocabulary (one-vocabulary policy)');
+
+  // (g) C4: the record read-back shows only PERSISTED check-in data (todayRecord /
+  // checkinLedger). The transient C3 urge-screen draft (checkinNoteDraft) must never
+  // leak into the Records surface — a draft is not a saved note.
+  assert(
+    !screen.includes('checkinNoteDraft') && !builder.includes('checkinNoteDraft'),
+    'Records surface reads the transient checkinNoteDraft — day-detail must only show persisted check-in data',
+  );
 });
 
 // Character Growth Loop v1: the pet room surfaces a DERIVED warmth/growth status from
