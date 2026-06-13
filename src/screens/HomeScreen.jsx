@@ -445,6 +445,37 @@ export default function HomeScreen({
                   ? '잠깐 멈춘 선택도 오늘의 기록이에요.'
                   : '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.'}
           </p>
+
+          {/* C17 — route the room straight into the recovery loop. The primary action
+              adapts to today's state (체크인 없으면 오늘 체크인하기, 했으면 최근 기록 보기),
+              and 잠깐 멈춤 stays reachable for the in-the-moment urge path. Existing screens
+              only — no new route or storage. */}
+          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+            {todayCheckin ? (
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={() => onNavigate('calendar')}
+              >
+                최근 기록 보기
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={() => onNavigate('checkin')}
+              >
+                오늘 체크인하기
+              </button>
+            )}
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => onNavigate('urge')}
+            >
+              잠깐 멈춤
+            </button>
+          </div>
         </section>
 
         <section className="card">
