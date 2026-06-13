@@ -38,6 +38,10 @@ export default function CalendarScreen({
     [rules, todayRecord, checkinLedger, abstinenceStartMs, rangeId],
   );
   const [selected, setSelected] = useState(days.length - 1);
+  // Empty-state signal (C24): no check-in exists across the visible range. The strip
+  // still renders the day cells, but without any logged check-in the screen should say
+  // so plainly and point at the first action, rather than looking mysteriously blank.
+  const hasAnyCheckin = days.some((d) => d.checkin);
 
   useDismissOnEscape(detail !== null, () => setDetail(null));
 
@@ -93,6 +97,22 @@ export default function CalendarScreen({
           ))}
         </div>
       </section>
+
+      {!hasAnyCheckin ? (
+        <section className="card calendar-empty">
+          <span className="card-label">아직 남긴 기록이 없어요</span>
+          <p className="hairline-note">
+            오늘 체크인부터 시작하면, 여기에 그날의 기분·규율·한 줄이 차곡차곡 쌓여요.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => onNavigate('checkin')}
+          >
+            오늘 체크인하기
+          </button>
+        </section>
+      ) : null}
 
       <section className="card">
         <span className="card-label">이 기록을 보는 방법</span>
