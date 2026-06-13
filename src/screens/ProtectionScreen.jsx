@@ -42,6 +42,28 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
         잠깐 멈춤에서 다시 보여줘요.
       </p>
 
+      {/* C20 — durable local plan read-back. When a plan is already saved it is restored
+          into the fields above (on mount) and shown here, proving it survived a reload.
+          The disclosure stays explicit: this is local-only, this device only. */}
+      {protectionPlan ? (
+        <section className="card protection-saved">
+          <div className="card-row">
+            <span className="card-label">저장된 보호 설정</span>
+            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>저장됨</span>
+          </div>
+          {protectionPlan.triggerTime ? (
+            <p className="hairline-note">트리거 시간대 · {protectionPlan.triggerTime}</p>
+          ) : null}
+          {protectionPlan.situation ? (
+            <p className="hairline-note">피하고 싶은 상황 · {protectionPlan.situation}</p>
+          ) : null}
+          {protectionPlan.altAction ? (
+            <p className="hairline-note">대체 행동 · {protectionPlan.altAction}</p>
+          ) : null}
+          <p className="hairline-note text-quiet">이 설정은 이 기기에만 저장돼요.</p>
+        </section>
+      ) : null}
+
       <section className="card">
         <label className="field-label" htmlFor="protect-time">트리거 시간대</label>
         <input
@@ -89,7 +111,7 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
         </button>
         {justSaved ? (
           <p className="hairline-note" aria-live="polite" style={{ textAlign: 'center' }}>
-            보호 설정을 적어뒀어요. 잠깐 멈춤에서 다시 볼 수 있어요.
+            보호 설정이 저장됐어요. 이 기기에만 저장돼요. 잠깐 멈춤에서 다시 볼 수 있어요.
           </p>
         ) : null}
       </div>
