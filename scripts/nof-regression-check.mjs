@@ -1836,6 +1836,58 @@ check('pet room state shell reflects real today state, routes the loop, no fake 
   }
 });
 
+// 63 — C19/C20/C21 honest protection setup: a dedicated 보호 설정 screen lets the user write
+// their OWN coping plan (trigger time / situation to avoid / replacement action). It is NOT a
+// blocker and makes NO automatic-blocking, AI, or cloud/sync claim. The plan persists in the
+// localStorage-only bundle (survives reload) with an explicit this-device-only disclosure, an
+// all-blank save clears it, and it is surfaced in 잠깐 멈춤 ONLY from the saved user plan.
+check('protection setup is honest, local-only, and surfaced from the saved user plan', () => {
+  const app = read('src/App.jsx');
+  const home = read('src/screens/HomeScreen.jsx');
+  const screen = read('src/screens/ProtectionScreen.jsx');
+  const urge = read('src/screens/UrgeScreen.jsx');
+
+  // (a) Routed screen + Home entry.
+  assert(/import ProtectionScreen from/.test(app), 'App.jsx does not import ProtectionScreen');
+  assert(/id:\s*'protection'/.test(app), "App.jsx does not route a 'protection' screen");
+  assert(home.includes("onNavigate('protection')"), 'Home has no entry that navigates to 보호 설정');
+  assert(screen.includes('보호 설정'), 'ProtectionScreen is missing its 보호 설정 title');
+
+  // (b) The three plan fields exist (trigger time / situation / replacement action).
+  assert(screen.includes('트리거 시간대'), 'protection setup is missing the trigger-time field');
+  assert(screen.includes('피하고 싶은 상황'), 'protection setup is missing the situation field');
+  assert(screen.includes('위기 때 할 대체 행동') || screen.includes('대체 행동'), 'protection setup is missing the replacement-action field');
+
+  // (c) Durable localStorage-only persistence with an explicit device-only disclosure.
+  assert(/const \[protectionPlan, setProtectionPlan\] = useState\(\(\) => persisted\?\.protectionPlan/.test(app), 'App does not seed protectionPlan from the persisted bundle');
+  // Capture ONLY the saveState({...}) object body (up to the first `});`), so a
+  // protectionPlan that lives only in the useEffect deps array cannot satisfy this.
+  const saveBody = app.match(/saveState\(\{([\s\S]*?)\}\);/);
+  assert(saveBody && saveBody[1].includes('protectionPlan'), 'protectionPlan is not included in the persisted saveState bundle object');
+  assert(screen.includes('이 설정은 이 기기에만 저장돼요'), 'protection setup is missing the explicit local-only (this-device) disclosure');
+
+  // (d) An all-blank save clears the plan (no empty husk persisted).
+  assert(
+    /const empty = !next\.triggerTime && !next\.situation && !next\.altAction;\s*setProtectionPlan\(empty \? null/.test(app),
+    'saveProtectionPlan does not clear the plan to null on an all-blank save',
+  );
+
+  // (e) No fake blocker / AI / cloud / medical claim anywhere in the setup screen.
+  for (const fake of ['자동 차단', '차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', 'AI 추천', 'AI 분석', '자동 분석', '인공지능', '클라우드', '동기화', '서버에 저장', '치료', '진단', '처방']) {
+    assert(!screen.includes(fake), `protection setup makes a forbidden blocker/AI/cloud/medical claim: ${fake}`);
+  }
+
+  // (f) Surfaced in 잠깐 멈춤 ONLY from the saved user plan, framed as the user's own writing.
+  assert(/protectionPlan/.test(urge), 'UrgeScreen does not read the saved protection plan');
+  assert(urge.includes('내가 정해둔 대체 행동'), 'UrgeScreen is missing the protection-plan section title');
+  assert(urge.includes('직접 적어둔 계획만 보여줘요'), 'UrgeScreen does not frame the plan as the user\'s own writing (not AI)');
+  assert(urge.includes('아직 보호 설정이 없어요'), 'UrgeScreen is missing the empty-state for no saved plan');
+  assert(urge.includes("onNavigate('protection')"), 'UrgeScreen empty state does not route to 보호 설정');
+  for (const fake of ['AI 추천', 'AI 분석', '자동 분석', '자동 차단']) {
+    assert(!urge.includes(fake), `UrgeScreen protection plan makes a forbidden AI/auto-block claim: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
