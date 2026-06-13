@@ -432,12 +432,18 @@ export default function HomeScreen({
             variant="compact"
             label="오늘의 방 — 잔불 곁의 흰 고양이"
           />
+          {/* C16 — companion copy is state-aware over the two real today signals. The
+              both-state acknowledges the day is already done; single states name the one
+              action taken; the empty state invites a low-bar first step. No exaggeration,
+              no growth/reward claim — it only mirrors what today's record holds. */}
           <p className="hairline-note">
-            {todayCheckin
-              ? '오늘 한 줄이 방에 남았어요.'
-              : crisisHeldToday
-                ? '잠깐 멈춘 시간이 오늘의 흔적으로 남았어요.'
-                : '아직 오늘 체크인이 없어요.'}
+            {todayCheckin && crisisHeldToday
+              ? '오늘은 이미 할 일을 해냈어요.'
+              : todayCheckin
+                ? '오늘의 체크인이 방에 남았어요.'
+                : crisisHeldToday
+                  ? '잠깐 멈춘 선택도 오늘의 기록이에요.'
+                  : '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.'}
           </p>
         </section>
 
