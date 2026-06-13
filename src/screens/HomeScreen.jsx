@@ -84,6 +84,12 @@ export default function HomeScreen({
   );
   const [selectedDay, setSelectedDay] = useState(recentDays.length - 1);
   const relapsedToday = todayRecord?.abstinenceState === 'relapse';
+  // Daily action hub / saved-summary signal (C11/C12): the live today check-in, the
+  // single honest "오늘 체크인 했다" source on Home. Drives which next action the hub
+  // emphasizes (체크인하기 vs 최근 기록 보기) and gates the saved read-back below — it
+  // appears ONLY when a real check-in was saved today (never before completion). The
+  // read-back shows today's note only; it never reaches into a past-day ledger entry.
+  const todayCheckin = todayRecord?.checkin ?? null;
 
   // Rules linked to the currently-selected counter (rule↔counter link). This is a
   // TODAY rule-status view — kept separate from the counter's elapsed time, which
@@ -138,6 +144,47 @@ export default function HomeScreen({
         <p className="abstinence-timer-help">
           작은 잔불은 아직 꺼지지 않았어요. 흔들려도 다시 이어갈 수 있어요.
         </p>
+      </section>
+
+      {/* 1.5) 오늘의 회복 루프 (C11) — 상태에 맞춰 "지금 할 수 있는 행동"을 한 곳에 모은
+          데일리 액션 허브. 잠깐 멈춤은 항상 접근 가능하고, 오늘 체크인이 없으면 체크인하기를,
+          이미 했으면 최근 기록 보기를 강조한다. 새 저장/라우트 없이 기존 화면으로만 잇는다. */}
+      <section className="card home-loop-hub">
+        <div className="card-row">
+          <span className="card-label">오늘의 회복 루프</span>
+          {todayCheckin ? (
+            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
+              오늘 체크인 완료
+            </span>
+          ) : null}
+        </div>
+        <p className="hairline-note">지금 할 수 있는 행동부터 시작해요.</p>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('urge')}
+          >
+            잠깐 멈춤
+          </button>
+          {todayCheckin ? (
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={() => onNavigate('calendar')}
+            >
+              최근 기록 보기
+            </button>
+          ) : (
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={() => onNavigate('checkin')}
+            >
+              오늘 체크인하기
+            </button>
+          )}
+        </div>
       </section>
 
       {/* 2) 위기 대응 CTA — 히어로 바로 아래, 가장 누르기 쉬운 위치 */}
