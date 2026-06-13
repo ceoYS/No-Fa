@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { CHECKIN_TAP } from '../constants/discipline.js';
 
 const MOODS = [
@@ -38,7 +38,18 @@ export default function CheckinScreen({
   onCompleteCheckin,
   todayRecord = null,
   checkinNoteDraft = null,
+  checkinContext = null,
+  onConsumeCheckinContext,
 }) {
+  // C7: a one-shot day-context flag, set when the user continued here from a record
+  // detail. Captured at mount so the prompt stays stable, then cleared in App so a
+  // later nav-tap into 체크인 shows no stale prompt. It carries NO past note — today's
+  // note still starts only from today's saved record or the C3 reflection draft.
+  const [fromRecord] = useState(checkinContext === 'record');
+  useEffect(() => {
+    if (checkinContext) onConsumeCheckinContext?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
   // Today's already-saved check-in, restored by App only for the current calendar
   // day (§0.6.5). When it exists we open on a calm saved-summary read-back instead
   // of a blank form, so re-opening 체크인 never erases what was already logged.
@@ -176,6 +187,13 @@ export default function CheckinScreen({
           <p className="screen-subtitle">
             패턴을 보기 위한 개인 기록이에요. 이 기기에만 저장되고 밖으로 공유되지 않아요. 답을 골라주면 돼요.
           </p>
+
+          {fromRecord ? (
+            <section className="card checkin-context-note">
+              <span className="card-label">그날의 기록을 참고해 오늘 한 줄을 남겨볼까요?</span>
+              <p className="hairline-note">기록은 그대로 두고, 오늘 체크인으로 이어가요.</p>
+            </section>
+          ) : null}
 
           <section className="card">
             <span className="card-label">오늘 기분</span>

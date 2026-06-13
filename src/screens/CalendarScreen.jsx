@@ -18,6 +18,7 @@ const ABSTINENCE_TEXT = {
 
 export default function CalendarScreen({
   onNavigate,
+  onCheckinFromRecord,
   rules = [],
   abstinenceStartMs = Date.now(),
   todayRecord = null,
@@ -111,7 +112,12 @@ export default function CalendarScreen({
       </button>
 
       {detail ? (
-        <DayDetailSheet day={detail} onClose={() => setDetail(null)} onNavigate={onNavigate} />
+        <DayDetailSheet
+          day={detail}
+          onClose={() => setDetail(null)}
+          onNavigate={onNavigate}
+          onCheckinFromRecord={onCheckinFromRecord}
+        />
       ) : null}
     </div>
   );
@@ -126,7 +132,7 @@ function Legend({ state, text }) {
   );
 }
 
-function DayDetailSheet({ day, onClose, onNavigate }) {
+function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
   const badges = listBadges(day.badges);
   const hasCounts = day.keptCount + day.heldCount + day.missedCount > 0;
   return (
@@ -239,7 +245,7 @@ function DayDetailSheet({ day, onClose, onNavigate }) {
             <button
               type="button"
               className="btn btn-ghost btn-block"
-              onClick={() => onNavigate('checkin')}
+              onClick={() => (onCheckinFromRecord ? onCheckinFromRecord() : onNavigate('checkin'))}
             >
               오늘 체크인하기
             </button>

@@ -212,6 +212,12 @@ export default function App() {
   // intentionally NOT persisted as its own slice; it becomes durable only when the user
   // finishes that check-in, which writes it through the existing note → ledger path.
   const [checkinNoteDraft, setCheckinNoteDraft] = useState(null);
+  // C7 day-context hand-off: set when the user continues to 체크인 FROM a record detail.
+  // A one-shot flag that lets the check-in entry show a neutral, clearly-today prompt —
+  // it carries NO past note (copying it would blur 오늘 vs 그날). Transient like
+  // checkinNoteDraft: never persisted, consumed once on the check-in mount so re-opening
+  // 체크인 later from the nav shows no stale prompt.
+  const [checkinContext, setCheckinContext] = useState(null);
 
   // Save-on-change: persist exactly the domain slices above to localStorage on any
   // change. Transient nav state (screenId / reflectionCtx / lastEarn) is excluded.
@@ -471,6 +477,15 @@ export default function App() {
     setCheckinNoteDraft(line || null);
   };
 
+  // Continue to today's 체크인 from a record detail. Carries only a neutral day-context
+  // flag (NOT the past note) so the entry can invite a fresh today line. consumeCheckinContext
+  // clears it once the check-in entry has read it, so a later nav-tap into 체크인 is clean.
+  const startCheckinFromRecord = () => {
+    setCheckinContext('record');
+    setScreenId('checkin');
+  };
+  const consumeCheckinContext = () => setCheckinContext(null);
+
   // 오늘의 체크인 완료 (§0.6.9): the check-in includes the discipline check, so the
   // grant folds in a small bonus per 위기였지만 버텼어요 rule. The step-1 inputs
   // (기분/충동/트리거/메모) are persisted into today's record so 최근 기록 and the
@@ -644,6 +659,9 @@ export default function App() {
             onCrisisHeld={crisisHeld}
             checkinNoteDraft={checkinNoteDraft}
             onStashCheckinNote={stashCheckinNote}
+            checkinContext={checkinContext}
+            onConsumeCheckinContext={consumeCheckinContext}
+            onCheckinFromRecord={startCheckinFromRecord}
             reflectionCtx={reflectionCtx}
             todayRecord={todayRecord}
             checkinLedger={checkinLedger}
