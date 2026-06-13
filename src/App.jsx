@@ -622,6 +622,13 @@ export default function App() {
   // fedDay reads false, so the room never claims a snack was placed today when it wasn't.
   const petFedToday = petCareState?.fedDay != null && petCareState.fedDay === dayKey(Date.now());
 
+  // Day-scoped "held a crisis today" signal for the room state shell (Pet/Room loop).
+  // True only when the once-per-day crisis grant was recorded for the current calendar
+  // day — crisisRewardDay is written solely by a real crisisHeld() 마치기, so a stale
+  // yesterday value reads false. This is an HONEST reflection of an action the user
+  // actually took today, never a fabricated state.
+  const crisisHeldToday = crisisRewardDay != null && crisisRewardDay === dayKey(Date.now());
+
   return (
     <div className="app-shell">
       {DEBUG_NAV ? (
@@ -672,6 +679,7 @@ export default function App() {
             activeRoomTheme={activeRoomTheme}
             petCareState={petCareState}
             petFedToday={petFedToday}
+            crisisHeldToday={crisisHeldToday}
             claimedRewardIds={claimedRewardIds}
             lastEarn={lastEarn}
             onClaimReward={claimReward}

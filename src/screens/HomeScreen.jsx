@@ -45,6 +45,7 @@ export default function HomeScreen({
   emberShards = 0,
   placements = [],
   activeRoomTheme = 'empty',
+  crisisHeldToday = false,
 }) {
   const [now, setNow] = useState(Date.now());
   // 재발/리셋은 절대 즉시 실행되지 않는다 (refocus memo §2/§6): 다시 시작 버튼은
@@ -407,6 +408,36 @@ export default function HomeScreen({
           />
           <p className="hairline-note" aria-live="polite">
             {daySummary(recentDays[selectedDay])}
+          </p>
+        </section>
+
+        {/* 오늘의 방 (C15 Pet/Room state shell) — the room reflects what the user actually
+            did TODAY, off real day-scoped signals (todayCheckin / crisisHeldToday). It reuses
+            the existing room composite + tone; it makes NO growth / unlock / shop / save claim.
+            Before any of today's actions it simply waits; after a check-in or a held crisis it
+            notes that today's action left a trace. */}
+        <section className="card home-room-state">
+          <div className="card-row">
+            <span className="card-label">오늘의 방</span>
+            {todayCheckin || crisisHeldToday ? (
+              <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
+                오늘의 흔적
+              </span>
+            ) : null}
+          </div>
+          <PetRoomPreview
+            theme={activeRoomTheme}
+            placements={placements}
+            tone={relapsedToday ? 'dim' : 'steady'}
+            variant="compact"
+            label="오늘의 방 — 잔불 곁의 흰 고양이"
+          />
+          <p className="hairline-note">
+            {todayCheckin
+              ? '오늘 한 줄이 방에 남았어요.'
+              : crisisHeldToday
+                ? '잠깐 멈춘 시간이 오늘의 흔적으로 남았어요.'
+                : '아직 오늘 체크인이 없어요.'}
           </p>
         </section>
 
