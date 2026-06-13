@@ -41,6 +41,7 @@ export default function HomeScreen({
   onEditCounter,
   onRelapse,
   onStartSlipReflection,
+  onResetLocalData,
   todayRecord = null,
   checkinLedger = null,
   emberShards = 0,
@@ -53,6 +54,10 @@ export default function HomeScreen({
   // 확인 시트를 열 뿐, 실제 onRelapse()는 시트에서 한 번 더 확인해야 호출된다.
   const [confirmRestart, setConfirmRestart] = useState(false);
   useDismissOnEscape(confirmRestart, () => setConfirmRestart(false));
+  // 데이터 초기화 (C25): a destructive local-data reset also goes through a confirm sheet —
+  // it never wipes on a single tap. The real onResetLocalData() is called only from the sheet.
+  const [confirmReset, setConfirmReset] = useState(false);
+  useDismissOnEscape(confirmReset, () => setConfirmReset(false));
   // 카운터 추가 / 편집 시트 (counter-management). Esc로 닫힌다.
   const [addCounterOpen, setAddCounterOpen] = useState(false);
   const [editCounterOpen, setEditCounterOpen] = useState(false);
@@ -583,6 +588,24 @@ export default function HomeScreen({
             지금 기록은 밖으로 공유되지 않아요.
           </p>
         </section>
+
+        {/* 데이터 초기화 (C25) — destructive local-data reset. Honest scope: clears only
+            what is stored on THIS device (check-in, 최근 기록, 보호 설정); there is no
+            account/cloud to delete. Goes through a confirm sheet; never a one-tap wipe. */}
+        <section className="card home-reset">
+          <span className="card-label">데이터 초기화</span>
+          <p className="hairline-note text-quiet">
+            이 기기에 저장된 체크인·최근 기록·보호 설정을 지워요. 계정이나 클라우드는 없어서,
+            지우는 건 이 기기뿐이에요. 되돌릴 수 없어요.
+          </p>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => setConfirmReset(true)}
+          >
+            이 기기의 기록 지우기
+          </button>
+        </section>
       </div>
 
       {/* 재발 확인 시트 — 즉시 리셋 금지. 실제 onRelapse()는 여기서만 호출된다. */}
@@ -623,6 +646,41 @@ export default function HomeScreen({
               </button>
               <button type="button" className="btn btn-primary" onClick={confirmRelapse}>
                 기록하고 다시 시작
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {/* 데이터 초기화 확인 시트 — 즉시 삭제 금지. 실제 onResetLocalData()는 여기서만 호출된다. */}
+      {confirmReset ? (
+        <div className="sheet-backdrop" onClick={() => setConfirmReset(false)}>
+          <div
+            className="sheet"
+            role="dialog"
+            aria-modal="true"
+            aria-label="데이터 초기화 확인"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="sheet-handle" aria-hidden="true" />
+            <h2 className="sheet-title">정말 이 기기의 기록을 지울까요?</h2>
+            <p className="sheet-help">
+              체크인, 최근 기록, 보호 설정이 모두 지워져요. 이 기기에 저장된 것만 지우고, 계정이나
+              클라우드는 건드리지 않아요. 되돌릴 수 없어요.
+            </p>
+            <div className="sheet-actions">
+              <button type="button" className="btn btn-ghost" onClick={() => setConfirmReset(false)}>
+                취소
+              </button>
+              <button
+                type="button"
+                className="btn btn-primary"
+                onClick={() => {
+                  setConfirmReset(false);
+                  onResetLocalData?.();
+                }}
+              >
+                기록 지우기
               </button>
             </div>
           </div>

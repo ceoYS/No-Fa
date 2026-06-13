@@ -397,6 +397,25 @@ export default function App() {
     setProtectionPlan(empty ? null : next);
   };
 
+  // Reset the user's locally-stored activity (C25). Clears the logged data the app keeps
+  // on THIS device — today's record, the check-in history ledger, the protection plan, and
+  // the once-per-day reward-day guards — then routes home. The save-on-change effect then
+  // persists this cleared state, so the new protectionPlan is cleaned alongside the rest
+  // (the same data clearState() would drop wholesale). There is no account and no cloud, so
+  // nothing leaves or is deleted off-device; this only empties local storage on this device.
+  const resetLocalData = () => {
+    setTodayRecord(null);
+    setCheckinLedger({});
+    setProtectionPlan(null);
+    setCheckinRewardDay(null);
+    setCrisisRewardDay(null);
+    setSlipReflectionDay(null);
+    setReflectionCtx(null);
+    setCheckinNoteDraft(null);
+    setCheckinContext(null);
+    setScreenId('home');
+  };
+
   // Grant the earned resource (잔불 조각). Fixed amounts only — never random.
   const earn = (amount, reason) => {
     if (!amount) return;
@@ -718,6 +737,7 @@ export default function App() {
             onRemoveBlockEntry={removeBlockEntry}
             protectionPlan={protectionPlan}
             onSaveProtectionPlan={saveProtectionPlan}
+            onResetLocalData={resetLocalData}
           />
         </main>
         <BottomNav value={screenId} onChange={setScreenId} />
