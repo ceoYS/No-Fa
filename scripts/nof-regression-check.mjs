@@ -1634,6 +1634,84 @@ check('record detail offers honest recovery CTAs routed to existing screens (no 
   }
 });
 
+// 56 — C7 day-context hand-off: tapping 오늘 체크인하기 from a record detail continues to
+// the REAL check-in and shows a neutral, clearly-today prompt — WITHOUT auto-copying the
+// past-day note into today's note (that would blur 오늘 vs 그날). The hand-off is a transient
+// one-shot flag (sibling to checkinNoteDraft), never a persisted slice, and today's note
+// still seeds ONLY from today's saved record or the C3 reflection draft.
+check('record→check-in carries a neutral day-context prompt, never auto-copying the past note', () => {
+  const app = read('src/App.jsx');
+  const cal = read('src/screens/CalendarScreen.jsx');
+  const checkin = read('src/screens/CheckinScreen.jsx');
+
+  // (a) App exposes a transient one-shot context hand-off that routes to the real check-in.
+  assert(/const \[checkinContext, setCheckinContext\] = useState\(null\)/.test(app), 'App has no transient checkinContext hand-off state');
+  assert(
+    /const startCheckinFromRecord = \(\) => \{[\s\S]*?setCheckinContext\('record'\);[\s\S]*?setScreenId\('checkin'\);\s*\};/.test(app),
+    'App has no startCheckinFromRecord that flags the record context and routes to the real check-in',
+  );
+  // It must stay TRANSIENT — never persisted as its own slice.
+  const m = app.match(/saveState\(\{[\s\S]*?\}\)/);
+  assert(m && !m[0].includes('checkinContext'), 'checkinContext must stay transient — it must not be persisted');
+
+  // (b) The record day-detail 체크인 CTA routes through the context hand-off (still lands real).
+  assert(
+    /onCheckinFromRecord \? onCheckinFromRecord\(\) : onNavigate\('checkin'\)/.test(cal),
+    'record detail 체크인 CTA does not route through the day-context hand-off (with the real check-in fallback)',
+  );
+
+  // (c) The check-in entry shows the neutral, clearly-today prompt only when arrived from a record.
+  assert(checkin.includes('그날의 기록을 참고해 오늘 한 줄을 남겨볼까요?'), 'check-in is missing the neutral day-context prompt');
+  assert(/checkinContext === 'record'/.test(checkin), 'check-in does not gate the day-context prompt on the record entry context');
+
+  // (d) The past note is NOT auto-copied: today's note seed reads ONLY today's saved record or
+  //     the transient C3 draft — never a past-day ledger note.
+  assert(/savedCheckin\?\.note \?\? checkinNoteDraft \?\? ''/.test(checkin), "check-in note seed changed — today's note must stay (saved note → C3 draft → empty), never a past-day note");
+  for (const leak of ['checkinLedger', 'day.checkin', 'pastNote', 'previousNote']) {
+    assert(!checkin.includes(leak), `check-in entry references a past-record note source (${leak}) — today's note must not be pre-filled from a past day`);
+  }
+});
+
+// 57 — C8 saved confirmation: once today's check-in is actually saved (todayRecord.checkin),
+// the saved-summary states plainly it was saved and offers a real next action (최근 기록 보기 →
+// records). The confirmation must be GATED behind the real saved record, so it can never appear
+// before completion (it lives inside the !editing && savedCheckin branch, above the entry form).
+check('check-in saved confirmation + next action appear only after the check-in is saved', () => {
+  const checkin = read('src/screens/CheckinScreen.jsx');
+
+  // (a) Explicit save confirmation copy + the 최근 기록 보기 next action, routed to records.
+  assert(checkin.includes('오늘 체크인이 저장됐어요'), 'check-in is missing the explicit save confirmation copy');
+  assert(checkin.includes('최근 기록 보기'), 'check-in saved state is missing the 최근 기록 보기 next action');
+  assert(/onNavigate\('calendar'\)/.test(checkin), '최근 기록 보기 does not route to the records screen');
+
+  // (b) Gated behind a REAL saved check-in: derived from persisted todayRecord.checkin, and the
+  //     confirmation copy sits INSIDE the saved branch (after the gate, before the entry form) —
+  //     so it cannot render before completion.
+  assert(/const savedCheckin = todayRecord\?\.checkin/.test(checkin), 'saved state is not derived from the persisted todayRecord.checkin');
+  const gateIdx = checkin.indexOf('if (!editing && savedCheckin)');
+  const confirmIdx = checkin.indexOf('오늘 체크인이 저장됐어요');
+  const formIdx = checkin.indexOf('다음 · 오늘의 규율 점검');
+  assert(gateIdx !== -1, 'saved confirmation is not gated behind a real saved check-in (!editing && savedCheckin)');
+  assert(confirmIdx > gateIdx && confirmIdx < formIdx, 'save confirmation is not inside the saved-state branch — it could show before completion');
+});
+
+// 58 — C9 read-back polish: the records day-detail check-in read-back stays READ-ONLY and keeps
+// the 오늘 vs 지난 boundary explicit. Today's saved entry points editing to the real 오늘 체크인
+// (where editing exists); a past entry is stated view-only / kept as-is — no fake past-record edit.
+check('records day-detail keeps the check-in read-back read-only and 오늘/지난 explicit', () => {
+  const cal = read('src/screens/CalendarScreen.jsx');
+
+  assert(cal.includes('오늘 남긴 기록이에요. 고치려면 오늘 체크인에서 바꿀 수 있어요.'), 'today read-back is missing the edit-in-check-in note');
+  assert(cal.includes('지난 기록은 그대로 보관돼요. 여기서는 보기만 해요.'), 'past read-back is missing the read-only note');
+  assert(
+    /day\.isToday\s*\?\s*'오늘 남긴 기록이에요[\s\S]*?:\s*'지난 기록은 그대로 보관돼요/.test(cal),
+    'read-only affirmation is not gated on day.isToday (오늘 vs 지난)',
+  );
+  // Records surface stays read-only — no free-text edit control on the day-detail.
+  assert(!/<textarea/.test(cal), 'records day-detail must stay read-only — no edit textarea');
+  assert(!/<input/.test(cal), 'records day-detail must stay read-only — no edit input');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
