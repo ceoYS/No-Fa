@@ -7,6 +7,7 @@ import RecoveryScreen from './screens/RecoveryScreen.jsx';
 import PetRewardScreen from './screens/PetRewardScreen.jsx';
 import DisciplineScreen from './screens/DisciplineScreen.jsx';
 import ShieldScreen from './screens/ShieldScreen.jsx';
+import ProtectionScreen from './screens/ProtectionScreen.jsx';
 import SafeBrowserScreen from './screens/SafeBrowserScreen.jsx';
 import ShieldExtensionScreen from './screens/ShieldExtensionScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
@@ -32,6 +33,7 @@ const SCREENS = [
   { id: 'recovery', label: '복기 다이어리', Component: RecoveryScreen },
   { id: 'reward', label: '고양이 방', Component: PetRewardScreen },
   { id: 'shield', label: '차단 설정', Component: ShieldScreen },
+  { id: 'protection', label: '보호 설정', Component: ProtectionScreen },
   { id: 'shieldBrowser', label: '안전 브라우저', Component: SafeBrowserScreen },
   { id: 'shieldExtension', label: '실제 차단 테스트', Component: ShieldExtensionScreen },
 ];
@@ -176,6 +178,12 @@ export default function App() {
   // Shield blocklist planner (P0.5). Persisted, but it still does NOT block
   // anything — it is the abstract plan (no URLs) a future P1 engine will consume.
   const [blocklist, setBlocklist] = useState(() => persisted?.blocklist ?? DEFAULT_BLOCKLIST);
+
+  // Honest local protection plan (C19/C20): the user's OWN coping plan in their own words
+  // ({ triggerTime, situation, altAction }) — NOT a blocker. It is surfaced in 잠깐 멈춤 (C21)
+  // when it is actually needed. C19 keeps it in-session; C20 wires it into the persisted,
+  // localStorage-only bundle so it survives a reload. null = no plan written yet.
+  const [protectionPlan, setProtectionPlan] = useState(() => persisted?.protectionPlan ?? null);
 
   // Reward / pet-room layer (§0.6.9). Cosmetic only; earned 잔불 조각 is the single
   // currency — no payment, no random rewards. Persisted so the room survives reload.
@@ -371,6 +379,20 @@ export default function App() {
 
   const removeBlockEntry = (id) => {
     setBlocklist((prev) => prev.filter((e) => e.id !== id));
+  };
+
+  // Save the user's protection plan (C19). Normalizes the three free-text fields and
+  // stores null when the whole plan is blank, so an all-empty save honestly clears it
+  // rather than persisting an empty husk. It never enforces or blocks anything — it is
+  // the user's own written plan, surfaced later in 잠깐 멈춤 (C21).
+  const saveProtectionPlan = (plan = {}) => {
+    const next = {
+      triggerTime: (plan.triggerTime ?? '').trim(),
+      situation: (plan.situation ?? '').trim(),
+      altAction: (plan.altAction ?? '').trim(),
+    };
+    const empty = !next.triggerTime && !next.situation && !next.altAction;
+    setProtectionPlan(empty ? null : next);
   };
 
   // Grant the earned resource (잔불 조각). Fixed amounts only — never random.
@@ -692,6 +714,8 @@ export default function App() {
             blocklist={blocklist}
             onAddBlockEntry={addBlockEntry}
             onRemoveBlockEntry={removeBlockEntry}
+            protectionPlan={protectionPlan}
+            onSaveProtectionPlan={saveProtectionPlan}
           />
         </main>
         <BottomNav value={screenId} onChange={setScreenId} />

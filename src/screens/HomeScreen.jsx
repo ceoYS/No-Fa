@@ -508,6 +508,25 @@ export default function HomeScreen({
           </button>
         </section>
 
+        {/* 보호 설정 entry (C19) — the user's own coping plan (triggers / situation /
+            replacement action), surfaced later in 잠깐 멈춤. Not a blocker; honest local plan. */}
+        <section className="card">
+          <div className="card-row">
+            <span className="card-label">보호 설정</span>
+            <span className="pill shield-tag">나의 계획</span>
+          </div>
+          <p className="hairline-note text-quiet">
+            흔들리는 순간과 위기 때 할 대체 행동을 미리 적어두면, 잠깐 멈춤에서 다시 보여줘요.
+          </p>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('protection')}
+          >
+            보호 설정 적기
+          </button>
+        </section>
+
         <section className="card">
           <div className="card-row">
             <span className="card-label">차단 설정 · NoF 실드</span>
