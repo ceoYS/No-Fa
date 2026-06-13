@@ -1787,6 +1787,55 @@ check('urge completion offers an honest check-in continuation (no fake save clai
   assert(!urge.includes('금욕'), 'urge carries the forbidden user-facing 금욕 vocabulary');
 });
 
+// 62 — C15/C16/C17 pet room state shell: Home carries an "오늘의 방" shell whose copy and
+// primary action depend on REAL today signals (todayCheckin / crisisHeldToday), routing into
+// the existing loop. App must derive crisisHeldToday from the real once-per-day crisis grant
+// (crisisRewardDay === dayKey(today)) and pass it down — never a fabricated state. The shell
+// must make NO fake growth / evolution / unlock / gacha / shop / premium / persistence claim,
+// and carry no user-facing 금욕.
+check('pet room state shell reflects real today state, routes the loop, no fake growth/unlock', () => {
+  const app = read('src/App.jsx');
+  const home = read('src/screens/HomeScreen.jsx');
+
+  // (a) App derives the day-scoped crisisHeldToday from the REAL crisis grant + passes it.
+  assert(
+    /const crisisHeldToday = crisisRewardDay != null && crisisRewardDay === dayKey\(/.test(app),
+    'App does not derive crisisHeldToday from the real once-per-day crisis grant (crisisRewardDay === dayKey today)',
+  );
+  assert(/crisisHeldToday=\{crisisHeldToday\}/.test(app), 'App does not pass crisisHeldToday down to the screens');
+
+  // (b) The shell exists.
+  assert(home.includes('home-room-state'), 'Home room state shell (home-room-state) missing');
+  assert(home.includes('오늘의 방'), 'Home room state shell title (오늘의 방) missing');
+
+  // (c) Isolate the shell section (ends at the cosmetic 고양이의 방 decorate card) and assert
+  //     its 4-state copy is gated on the two real today signals.
+  const startIdx = home.indexOf('home-room-state');
+  const endIdx = home.indexOf('고양이의 방', startIdx);
+  assert(startIdx !== -1 && endIdx !== -1 && endIdx > startIdx, 'could not isolate the room-state shell section');
+  const shell = home.slice(startIdx, endIdx);
+  for (const line of [
+    '오늘은 이미 할 일을 해냈어요.',
+    '오늘의 체크인이 방에 남았어요.',
+    '잠깐 멈춘 선택도 오늘의 기록이에요.',
+    '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.',
+  ]) {
+    assert(shell.includes(line), `room-state shell is missing state copy: ${line}`);
+  }
+  assert(/todayCheckin && crisisHeldToday/.test(shell), 'room-state copy is not gated on the real today signals (todayCheckin && crisisHeldToday)');
+
+  // (d) The shell routes into the existing loop with a state-adaptive primary action.
+  assert(/onNavigate\('checkin'\)/.test(shell), 'room-state shell does not route to the check-in screen');
+  assert(/onNavigate\('calendar'\)/.test(shell), 'room-state shell does not route to the records screen');
+  assert(/onNavigate\('urge'\)/.test(shell), 'room-state shell does not route to the urge screen');
+  assert(/todayCheckin \? \([\s\S]*?최근 기록 보기[\s\S]*?\) : \([\s\S]*?오늘 체크인하기/.test(shell), 'room-state primary action does not adapt 최근 기록 보기 vs 오늘 체크인하기 on today check-in');
+
+  // (e) No fake growth / unlock / gacha / shop / premium / persistence claim, no 금욕.
+  for (const fake of ['성장했', '진화', '레벨업', '해금', '잠금 해제', '뽑기', '가챠', '상점', '프리미엄', '결제', '저장됐어요', '저장했어요', '금욕']) {
+    assert(!shell.includes(fake), `room-state shell makes a forbidden growth/unlock/shop/persistence claim: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
