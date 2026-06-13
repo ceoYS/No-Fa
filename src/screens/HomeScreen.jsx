@@ -42,6 +42,7 @@ export default function HomeScreen({
   onRelapse,
   onStartSlipReflection,
   todayRecord = null,
+  checkinLedger = null,
   emberShards = 0,
   placements = [],
   activeRoomTheme = 'empty',
@@ -91,6 +92,11 @@ export default function HomeScreen({
   // appears ONLY when a real check-in was saved today (never before completion). The
   // read-back shows today's note only; it never reaches into a past-day ledger entry.
   const todayCheckin = todayRecord?.checkin ?? null;
+  // First-run guidance signal (C23): true until the user has any real check-in history —
+  // today's or any saved ledger day. Derived, no new storage; it auto-hides after the first
+  // check-in (and reappears honestly if the local data is reset to empty).
+  const hasCheckinHistory =
+    !!todayCheckin || (checkinLedger != null && Object.keys(checkinLedger).length > 0);
 
   // Rules linked to the currently-selected counter (rule↔counter link). This is a
   // TODAY rule-status view — kept separate from the counter's elapsed time, which
@@ -146,6 +152,24 @@ export default function HomeScreen({
           작은 잔불은 아직 꺼지지 않았어요. 흔들려도 다시 이어갈 수 있어요.
         </p>
       </section>
+
+      {/* 1.4) 첫 사용 안내 (C23) — 아직 체크인 기록이 하나도 없을 때만 보인다. 핵심 회복
+          루프를 3단계로 짧게 설명한다. 과장/의학 주장 없이, 로컬 저장 사실만 덧붙인다.
+          첫 체크인 뒤에는 자동으로 사라진다 (hasCheckinHistory). */}
+      {!hasCheckinHistory ? (
+        <section className="card home-onboarding">
+          <span className="card-label">NoF는 이렇게 써요</span>
+          <ol
+            className="onboarding-steps"
+            style={{ margin: 'var(--sp-2) 0 0', paddingLeft: 'var(--sp-4)', display: 'grid', gap: 'var(--sp-2)' }}
+          >
+            <li>흔들릴 땐 잠깐 멈춤</li>
+            <li>하루 끝에는 체크인</li>
+            <li>최근 기록에서 다시 확인</li>
+          </ol>
+          <p className="hairline-note text-quiet">모든 기록은 이 기기에만 저장돼요.</p>
+        </section>
+      ) : null}
 
       {/* 1.5) 오늘의 회복 루프 (C11) — 상태에 맞춰 "지금 할 수 있는 행동"을 한 곳에 모은
           데일리 액션 허브. 잠깐 멈춤은 항상 접근 가능하고, 오늘 체크인이 없으면 체크인하기를,

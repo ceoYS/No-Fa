@@ -1761,10 +1761,17 @@ check('home check-in summary is gated by real saved state and reads back today o
   );
   assert(/const todayCheckin = todayRecord\?\.checkin \?\? null/.test(home), 'Home summary saved state is not derived from todayRecord.checkin');
 
-  // (c) Reads back TODAY's note only — never a past-day ledger note.
+  // (c) Reads back TODAY's note only — never a past-day ledger note. Scope the
+  //     past-day-leak ban to the SUMMARY CARD itself (Home may legitimately reference
+  //     checkinLedger elsewhere, e.g. counting history for the first-run guidance).
   assert(/todayCheckin\.note/.test(home), 'Home summary does not read back today\'s note from todayCheckin.note');
-  assert(!home.includes('checkinLedger'), 'Home summary must not read a past-day ledger entry (checkinLedger)');
-  assert(!/day\.checkin/.test(home), 'Home summary must not read back a past-day check-in (day.checkin)');
+  const sStart = home.indexOf('home-checkin-summary');
+  const sEnd = home.indexOf('위기 대응 CTA', sStart);
+  assert(sStart !== -1 && sEnd !== -1 && sEnd > sStart, 'could not isolate the home-checkin-summary section');
+  const summary = home.slice(sStart, sEnd);
+  assert(summary.includes('todayCheckin.note'), 'Home summary card does not read back today\'s note (todayCheckin.note)');
+  assert(!summary.includes('checkinLedger'), 'Home summary card must not read a past-day ledger entry (checkinLedger)');
+  assert(!/day\.checkin/.test(summary), 'Home summary card must not read back a past-day check-in (day.checkin)');
 });
 
 // 61 — C13 urge → check-in continuation: the breath-timer crisis flow offers an honest
