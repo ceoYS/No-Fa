@@ -1712,6 +1712,81 @@ check('records day-detail keeps the check-in read-back read-only and 오늘/지�
   assert(!/<input/.test(cal), 'records day-detail must stay read-only — no edit input');
 });
 
+// 59 — C11 daily action hub: Home opens on an "오늘의 회복 루프" action hub that routes
+// into the existing recovery loop and adapts to today's state. 잠깐 멈춤 is always present;
+// when today's check-in is absent it emphasizes 오늘 체크인하기, and once today is checked in
+// it emphasizes 최근 기록 보기. State comes from the live todayRecord.checkin — no new storage,
+// route, or claim. No user-facing 금욕 / fake AI / medical / edit / replay copy on Home.
+check('home daily action hub routes the recovery loop and adapts to today state', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+
+  // (a) The hub exists with its framing copy.
+  assert(home.includes('home-loop-hub'), 'Home daily action hub (home-loop-hub) missing');
+  assert(home.includes('오늘의 회복 루프'), 'Home hub title (오늘의 회복 루프) missing');
+  assert(home.includes('지금 할 수 있는 행동부터 시작해요'), 'Home hub framing copy missing');
+
+  // (b) The three loop actions route to the existing screens.
+  assert(/onNavigate\('urge'\)/.test(home), 'Home hub 잠깐 멈춤 does not route to urge');
+  assert(home.includes('오늘 체크인하기') && /onNavigate\('checkin'\)/.test(home), 'Home hub 오늘 체크인하기 → checkin missing');
+  assert(home.includes('최근 기록 보기') && /onNavigate\('calendar'\)/.test(home), 'Home hub 최근 기록 보기 → calendar missing');
+
+  // (c) The emphasized action is state-aware off the live today check-in (no new state).
+  assert(/const todayCheckin = todayRecord\?\.checkin/.test(home), 'Home hub state is not derived from the live todayRecord.checkin');
+  assert(/todayCheckin \? \([\s\S]*?onNavigate\('calendar'\)[\s\S]*?\) : \([\s\S]*?onNavigate\('checkin'\)/.test(home), 'Home hub does not switch 최근 기록 보기 vs 오늘 체크인하기 on today check-in');
+
+  // (d) No user-facing 금욕 / fake AI / medical / edit / replay claim on Home.
+  assert(!home.includes('금욕'), 'Home carries the forbidden user-facing 금욕 vocabulary');
+  for (const fake of ['AI 분석', 'AI 추천', '회복 점수', '자동 분석', '치료', '진단', '처방', '자동 차단', '클라우드 동기화', '기록 수정', '다시 재생']) {
+    assert(!home.includes(fake), `Home makes a forbidden AI/medical/edit/replay claim: ${fake}`);
+  }
+});
+
+// 60 — C12 home check-in summary: when today's check-in is actually saved
+// (todayRecord.checkin), Home shows a confirmation card that states it was saved, reads
+// back today's one-line note when present, and offers 최근 기록 보기. It is GATED on the real
+// saved record (so it never renders before completion) and reads back TODAY's note only —
+// it must never reach into a past-day ledger entry.
+check('home check-in summary is gated by real saved state and reads back today only', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+
+  // (a) The summary copy + next action.
+  assert(home.includes('오늘 체크인이 저장됐어요'), 'Home summary save-confirmation copy missing');
+  assert(home.includes('오늘 남긴 한 줄'), 'Home summary 오늘 남긴 한 줄 label missing');
+  assert(home.includes('최근 기록에서 다시 볼 수 있어요'), 'Home summary 최근 기록에서 다시 볼 수 있어요 copy missing');
+
+  // (b) Gated behind the real saved check-in (renders only inside the todayCheckin branch).
+  assert(
+    /\{todayCheckin \? \(\s*<section className="card home-checkin-summary"/.test(home),
+    'Home check-in summary is not gated behind the real saved todayCheckin (could show before completion)',
+  );
+  assert(/const todayCheckin = todayRecord\?\.checkin \?\? null/.test(home), 'Home summary saved state is not derived from todayRecord.checkin');
+
+  // (c) Reads back TODAY's note only — never a past-day ledger note.
+  assert(/todayCheckin\.note/.test(home), 'Home summary does not read back today\'s note from todayCheckin.note');
+  assert(!home.includes('checkinLedger'), 'Home summary must not read a past-day ledger entry (checkinLedger)');
+  assert(!/day\.checkin/.test(home), 'Home summary must not read back a past-day check-in (day.checkin)');
+});
+
+// 61 — C13 urge → check-in continuation: the breath-timer crisis flow offers an honest
+// "오늘 체크인에 한 줄 남기기" continuation alongside 마치기, routing to the real check-in.
+// Nothing is saved on the urge screen — the copy says the line saves only once the check-in
+// is finished (future tense), and no present/past fake-save claim may appear.
+check('urge completion offers an honest check-in continuation (no fake save claim)', () => {
+  const urge = read('src/screens/UrgeScreen.jsx');
+
+  // (a) The continuation CTA exists and routes to the real check-in.
+  assert(urge.includes('오늘 체크인에 한 줄 남기기'), 'urge check-in continuation CTA (오늘 체크인에 한 줄 남기기) missing');
+  assert(/onNavigate\('checkin'\)/.test(urge), 'urge continuation does not route to the real check-in screen');
+  assert(urge.includes('방금 넘긴 순간을 오늘 기록으로 남겨볼까요?'), 'urge continuation invite copy missing');
+
+  // (b) Honest persistence: only future-tense "저장돼요"; no present/past fake-save claim.
+  assert(urge.includes('체크인을 마치면 오늘 기록에 저장돼요'), 'urge continuation is missing the "saved only when the check-in is finished" disclosure');
+  for (const fake of ['저장했어요', '저장되었어요', '저장 완료', '기록했어요', '기록되었어요']) {
+    assert(!urge.includes(fake), `urge continuation falsely claims the line is already saved: ${fake}`);
+  }
+  assert(!urge.includes('금욕'), 'urge carries the forbidden user-facing 금욕 vocabulary');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
