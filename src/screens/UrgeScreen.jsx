@@ -50,7 +50,7 @@ const REFLECT_MAX = 140;
 
 // Urge는 "지금 선택한 카운터"의 충동을 함께 넘기는 도구다 (counter-management). 어떤
 // 절제를 붙잡고 있는지 selectedCounterName으로 보여줘 맥락을 잃지 않게 한다.
-export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNote, selectedCounterName = '' }) {
+export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNote, selectedCounterName = '', protectionPlan = null }) {
   const [remaining, setRemaining] = useState(TARGET_SECONDS);
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
@@ -338,6 +338,38 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
                 : '잠깐 멈췄어요. 준비되면 다시 이어가요.'}
             </p>
           </div>
+
+          {/* C21 — surface the user's OWN protection plan right when the urge hits. This is
+              not an AI suggestion and not a blocker — it shows only what the user wrote in
+              보호 설정 (their replacement action / situation). Empty state invites writing one. */}
+          <section className="card urge-protection-plan">
+            <span className="card-label">내가 정해둔 대체 행동</span>
+            {protectionPlan && (protectionPlan.altAction || protectionPlan.situation || protectionPlan.triggerTime) ? (
+              <>
+                {protectionPlan.altAction ? (
+                  <p className="hairline-note">{protectionPlan.altAction}</p>
+                ) : (
+                  <p className="hairline-note text-quiet">적어둔 대체 행동이 아직 없어요.</p>
+                )}
+                {protectionPlan.situation ? (
+                  <p className="hairline-note text-quiet">피하고 싶은 상황 · {protectionPlan.situation}</p>
+                ) : null}
+                <p className="hairline-note text-quiet">직접 적어둔 계획만 보여줘요.</p>
+              </>
+            ) : (
+              <>
+                <p className="hairline-note">아직 보호 설정이 없어요.</p>
+                <p className="hairline-note text-quiet">직접 적어둔 계획만 보여줘요.</p>
+                <button
+                  type="button"
+                  className="btn btn-ghost btn-block"
+                  onClick={() => onNavigate('protection')}
+                >
+                  보호 설정 적기
+                </button>
+              </>
+            )}
+          </section>
 
           {altNote ? (
             <p className="hairline-note" aria-live="polite" style={{ textAlign: 'center' }}>
