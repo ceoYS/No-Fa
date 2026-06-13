@@ -1606,6 +1606,34 @@ check('recovery reflection note is honest: transient until the check-in saves it
   }
 });
 
+// 55 — C6 record-detail recovery CTA: the day-detail sheet (Records / Calendar) turns a
+// read-back into a real next action. It threads App's navigator into DayDetailSheet and
+// offers two honest CTAs that route to EXISTING screens only — 잠깐 멈춤 (urge/crisis) and
+// 체크인 (check-in). It must keep past records read-only (records stay as-is), must NOT
+// claim to replay a historical routine, edit a past record, or invoke AI/score/medical
+// recovery, and must carry no shaming vocabulary (COPY_POLICY §0.5.8.1).
+check('record detail offers honest recovery CTAs routed to existing screens (no edit/replay/AI claim)', () => {
+  const cal = read('src/screens/CalendarScreen.jsx');
+
+  // (a) App's navigator is threaded into the day-detail sheet (no new router/storage).
+  assert(/function DayDetailSheet\(\{[^}]*onNavigate[^}]*\}\)/.test(cal), 'DayDetailSheet does not receive onNavigate');
+  assert(/<DayDetailSheet[\s\S]*onNavigate=\{onNavigate\}/.test(cal), 'CalendarScreen does not pass onNavigate into DayDetailSheet');
+
+  // (b) Both CTAs exist with their exact copy AND route to the real existing screens.
+  assert(cal.includes('잠깐 멈춤으로 가기'), 'record detail missing the 잠깐 멈춤으로 가기 CTA');
+  assert(/onNavigate\('urge'\)/.test(cal), 'record detail 잠깐 멈춤 CTA does not route to the real urge screen');
+  assert(cal.includes('오늘 체크인하기'), 'record detail missing the 오늘 체크인하기 CTA');
+  assert(/onNavigate\('checkin'\)/.test(cal), 'record detail 체크인 CTA does not route to the real check-in screen');
+
+  // (c) Honest framing: records are left as-is, the CTA only continues to a live action.
+  assert(cal.includes('기록은 그대로 두고, 오늘 할 수 있는 행동으로 이어가요.'), 'record detail recovery CTA missing the records-stay-as-is honesty copy');
+
+  // (d) No fake edit/replay/AI/score/medical claim on the recovery surface.
+  for (const fake of ['과거 기록 수정', '기록 수정', '기록을 수정', '다시 재생', '재생하기', '그대로 재현', 'AI 추천', 'AI 분석', '자동 분석', '회복 점수', '실패 복구', '치료', '진단', '처방', '금욕']) {
+    assert(!cal.includes(fake), `record detail recovery CTA makes a forbidden edit/replay/AI/medical claim: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

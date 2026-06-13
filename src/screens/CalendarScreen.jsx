@@ -110,7 +110,9 @@ export default function CalendarScreen({
         홈으로 돌아가기
       </button>
 
-      {detail ? <DayDetailSheet day={detail} onClose={() => setDetail(null)} /> : null}
+      {detail ? (
+        <DayDetailSheet day={detail} onClose={() => setDetail(null)} onNavigate={onNavigate} />
+      ) : null}
     </div>
   );
 }
@@ -124,7 +126,7 @@ function Legend({ state, text }) {
   );
 }
 
-function DayDetailSheet({ day, onClose }) {
+function DayDetailSheet({ day, onClose, onNavigate }) {
   const badges = listBadges(day.badges);
   const hasCounts = day.keptCount + day.heldCount + day.missedCount > 0;
   return (
@@ -220,6 +222,27 @@ function DayDetailSheet({ day, onClose }) {
             {badges.map((key) => (
               <span key={key} className="badge">{BADGE_LABEL[key]}</span>
             ))}
+          </div>
+        ) : null}
+
+        {onNavigate ? (
+          <div className="day-detail-block day-detail-recovery">
+            <span className="card-label">다시 해볼까요?</span>
+            <p className="hairline-note">기록은 그대로 두고, 오늘 할 수 있는 행동으로 이어가요.</p>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={() => onNavigate('urge')}
+            >
+              잠깐 멈춤으로 가기
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => onNavigate('checkin')}
+            >
+              오늘 체크인하기
+            </button>
           </div>
         ) : null}
 
