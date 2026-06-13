@@ -187,6 +187,35 @@ export default function HomeScreen({
         </div>
       </section>
 
+      {/* 1.6) 오늘 체크인 저장 확인 (C12) — 오늘 실제로 체크인이 저장됐을 때만 보인다
+          (todayRecord.checkin gate). 저장 사실을 짧게 확인해 주고, 남긴 한 줄이 있으면
+          오늘 것만 그대로 read-back 한다 (과거 ledger는 절대 끌어오지 않는다). 다음 행동은
+          최근 기록 보기. 저장 전에는 렌더되지 않으므로 거짓 저장 claim이 될 수 없다. */}
+      {todayCheckin ? (
+        <section className="card home-checkin-summary">
+          <div className="card-row">
+            <span className="card-label">오늘 체크인이 저장됐어요</span>
+            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
+              완료
+            </span>
+          </div>
+          {todayCheckin.note ? (
+            <div className="day-detail-block">
+              <span className="card-label">오늘 남긴 한 줄</span>
+              <p className="day-detail-reflection">“{todayCheckin.note}”</p>
+            </div>
+          ) : null}
+          <p className="hairline-note">최근 기록에서 다시 볼 수 있어요.</p>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('calendar')}
+          >
+            최근 기록 보기
+          </button>
+        </section>
+      ) : null}
+
       {/* 2) 위기 대응 CTA — 히어로 바로 아래, 가장 누르기 쉬운 위치 */}
       <section className="home-crisis">
         <p className="home-crisis-eyebrow">못 참을 것 같다면</p>
