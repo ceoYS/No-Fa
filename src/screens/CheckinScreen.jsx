@@ -113,6 +113,13 @@ export default function CheckinScreen({
           오늘 남긴 기록이에요. 이 기기에만 저장돼요. 언제든 다시 고칠 수 있어요.
         </p>
 
+        <section className="card checkin-saved-confirm">
+          <span className="card-label">오늘 체크인이 저장됐어요</span>
+          <p className="hairline-note">
+            최근 기록에서 다시 볼 수 있어요. 오늘은 여기까지 해도 충분해요.
+          </p>
+        </section>
+
         <section className="card">
           <div className="card-row">
             <span className="card-label">오늘 기분</span>
@@ -150,6 +157,13 @@ export default function CheckinScreen({
           <button
             type="button"
             className="btn btn-primary btn-block"
+            onClick={() => onNavigate('calendar')}
+          >
+            최근 기록 보기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
             onClick={() => {
               setEditing(true);
               setStep(1);
