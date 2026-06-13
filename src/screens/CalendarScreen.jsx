@@ -181,12 +181,17 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
             {day.checkin.note ? (
               <p className="day-detail-reflection">“{day.checkin.note}”</p>
             ) : null}
+            <p className="hairline-note">
+              {day.isToday
+                ? '오늘 남긴 기록이에요. 고치려면 오늘 체크인에서 바꿀 수 있어요.'
+                : '지난 기록은 그대로 보관돼요. 여기서는 보기만 해요.'}
+            </p>
           </div>
         ) : day.isToday ? (
           <div className="day-detail-block">
             <span className="card-label">오늘의 체크인</span>
             <p className="hairline-note">
-              아직 오늘 체크인을 남기지 않았어요. 홈에서 ‘오늘 상태 남기기’로 1분이면 남길 수 있어요.
+              아직 오늘 체크인을 남기지 않았어요. 아래 ‘오늘 체크인하기’로 이어서 1분이면 남길 수 있어요.
             </p>
           </div>
         ) : null}
