@@ -384,36 +384,11 @@ export default function HomeScreen({
         ) : null}
       </section>
 
-      {/* 5) 보조 영역 — 규율 / 최근 기록 / 고양이 방은 한 단계 아래로 묶는다 */}
+      {/* 5) 보조 영역 — 최근 기록 / 고양이 방은 한 단계 아래로 묶는다. RC-1: 홈이 어지럽다는
+          피드백에 따라 카운터 카드와 중복되던 ‘오늘의 규율 점검’ 요약 카드와 비기능 ‘동행’
+          티저, 그리고 중복으로 두 번 깔리던 방 미리보기 이미지를 정리했다. */}
       <div className="home-secondary stack" style={{ '--gap': 'var(--sp-3)' }}>
         <p className="section-eyebrow">오늘의 흐름</p>
-
-        <section className="card">
-          <div className="card-row">
-            <span className="card-label">오늘의 규율 점검</span>
-            <button
-              type="button"
-              className="text-quiet"
-              style={{ fontSize: 'var(--fs-small)' }}
-              onClick={() => onNavigate('discipline')}
-            >
-              규율 편집
-            </button>
-          </div>
-          <p className="discipline-summary">
-            {rules.length === 0
-              ? '아직 정한 규율이 없어요. 규율을 추가해 보세요.'
-              : `오늘 ${summary.total}개 중 ${summary.keeping}개를 지키는 중이에요.`}
-          </p>
-          {summary.missed > 0 ? (
-            <p className="hairline-note">
-              못 지킨 규율 {summary.missed}개 — 가볍게 복기하면 다음이 쉬워져요.
-            </p>
-          ) : null}
-          {summary.unrecorded > 0 ? (
-            <p className="hairline-note">아직 고르지 않은 규율 {summary.unrecorded}개가 있어요.</p>
-          ) : null}
-        </section>
 
         <section className="card">
           <div className="card-row">
@@ -505,6 +480,8 @@ export default function HomeScreen({
           </div>
         </section>
 
+        {/* 고양이의 방 — 꾸미기 진입. 방 미리보기 이미지는 바로 위 ‘오늘의 방’에서 이미 보여주므로
+            여기서는 중복 이미지를 빼고 온기 한 줄 + 꾸미기 버튼만 둔다 (RC-1 홈 정리). */}
         <section className="card">
           <div className="card-row">
             <span className="card-label">고양이의 방</span>
@@ -512,13 +489,6 @@ export default function HomeScreen({
               {RESOURCE.name} {emberShards}{RESOURCE.unit}
             </span>
           </div>
-          <PetRoomPreview
-            theme={activeRoomTheme}
-            placements={placements}
-            tone={relapsedToday ? 'dim' : 'steady'}
-            variant="compact"
-            label="잔불 곁의 흰 고양이 방"
-          />
           <p className="hairline-note text-quiet">
             {relapsedToday
               ? '잔불이 잠깐 약해졌어요. 다시 이어가면 곧 따뜻해져요.'
@@ -570,21 +540,6 @@ export default function HomeScreen({
           >
             실드 준비 상황 보기
           </button>
-        </section>
-
-        {/* 동행 티저 (PRD §0.6.8 P0) — 카피 전용 비기능 카드. 고정 문구만 쓴다:
-            실시간 인원수·가짜 사용자·랭킹/순위 어휘·기능 동작 클레임 전부 금지
-            (COPY_POLICY §10.7). 버튼 없음 — 누를 수 있는 척하지 않는다. */}
-        <section className="card">
-          <div className="card-row">
-            <span className="card-label">동행</span>
-            <span className="pill shield-tag">준비 중</span>
-          </div>
-          <p className="hairline-note">혼자가 아니에요 — 함께 버티는 사람들을 곧 만나요.</p>
-          <p className="hairline-note text-quiet">
-            같이 가는 사람들과 서로의 다짐을 조용히 지켜봐 주는 동행을 준비하고 있어요.
-            지금 기록은 밖으로 공유되지 않아요.
-          </p>
         </section>
 
         {/* 데이터 초기화 (C25) — destructive local-data reset. Honest scope: clears only
