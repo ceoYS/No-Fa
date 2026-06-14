@@ -2062,13 +2062,49 @@ button.room-token:active {
   100% { opacity: 0; transform: translateY(-150px) scale(0.92); }
 }
 
+/* 쓰다듬기 (놀아주기) affection cue (RC-1) — a warm ember heart-glow that rises from the
+   쓰다듬기 button on a successful pet. A visible UI response to the user's action; it never
+   implies the static cat moved/reacted. Mirrors the snack hand-off particle. */
+.pet-affection-token {
+  position: absolute;
+  left: 50%;
+  top: -8px;
+  width: 18px;
+  height: 18px;
+  margin-left: -9px;
+  border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+  background: radial-gradient(circle at 50% 35%, #fff1df, var(--ember-300) 75%);
+  box-shadow: 0 0 14px var(--accent-ember-glow);
+  opacity: 0;
+  pointer-events: none;
+  z-index: 2;
+}
+
+.pet-affection-ember {
+  position: absolute;
+  inset: 4px;
+  border-radius: 50%;
+  background: radial-gradient(circle, #fff6e9, var(--ember-200) 80%);
+}
+
+.pet-affection-token[data-active='true'] {
+  animation: pet-affection 900ms var(--ease-soft);
+}
+
+@keyframes pet-affection {
+  0% { opacity: 0; transform: translateY(8px) scale(0.5); }
+  30% { opacity: 1; transform: translateY(0) scale(1); }
+  100% { opacity: 0; transform: translateY(-120px) scale(0.95); }
+}
+
 /* home hero — timer-first CTA pair sits tight under the abstinence timer. */
 .home-hero-actions {
   margin-top: calc(-1 * var(--sp-2));
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .snack-toss-token[data-active='true'] {
+  .snack-toss-token[data-active='true'],
+  .pet-affection-token[data-active='true'] {
     animation: none;
   }
 }

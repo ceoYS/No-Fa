@@ -198,7 +198,7 @@ export default function App() {
   // fedCount stays the cumulative lifetime count; fedDay stamps the calendar day of
   // the last snack hand-off so the room can honestly show a DAY-SCOPED "오늘 놓아줌"
   // signal (not just a lifetime tally). null until the first ever feed.
-  const [petCareState, setPetCareState] = useState(() => persisted?.petCareState ?? { fedCount: 0, fedDay: null, reaction: null });
+  const [petCareState, setPetCareState] = useState(() => persisted?.petCareState ?? { fedCount: 0, fedDay: null, pettedCount: 0, pettedDay: null, reaction: null });
   const [claimedRewardIds, setClaimedRewardIds] = useState(() => persisted?.claimedRewardIds ?? []);
   // Calendar-day key of the last check-in shard grant, so the daily check-in
   // reward is given once per day even if the user re-opens/re-submits the check-in.
@@ -660,7 +660,18 @@ export default function App() {
     setInventory((inv) => ({ ...inv, snack: inv.snack - 1 }));
     setPetCareState((p) => {
       const fedCount = (p.fedCount ?? 0) + 1;
-      return { fedCount, fedDay: dayKey(Date.now()), reaction: feedReaction(fedCount - 1) };
+      return { ...p, fedCount, fedDay: dayKey(Date.now()), reaction: feedReaction(fedCount - 1) };
+    });
+  };
+
+  // 고양이 쓰다듬기 (놀아주기, RC-1): an honest affection interaction. The cat art is a
+  // static composite, so this NEVER claims the cat moved / purred / ate — it records a
+  // calm warm moment with the room today (day-scoped pettedCount/pettedDay, persisted),
+  // and the screen answers with a visible affection cue + a calm, R-8-safe message.
+  const petPet = () => {
+    setPetCareState((p) => {
+      const pettedCount = (p.pettedCount ?? 0) + 1;
+      return { ...p, pettedCount, pettedDay: dayKey(Date.now()) };
     });
   };
 
@@ -668,6 +679,11 @@ export default function App() {
   // the last hand-off was stamped for the current calendar day — a stale yesterday
   // fedDay reads false, so the room never claims a snack was placed today when it wasn't.
   const petFedToday = petCareState?.fedDay != null && petCareState.fedDay === dayKey(Date.now());
+
+  // Day-scoped "spent a warm moment with the cat today" signal (RC-1 쓰다듬기). True only
+  // when the last 쓰다듬기 was stamped for the current calendar day — a stale yesterday reads
+  // false. An honest reflection of a real action the user took today, never fabricated.
+  const petPettedToday = petCareState?.pettedDay != null && petCareState.pettedDay === dayKey(Date.now());
 
   // Day-scoped "held a crisis today" signal for the room state shell (Pet/Room loop).
   // True only when the once-per-day crisis grant was recorded for the current calendar
@@ -736,6 +752,8 @@ export default function App() {
             onRemovePlacement={removePlacement}
             onChooseRoomTheme={chooseRoomTheme}
             onFeedSnack={feedSnack}
+            onPetPet={petPet}
+            petPettedToday={petPettedToday}
             blocklist={blocklist}
             onAddBlockEntry={addBlockEntry}
             onRemoveBlockEntry={removeBlockEntry}

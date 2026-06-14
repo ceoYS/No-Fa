@@ -54,6 +54,9 @@ const TAP_MESSAGES = [
 const SCENE_FEED_MESSAGE = '간식을 고양이 곁에 놓아두었어요.';
 const SCENE_REWARD_MESSAGE = '오늘의 절제를 조용히 기억했어요.';
 const NO_SNACK_MESSAGE = '보유한 간식이 없어요. 오늘의 보상으로 다시 받을 수 있어요.';
+// 쓰다듬기 (놀아주기) affection cue copy (RC-1). R-8-safe: a calm "spent a warm moment"
+// line — never a gaze / motion / purr / approach claim (the cat stays a static composite).
+const PET_MESSAGE = '고양이 곁에서 잠깐 따뜻한 시간을 보냈어요.';
 
 // Character growth v1 — DERIVED warmth labels read from LOCAL records (today's
 // check-in + the abstinence streak). This is a calm summary, NOT a pet evolution
@@ -74,6 +77,7 @@ export default function PetRewardScreen({
   activeRoomTheme = 'empty',
   petCareState = {},
   petFedToday = false,
+  petPettedToday = false,
   streakDays = 0,
   todayRecord = null,
   claimedRewardIds = [],
@@ -85,11 +89,13 @@ export default function PetRewardScreen({
   onRemovePlacement,
   onChooseRoomTheme,
   onFeedSnack,
+  onPetPet,
 }) {
   const editorRef = useRef(null);
   const motionTimer = useRef(null);
   const sceneReactionTimer = useRef(null);
   const snackTossTimer = useRef(null);
+  const affectionTossTimer = useRef(null);
   const tapCount = useRef(0);
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // 'inventory' | 'shop' | null
@@ -102,6 +108,9 @@ export default function PetRewardScreen({
   // A small snack token that rises from the feed button toward the scene on a
   // successful feed. Purely a hand-off cue — never a consume or motion claim.
   const [snackToss, setSnackToss] = useState(false);
+  // A warm affection cue that rises from the 쓰다듬기 button on a successful pet. Purely a
+  // visible UI response to the user's action — never a claim the static cat moved/reacted.
+  const [affectionToss, setAffectionToss] = useState(false);
   // Gesture-gated cat audio; silent fallback while the .mp3 files are pending.
   // hasSound stays false until a real file is probed present, so the 소리/무음
   // toggle is hidden rather than shown as a dead switch over silent audio.
@@ -113,6 +122,7 @@ export default function PetRewardScreen({
     clearTimeout(motionTimer.current);
     clearTimeout(sceneReactionTimer.current);
     clearTimeout(snackTossTimer.current);
+    clearTimeout(affectionTossTimer.current);
   }, []);
 
   // Fire the snack hand-off token, then clear it so it can replay on the next feed.
@@ -120,6 +130,13 @@ export default function PetRewardScreen({
     setSnackToss(true);
     clearTimeout(snackTossTimer.current);
     snackTossTimer.current = setTimeout(() => setSnackToss(false), ms);
+  };
+
+  // Fire the affection cue, then clear it so it can replay on the next 쓰다듬기.
+  const triggerAffectionToss = (ms = 900) => {
+    setAffectionToss(true);
+    clearTimeout(affectionTossTimer.current);
+    affectionTossTimer.current = setTimeout(() => setAffectionToss(false), ms);
   };
 
   // Briefly play a motion state, then settle back to idle. Fixed, never random.
@@ -132,6 +149,8 @@ export default function PetRewardScreen({
   const snackCount = inventory.snack ?? 0;
   // Cumulative (not day-scoped) hand-offs, read straight from persisted petCareState.
   const fedCount = petCareState.fedCount ?? 0;
+  // Cumulative 쓰다듬기 count, read straight from persisted petCareState (RC-1).
+  const pettedCount = petCareState.pettedCount ?? 0;
   const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
   const lockedNext = nextLockedMilestone(streakDays);
 
@@ -197,6 +216,21 @@ export default function PetRewardScreen({
       return;
     }
     triggerMotion('happy', 1600);
+  };
+
+  // 쓰다듬기 (놀아주기): record the affection (App stamps a day-scoped count) and answer
+  // with a VISIBLE cue — the affection token rises + the scene warms — plus a calm,
+  // R-8-safe line. No motion / purr / food claim; the static cat never reacts on its own.
+  const handlePet = () => {
+    onPetPet?.();
+    playSound('purr'); // gesture-triggered, silent until a real audio file is wired
+    triggerAffectionToss();
+    setTapMsg(PET_MESSAGE);
+    if (sceneMode) {
+      triggerSceneReaction();
+      return;
+    }
+    triggerMotion('happy', 1200);
   };
 
   const handleCatTap = () => {
@@ -428,6 +462,39 @@ export default function PetRewardScreen({
             aria-disabled={snackCount <= 0}
           >
             간식 놓아주기
+          </button>
+        </div>
+      </section>
+
+      {/* 고양이와 놀아주기 (RC-1 feedback #3) — a real, visible affection interaction. Pressing
+          쓰다듬기 records an honest day-scoped count in App and rises a warm affection cue while
+          the scene warms. The cat art is a static composite, so the copy never claims it moved,
+          purred, or reacted on its own (R-8 / guard #6). */}
+      <section className="card">
+        <div className="card-row">
+          <span className="card-label">고양이와 놀아주기</span>
+          <span className="pill" style={{ fontSize: 'var(--fs-small)' }}>쓰다듬기 {pettedCount}번</span>
+        </div>
+        <p className="hairline-note" aria-live="polite">
+          {tapMsg === PET_MESSAGE ? PET_MESSAGE : '쓰다듬기를 누르면 고양이 곁에서 잠깐 함께할 수 있어요.'}
+        </p>
+        {petPettedToday ? (
+          <p className="hairline-note">오늘도 고양이와 함께한 시간을 남겼어요.</p>
+        ) : null}
+        {pettedCount > 0 ? (
+          <p className="hairline-note text-quiet">지금까지 쓰다듬기 {pettedCount}번</p>
+        ) : null}
+        <div className="feed-btn-wrap">
+          <span className="pet-affection-token" data-active={affectionToss} aria-hidden="true">
+            <span className="pet-affection-ember" />
+          </span>
+          <button
+            type="button"
+            className="btn btn-primary btn-block feed-btn"
+            onClick={handlePet}
+            data-reacting={sceneReacting && tapMsg === PET_MESSAGE}
+          >
+            쓰다듬기
           </button>
         </div>
       </section>

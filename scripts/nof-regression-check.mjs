@@ -2120,7 +2120,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 24 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 25 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2137,7 +2137,7 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 24 behaviors,
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
   //     still reporting 23/23 PASS.
-  for (let i = 1; i <= 24; i += 1) {
+  for (let i = 1; i <= 25; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2268,6 +2268,41 @@ check('discipline counters tick live to the second on Home', () => {
   // (d) Honest live-status copy, one vocabulary (no 금욕).
   assert(home.includes('절제 중'), 'counter card is missing the 절제 중 live-status label');
   assert(!home.includes('금욕'), 'counter surface uses forbidden 금욕 vocabulary');
+});
+
+// 73 — RC-1 cat interaction. Feedback #3: the cat room must offer a real, visible
+// interaction, not a static placeholder. The honest answer (the cat art is a static
+// composite — no transparent sprites) is a 쓰다듬기 (놀아주기) action that records a real,
+// day-scoped, persisted count in App and answers with a VISIBLE affection cue, while never
+// claiming the cat moved / purred / ate (those tokens stay banned by guard #6).
+check('cat room has a real 쓰다듬기 interaction: visible cue + honest day-scoped count', () => {
+  const app = read('src/App.jsx');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const css = read('src/styles/components.css');
+
+  // (a) App records the affection as a day-scoped, persisted count and passes it down.
+  assert(/const petPet = \(\) =>/.test(app), 'App has no petPet interaction handler');
+  assert(/pettedDay: dayKey\(/.test(app), 'petPet does not stamp a day-scoped pettedDay (via dayKey)');
+  assert(/onPetPet=\{petPet\}/.test(app), 'App does not pass onPetPet down to the pet room');
+  const saveBody = app.match(/saveState\(\{([\s\S]*?)\}\);/);
+  assert(saveBody && saveBody[1].includes('petCareState'), 'petCareState (with the pet count) is not persisted');
+
+  // (b) A visible 쓰다듬기 affordance wired to a handler that calls onPetPet + reads the count.
+  assert(screen.includes('쓰다듬기'), 'pet room is missing the 쓰다듬기 interaction');
+  assert(/onClick=\{handlePet\}/.test(screen), '쓰다듬기 button is not wired to handlePet');
+  assert(/onPetPet\?\.\(\)/.test(screen), 'handlePet does not call the onPetPet handler');
+  assert(screen.includes('pet-affection-token'), 'pet interaction has no visible affection cue token');
+  assert(/petCareState\.pettedCount/.test(screen), 'pet interaction does not read back the persisted pet count');
+
+  // (c) A real travel animation exists in CSS (a movement cue, not just an opacity flash).
+  const m = css.match(/@keyframes pet-affection \{[\s\S]*?\n\}/);
+  assert(m, 'pet-affection keyframes missing');
+  assert(/translateY\(-?\d+px\)/.test(m[0]), 'pet-affection cue is not a travel animation (no translateY distance)');
+
+  // (d) No fake cat-motion / sound claim in the positive interaction copy.
+  for (const fake of ['먹었', '먹는', '움직였', '꼬리', '기지개', '골골', '야옹']) {
+    assert(!screen.includes(fake), `pet interaction makes a fake cat-motion/sound claim: ${fake}`);
+  }
 });
 
 let failed = 0;

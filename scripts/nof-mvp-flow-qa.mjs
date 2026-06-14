@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 24 MVP behaviors this harness drives and asserts. Every check() references one
+// The 25 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -65,6 +65,7 @@ const BEHAVIORS = {
   B22: '390x844 no critical horizontal overflow',
   B23: 'route home works',
   B24: 'discipline counter ticks live to the second',
+  B25: 'cat room 쓰다듬기 interaction changes real state',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -448,6 +449,19 @@ async function runFlow(c) {
   const ticked = !!tick1 && !!tick2 && tick1 !== tick2;
   check('B24', ticked, ticked ? '' : `counter time did not advance live: "${tick1}" -> "${tick2}"`);
   await c.shot('home_counter_tick');
+
+  // 25 · The cat room has a REAL, visible 쓰다듬기 (놀아주기) interaction with an honest
+  //      persisted count: open the room, press 쓰다듬기, and the "지금까지 쓰다듬기 N번"
+  //      read-back appears (absent before the first pet) — proving the interaction changed
+  //      real state, not just played a glow. Asserts on rendered DOM, not source.
+  await c.clickExact('홈'); await sleep(250);
+  const toRoom = await c.click('고양이 방 꾸미기'); await sleep(450);
+  const beforePet = await c.has('지금까지 쓰다듬기'); // no petting yet this run → absent
+  const petClicked = await c.click('쓰다듬기'); await sleep(350);
+  const afterPet = await c.has('지금까지 쓰다듬기'); // count read-back now visible
+  const petOk = toRoom && petClicked && !beforePet && afterPet;
+  check('B25', petOk, petOk ? '' : `room:${toRoom} pet:${petClicked} before:${beforePet} after:${afterPet}`);
+  await c.shot('room_pet_interaction');
 }
 
 async function main() {
