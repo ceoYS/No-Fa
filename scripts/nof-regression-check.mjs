@@ -2270,6 +2270,64 @@ check('RC-1 product loop: writing-first check-in, live counters, real cat intera
   }
 });
 
+// 75 — RC-2A clarity loop. A single cross-cutting net pinning the RC-2A intent so a future
+// change can't quietly revert it: (1) NO user-facing "체크인" survives on any rendered
+// screen surface — the word was replaced by 오늘 기록 / 오늘 회고 (internal code names like
+// checkinLedger may remain, and comments are exempt); (2) the new 오늘 기록 / 오늘 회고 copy
+// is present where it matters; (3) the decorative ember/잔불 filler line is gone; (4) Home
+// stays a reduced status surface (timer + counters + 관리), not a dashboard; (5) the 기록
+// calendar is a real month grid that reads the ledger by date with no fabricated history.
+check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluff, Home diet, monthly calendar', () => {
+  // Strip block comments (incl. JSX {/* … */}) and full-line // comments, so a 체크인 left
+  // only in an explanatory comment / internal identifier does not trip the rendered-copy
+  // check. Any remaining 체크인 is real rendered text or a string literal — i.e., user-facing.
+  const stripComments = (src) =>
+    src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+  // (1) No user-facing 체크인 on the rendered surfaces.
+  const renderedFiles = [
+    'src/components/BottomNav.jsx',
+    'src/screens/HomeScreen.jsx',
+    'src/screens/CheckinScreen.jsx',
+    'src/screens/CalendarScreen.jsx',
+    'src/screens/UrgeScreen.jsx',
+    'src/screens/PetRewardScreen.jsx',
+  ];
+  for (const f of renderedFiles) {
+    assert(!stripComments(read(f)).includes('체크인'), `${f} still shows user-facing "체크인" — RC-2A renamed it to 오늘 기록 / 오늘 회고`);
+  }
+
+  // (2) The RC-2A vocabulary is present where it matters.
+  assert(read('src/components/BottomNav.jsx').includes("label: '오늘 기록'"), 'BottomNav lost the 오늘 기록 tab label');
+  const checkin = read('src/screens/CheckinScreen.jsx');
+  assert(checkin.includes('오늘 회고') && checkin.includes('오늘 기록이 저장됐어요'), 'CheckinScreen lost the 오늘 회고 / 오늘 기록 wording');
+  assert(read('src/screens/CalendarScreen.jsx').includes('오늘 회고'), 'CalendarScreen lost the 오늘 회고 read-back label');
+
+  // (3) The decorative ember/잔불 filler line the user called out is gone from every screen.
+  for (const f of renderedFiles) {
+    const src = read(f);
+    assert(!src.includes('작은 잔불은 아직 꺼지지 않았어요'), `${f} still carries the decorative ember filler line`);
+    assert(!src.includes('흔들려도 다시 이어갈 수 있어요'), `${f} still carries the decorative "흔들려도 다시 이어갈" filler`);
+  }
+
+  // (4) Home stays a reduced status surface — timer + counters + compact 관리, no dashboard.
+  const home = read('src/screens/HomeScreen.jsx');
+  for (const keep of ['abstinence-timer-card', 'home-counters', 'home-manage']) {
+    assert(home.includes(keep), `Home lost its RC-2A status-surface section: ${keep}`);
+  }
+  for (const gone of ['home-loop-hub', 'home-checkin-summary', 'home-room-state', 'home-onboarding']) {
+    assert(!home.includes(gone), `Home dashboard section returned (RC-2A removed it): ${gone}`);
+  }
+
+  // (5) 기록 is a real month grid reading the ledger by date, with no fabricated history.
+  const cal = read('src/screens/CalendarScreen.jsx');
+  assert(cal.includes('month-grid') && /WEEKDAYS\s*=\s*\[/.test(cal), '기록 is not a real month grid');
+  assert(/aria-label="이전 달"/.test(cal) && /aria-label="다음 달"/.test(cal), '기록 month grid lost month navigation');
+  assert(/ledger\[dateMs\] \?\? null/.test(cal), '기록 calendar does not read records from the ledger by date');
+  assert(!cal.includes('buildDayRecords'), '기록 calendar must not use the old seeded day builder');
+  assert(!/const SEED\s*=/.test(read('src/constants/recentDays.js')), 'a fabricated SEED of past records returned to recentDays.js');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
