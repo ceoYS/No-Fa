@@ -42,8 +42,8 @@ const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
-  B02: 'first-run guidance visible',
-  B03: 'home daily action hub visible',
+  B02: 'home shows the discipline counter list',
+  B03: 'home shows the 잠깐 멈춤 + 오늘 기록 actions',
   B04: 'protection empty state visible',
   B05: 'save protection plan',
   B06: 'hard reload',
@@ -55,7 +55,7 @@ const BEHAVIORS = {
   B12: 'reward landing save confirmation appears only after actual save',
   B13: 'reward to recent records opens records',
   B14: 'records show today writing (회고/약속/다짐)',
-  B15: 'home saved summary appears',
+  B15: 'saved record reads back on the 오늘 기록 screen',
   B16: 'protection clear action clears plan',
   B17: 'urge returns to no-plan empty state',
   B18: 'reset local data through confirm sheet',
@@ -283,9 +283,9 @@ async function runFlow(c) {
   await c.clearLS();
   await c.goto(APP_URL);
   check('B01', await c.has('절제 시간'));
-  // hangul-stable phrase — never the brittle latin-boundary brand-prefixed innerText.
-  check('B02', await c.has('이렇게 써요'));
-  check('B03', (await c.has('오늘의 회복 루프')) && (await c.has('오늘 기록하기')));
+  // RC-2A: Home is a status surface — the counter list + the two actions, no dashboard hub.
+  check('B02', await c.has('절제 카운터'));
+  check('B03', (await c.has('오늘 기록하기')) && (await c.has('못 참을 것 같아요')));
   await scanOverflow(c, 'home-fresh');
   await c.shot('home_fresh');
 
@@ -365,11 +365,14 @@ async function runFlow(c) {
       ? '' : `today writing not fully read back (note:${recHasNote} promise:${recHasPromise} resolve:${recHasResolve}, cell clicked: ${cellClicked})`);
   await c.shot('records_today_note');
 
-  // 15 · Home shows the saved check-in summary + the note (route home via bottom nav).
-  await c.clickExact('홈');
+  // 15 · RC-2A: Home no longer carries a saved-summary card (it is a status surface). The
+  //      saved record reads back on the 오늘 기록 screen itself — open it via the bottom nav
+  //      and confirm the saved-state summary + the typed 회고 note.
+  await c.clickExact('오늘 기록');
   check('B15', (await c.has('오늘 기록이 저장됐어요')) && (await c.has(NOTE)));
-  await scanOverflow(c, 'home-saved');
-  await c.shot('home_saved');
+  await scanOverflow(c, 'checkin-saved');
+  await c.shot('checkin_saved');
+  await c.clickExact('홈');
 
   // 16 · Protection clear empties the plan honestly.
   await c.click('보호 설정 적기');
@@ -399,7 +402,9 @@ async function runFlow(c) {
   check('B18', sheetOpen);
   await c.clickInScope('.sheet', '기록 지우기'); // scoped: never the trigger behind the backdrop
   await sleep(500);
-  check('B19', (await c.has('이렇게 써요')) && !(await c.has(NOTE)));
+  // RC-2A: after reset Home returns to its base status surface (timer + counters) and the
+  // typed note is gone. (No first-run onboarding card to assert anymore.)
+  check('B19', (await c.has('절제 시간')) && (await c.has('절제 카운터')) && !(await c.has(NOTE)));
   await scanOverflow(c, 'home-after-reset');
   await c.shot('home_after_reset');
 

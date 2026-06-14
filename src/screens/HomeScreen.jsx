@@ -1,13 +1,8 @@
 import { useEffect, useMemo, useState } from 'react';
-import PetRoomPreview from '../components/PetRoomPreview.jsx';
-import EmberCalendarStrip from '../components/EmberCalendarStrip.jsx';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import { summarizeRules, linkedRules, STATUS_LABEL, STATUS_PILL } from '../constants/discipline.js';
-import { buildDayRecords, daySummary } from '../constants/recentDays.js';
-import { RESOURCE, nextLockedMilestone } from '../constants/rewards.js';
+import { nextLockedMilestone } from '../constants/rewards.js';
 import { msToDateValue, msToTimeValue, dateTimeToMs } from '../utils/datetime.js';
-
-const DAY_MS = 86400000;
 
 function formatElapsed(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -18,16 +13,11 @@ function formatElapsed(ms) {
   return { days, hh, mm, ss };
 }
 
-// Room Warmth (§0.5.10 D) — shown as a word, never a number. Only two states are
-// reachable from today's rule summary (잔잔함/안정) until the full 4-band warmth
-// index lands with the domains/ refactor — so the Home copy speaks exactly these
-// two and never implies a finer measurement (R-11).
-function warmthBand(summary, relapsed) {
-  if (relapsed || summary.missed > 0) return '잔잔함';
-  if (summary.keeping > 0) return '안정';
-  return '잔잔함';
-}
-
+// RC-2A: Home is deliberately reduced to a status surface — the abstinence timer and
+// the active discipline counters, plus the two in-the-moment actions (잠깐 멈춤 / 오늘
+// 기록). The old daily-action hub, first-run guidance, saved-summary, room preview and
+// records strip were removed from Home; those features stay reachable via the bottom
+// nav and the compact 관리 links below (records → 기록 tab, room/shield/protection/reset).
 export default function HomeScreen({
   onNavigate,
   rules = [],
@@ -42,12 +32,6 @@ export default function HomeScreen({
   onRelapse,
   onStartSlipReflection,
   onResetLocalData,
-  todayRecord = null,
-  checkinLedger = null,
-  emberShards = 0,
-  placements = [],
-  activeRoomTheme = 'empty',
-  crisisHeldToday = false,
 }) {
   const [now, setNow] = useState(Date.now());
   // 재발/리셋은 절대 즉시 실행되지 않는다 (refocus memo §2/§6): 다시 시작 버튼은
@@ -81,27 +65,6 @@ export default function HomeScreen({
   const nextGoal = nextLockedMilestone(days);
   const goalRemaining = nextGoal ? Math.max(0, nextGoal.day - days) : 0;
   const goalPct = nextGoal ? Math.min(100, Math.round((days / nextGoal.day) * 100)) : 100;
-
-  const summary = useMemo(() => summarizeRules(rules), [rules]);
-  const recentDays = useMemo(
-    () => buildDayRecords({ rules, todayRecord, abstinence: { startMs: abstinenceStartMs, now } }, 7),
-    // now ticks every second; only rebuild the ledger when the day changes.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rules, todayRecord, abstinenceStartMs, Math.floor(now / DAY_MS)],
-  );
-  const [selectedDay, setSelectedDay] = useState(recentDays.length - 1);
-  const relapsedToday = todayRecord?.abstinenceState === 'relapse';
-  // Daily action hub / saved-summary signal (C11/C12): the live today check-in, the
-  // single honest "오늘 체크인 했다" source on Home. Drives which next action the hub
-  // emphasizes (체크인하기 vs 최근 기록 보기) and gates the saved read-back below — it
-  // appears ONLY when a real check-in was saved today (never before completion). The
-  // read-back shows today's note only; it never reaches into a past-day ledger entry.
-  const todayCheckin = todayRecord?.checkin ?? null;
-  // First-run guidance signal (C23): true until the user has any real check-in history —
-  // today's or any saved ledger day. Derived, no new storage; it auto-hides after the first
-  // check-in (and reappears honestly if the local data is reset to empty).
-  const hasCheckinHistory =
-    !!todayCheckin || (checkinLedger != null && Object.keys(checkinLedger).length > 0);
 
   // Rules linked to the currently-selected counter (rule↔counter link). This is a
   // TODAY rule-status view — kept separate from the counter's elapsed time, which
@@ -154,92 +117,8 @@ export default function HomeScreen({
         </div>
       </section>
 
-      {/* 1.4) 첫 사용 안내 (C23) — 아직 체크인 기록이 하나도 없을 때만 보인다. 핵심 회복
-          루프를 3단계로 짧게 설명한다. 과장/의학 주장 없이, 로컬 저장 사실만 덧붙인다.
-          첫 체크인 뒤에는 자동으로 사라진다 (hasCheckinHistory). */}
-      {!hasCheckinHistory ? (
-        <section className="card home-onboarding">
-          <span className="card-label">NoF는 이렇게 써요</span>
-          <ol className="onboarding-steps" aria-label="NoF 사용 3단계 안내">
-            <li>흔들릴 땐 잠깐 멈춤</li>
-            <li>하루 끝에는 오늘 기록</li>
-            <li>최근 기록에서 다시 확인</li>
-          </ol>
-          <p className="hairline-note text-quiet">모든 기록은 이 기기에만 저장돼요.</p>
-        </section>
-      ) : null}
-
-      {/* 1.5) 오늘의 회복 루프 (C11) — 상태에 맞춰 "지금 할 수 있는 행동"을 한 곳에 모은
-          데일리 액션 허브. 잠깐 멈춤은 항상 접근 가능하고, 오늘 체크인이 없으면 체크인하기를,
-          이미 했으면 최근 기록 보기를 강조한다. 새 저장/라우트 없이 기존 화면으로만 잇는다. */}
-      <section className="card home-loop-hub" aria-label="오늘의 회복 루프">
-        <div className="card-row">
-          <span className="card-label">오늘의 회복 루프</span>
-          {todayCheckin ? (
-            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
-              오늘 기록 완료
-            </span>
-          ) : null}
-        </div>
-        <p className="hairline-note">지금 할 수 있는 행동부터 시작해요.</p>
-        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => onNavigate('urge')}
-          >
-            잠깐 멈춤
-          </button>
-          {todayCheckin ? (
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              onClick={() => onNavigate('calendar')}
-            >
-              최근 기록 보기
-            </button>
-          ) : (
-            <button
-              type="button"
-              className="btn btn-primary btn-block"
-              onClick={() => onNavigate('checkin')}
-            >
-              오늘 기록하기
-            </button>
-          )}
-        </div>
-      </section>
-
-      {/* 1.6) 오늘 체크인 저장 확인 (C12) — 오늘 실제로 체크인이 저장됐을 때만 보인다
-          (todayRecord.checkin gate). 저장 사실을 짧게 확인해 주고, 남긴 한 줄이 있으면
-          오늘 것만 그대로 read-back 한다 (과거 ledger는 절대 끌어오지 않는다). 다음 행동은
-          최근 기록 보기. 저장 전에는 렌더되지 않으므로 거짓 저장 claim이 될 수 없다. */}
-      {todayCheckin ? (
-        <section className="card home-checkin-summary">
-          <div className="card-row">
-            <span className="card-label">오늘 기록이 저장됐어요</span>
-            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
-              완료
-            </span>
-          </div>
-          {todayCheckin.note ? (
-            <div className="day-detail-block">
-              <span className="card-label">오늘 남긴 한 줄</span>
-              <p className="day-detail-reflection">“{todayCheckin.note}”</p>
-            </div>
-          ) : null}
-          <p className="hairline-note">최근 기록에서 다시 볼 수 있어요.</p>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => onNavigate('calendar')}
-          >
-            최근 기록 보기
-          </button>
-        </section>
-      ) : null}
-
-      {/* 2) 위기 대응 CTA — 히어로 바로 아래, 가장 누르기 쉬운 위치 */}
+      {/* 2) 홈에서 바로 할 수 있는 두 행동만 — 위기엔 잠깐 멈춤(urge), 하루는 오늘 기록(checkin).
+          데일리 허브·첫 사용 안내·저장 확인 카드는 RC-2A에서 제거했다(홈은 상태 화면). */}
       <section className="home-crisis">
         <p className="home-crisis-eyebrow">못 참을 것 같다면</p>
         <div className="home-hero-actions stack" style={{ '--gap': 'var(--sp-2)' }}>
@@ -255,7 +134,7 @@ export default function HomeScreen({
             className="btn btn-ghost btn-block"
             onClick={() => onNavigate('checkin')}
           >
-            오늘 상태 남기기
+            오늘 기록하기
           </button>
         </div>
       </section>
@@ -383,118 +262,13 @@ export default function HomeScreen({
         ) : null}
       </section>
 
-      {/* 5) 보조 영역 — 최근 기록 / 고양이 방은 한 단계 아래로 묶는다. RC-1: 홈이 어지럽다는
-          피드백에 따라 카운터 카드와 중복되던 ‘오늘의 규율 점검’ 요약 카드와 비기능 ‘동행’
-          티저, 그리고 중복으로 두 번 깔리던 방 미리보기 이미지를 정리했다. */}
-      <div className="home-secondary stack" style={{ '--gap': 'var(--sp-3)' }}>
-        <p className="section-eyebrow">오늘의 흐름</p>
-
-        <section className="card">
-          <div className="card-row">
-            <span className="card-label">최근 기록</span>
-            <button
-              type="button"
-              className="text-quiet"
-              style={{ fontSize: 'var(--fs-small)' }}
-              onClick={() => onNavigate('calendar')}
-            >
-              전체 보기
-            </button>
-          </div>
-          <EmberCalendarStrip
-            days={recentDays}
-            selectedIndex={selectedDay}
-            onSelectDay={setSelectedDay}
-            legend
-          />
-          <p className="hairline-note" aria-live="polite">
-            {daySummary(recentDays[selectedDay])}
-          </p>
-        </section>
-
-        {/* 오늘의 방 (C15 Pet/Room state shell) — the room reflects what the user actually
-            did TODAY, off real day-scoped signals (todayCheckin / crisisHeldToday). It reuses
-            the existing room composite + tone; it makes NO growth / unlock / shop / save claim.
-            Before any of today's actions it simply waits; after a check-in or a held crisis it
-            notes that today's action left a trace. */}
-        <section className="card home-room-state" aria-label="오늘의 방">
-          <div className="card-row">
-            <span className="card-label">오늘의 방</span>
-            {todayCheckin || crisisHeldToday ? (
-              <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
-                오늘의 흔적
-              </span>
-            ) : null}
-          </div>
-          <PetRoomPreview
-            theme={activeRoomTheme}
-            placements={placements}
-            tone={relapsedToday ? 'dim' : 'steady'}
-            variant="compact"
-            label="오늘의 방 — 잔불 곁의 흰 고양이"
-          />
-          {/* C16 — companion copy is state-aware over the two real today signals. The
-              both-state acknowledges the day is already done; single states name the one
-              action taken; the empty state invites a low-bar first step. No exaggeration,
-              no growth/reward claim — it only mirrors what today's record holds. */}
-          <p className="hairline-note">
-            {todayCheckin && crisisHeldToday
-              ? '오늘은 이미 할 일을 해냈어요.'
-              : todayCheckin
-                ? '오늘의 기록이 방에 남았어요.'
-                : crisisHeldToday
-                  ? '잠깐 멈춘 선택도 오늘의 기록이에요.'
-                  : '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.'}
-          </p>
-
-          {/* C17 — route the room straight into the recovery loop. The primary action
-              adapts to today's state (체크인 없으면 오늘 체크인하기, 했으면 최근 기록 보기),
-              and 잠깐 멈춤 stays reachable for the in-the-moment urge path. Existing screens
-              only — no new route or storage. */}
-          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-            {todayCheckin ? (
-              <button
-                type="button"
-                className="btn btn-ghost btn-block"
-                onClick={() => onNavigate('calendar')}
-              >
-                최근 기록 보기
-              </button>
-            ) : (
-              <button
-                type="button"
-                className="btn btn-ghost btn-block"
-                onClick={() => onNavigate('checkin')}
-              >
-                오늘 기록하기
-              </button>
-            )}
-            <button
-              type="button"
-              className="btn btn-ghost btn-block"
-              onClick={() => onNavigate('urge')}
-            >
-              잠깐 멈춤
-            </button>
-          </div>
-        </section>
-
-        {/* 고양이의 방 — 꾸미기 진입. 방 미리보기 이미지는 바로 위 ‘오늘의 방’에서 이미 보여주므로
-            여기서는 중복 이미지를 빼고 온기 한 줄 + 꾸미기 버튼만 둔다 (RC-1 홈 정리). */}
-        <section className="card">
-          <div className="card-row">
-            <span className="card-label">고양이의 방</span>
-            <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>
-              {RESOURCE.name} {emberShards}{RESOURCE.unit}
-            </span>
-          </div>
-          <p className="hairline-note text-quiet">
-            {relapsedToday
-              ? '다시 시작한 날이에요. 오늘 기록을 남기면 방에 그대로 이어져요.'
-              : warmthBand(summary, relapsedToday) === '안정'
-                ? '방 온기 · 안정 — 오늘 지키는 규율이 방을 데우고 있어요.'
-                : '방 온기 · 잔잔함 — 오늘의 규율 기록이 그대로 방에 비쳐요.'}
-          </p>
+      {/* 5) 관리 · 바로가기 (RC-2A 홈 다이어트) — 최근 기록 / 고양이 방 / 보호 설정 등 보조
+          화면을 길게 깔린 카드 대신 짧은 링크 한 줄씩으로 모았다. 최근 기록은 하단 탭 ‘기록’으로
+          옮겼고, 라우트·기능은 그대로 두고 홈에서의 노출만 줄였다. 데이터 초기화는 확인 시트를
+          거치며, 계정/클라우드 없이 이 기기 저장분만 지운다는 사실을 그대로 밝힌다. */}
+      <section className="card home-manage" aria-label="관리 바로가기">
+        <span className="card-label">관리</span>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
           <button
             type="button"
             className="btn btn-ghost btn-block"
@@ -502,18 +276,6 @@ export default function HomeScreen({
           >
             고양이 방 꾸미기
           </button>
-        </section>
-
-        {/* 보호 설정 entry (C19) — the user's own coping plan (triggers / situation /
-            replacement action), surfaced later in 잠깐 멈춤. Not a blocker; honest local plan. */}
-        <section className="card">
-          <div className="card-row">
-            <span className="card-label">보호 설정</span>
-            <span className="pill shield-tag">나의 계획</span>
-          </div>
-          <p className="hairline-note text-quiet">
-            흔들리는 순간과 위기 때 할 대체 행동을 미리 적어두면, 잠깐 멈춤에서 다시 보여줘요.
-          </p>
           <button
             type="button"
             className="btn btn-ghost btn-block"
@@ -521,35 +283,13 @@ export default function HomeScreen({
           >
             보호 설정 적기
           </button>
-        </section>
-
-        <section className="card">
-          <div className="card-row">
-            <span className="card-label">차단 설정 · NoF 실드</span>
-            <span className="pill shield-tag">준비 중</span>
-          </div>
-          <p className="hairline-note text-quiet">
-            자극적인 사이트와 검색을 멀리 두는 보호막을 준비하고 있어요. 아직 실제 차단은
-            제공하지 않아요.
-          </p>
           <button
             type="button"
             className="btn btn-ghost btn-block"
             onClick={() => onNavigate('shield')}
           >
-            실드 준비 상황 보기
+            차단 설정 (준비 중)
           </button>
-        </section>
-
-        {/* 데이터 초기화 (C25) — destructive local-data reset. Honest scope: clears only
-            what is stored on THIS device (check-in, 최근 기록, 보호 설정); there is no
-            account/cloud to delete. Goes through a confirm sheet; never a one-tap wipe. */}
-        <section className="card home-reset">
-          <span className="card-label">데이터 초기화</span>
-          <p className="hairline-note text-quiet">
-            이 기기에 저장된 오늘 기록·최근 기록·보호 설정을 지워요. 계정이나 클라우드는 없어서,
-            지우는 건 이 기기뿐이에요. 되돌릴 수 없어요.
-          </p>
           <button
             type="button"
             className="btn btn-ghost btn-block"
@@ -558,8 +298,11 @@ export default function HomeScreen({
           >
             이 기기의 기록 지우기
           </button>
-        </section>
-      </div>
+        </div>
+        <p className="hairline-note text-quiet">
+          기록은 이 기기에만 저장돼요. 계정이나 클라우드는 없어요. 최근 기록은 하단 ‘기록’ 탭에서 봐요.
+        </p>
+      </section>
 
       {/* 재발 확인 시트 — 즉시 리셋 금지. 실제 onRelapse()는 여기서만 호출된다. */}
       {confirmRestart ? (

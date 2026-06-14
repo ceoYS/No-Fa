@@ -271,8 +271,8 @@ check('home is timer-first with crisis + record hero CTAs', () => {
     'Home crisis CTA (못 참을 것 같아요 → urge) missing',
   );
   assert(
-    home.includes('오늘 상태 남기기') && home.includes("onNavigate('checkin')"),
-    'Home record CTA (오늘 상태 남기기 → checkin) missing',
+    home.includes('오늘 기록하기') && home.includes("onNavigate('checkin')"),
+    'Home record CTA (오늘 기록하기 → checkin) missing',
   );
 });
 
@@ -1212,19 +1212,6 @@ check('product speaks one counter vocabulary (절제 카운터, no 금욕 in pro
   }
 });
 
-// R-11: the room-warmth line may only speak the states its derivation can
-// actually reach. warmthBand() returns 잔잔함/안정 (two states) until the full
-// §0.5.10 4-band index exists — so the Home copy must pin exactly those two
-// band labels and never surface the unreachable ones (약함/따뜻함) as bands.
-check('home warmth copy speaks only the two reachable states (no fake 4-band gauge)', () => {
-  const home = read('src/screens/HomeScreen.jsx');
-  assert(home.includes('방 온기 · 안정'), 'reachable band label 방 온기 · 안정 missing');
-  assert(home.includes('방 온기 · 잔잔함'), 'reachable band label 방 온기 · 잔잔함 missing');
-  for (const fake of ['방 온기 · 따뜻함', '방 온기 · 약함']) {
-    assert(!home.includes(fake), `unreachable band label surfaced: ${fake}`);
-  }
-});
-
 // R-12: the counter sheets must disclose, inline and live, the two quiet input
 // corrections App applies on save (a future start clamped to now; an empty or
 // invalid target defaulting to 30 days on add / keeping the existing target on
@@ -1766,67 +1753,13 @@ check('records day-detail keeps the check-in read-back read-only and 오늘/지�
   assert(!/<input/.test(cal), 'records day-detail must stay read-only — no edit input');
 });
 
-// 59 — C11 daily action hub: Home opens on an "오늘의 회복 루프" action hub that routes
-// into the existing recovery loop and adapts to today's state. 잠깐 멈춤 is always present;
-// when today's check-in is absent it emphasizes 오늘 체크인하기, and once today is checked in
-// it emphasizes 최근 기록 보기. State comes from the live todayRecord.checkin — no new storage,
-// route, or claim. No user-facing 금욕 / fake AI / medical / edit / replay copy on Home.
-check('home daily action hub routes the recovery loop and adapts to today state', () => {
-  const home = read('src/screens/HomeScreen.jsx');
-
-  // (a) The hub exists with its framing copy.
-  assert(home.includes('home-loop-hub'), 'Home daily action hub (home-loop-hub) missing');
-  assert(home.includes('오늘의 회복 루프'), 'Home hub title (오늘의 회복 루프) missing');
-  assert(home.includes('지금 할 수 있는 행동부터 시작해요'), 'Home hub framing copy missing');
-
-  // (b) The three loop actions route to the existing screens.
-  assert(/onNavigate\('urge'\)/.test(home), 'Home hub 잠깐 멈춤 does not route to urge');
-  assert(home.includes('오늘 기록하기') && /onNavigate\('checkin'\)/.test(home), 'Home hub 오늘 기록하기 → checkin missing');
-  assert(home.includes('최근 기록 보기') && /onNavigate\('calendar'\)/.test(home), 'Home hub 최근 기록 보기 → calendar missing');
-
-  // (c) The emphasized action is state-aware off the live today check-in (no new state).
-  assert(/const todayCheckin = todayRecord\?\.checkin/.test(home), 'Home hub state is not derived from the live todayRecord.checkin');
-  assert(/todayCheckin \? \([\s\S]*?onNavigate\('calendar'\)[\s\S]*?\) : \([\s\S]*?onNavigate\('checkin'\)/.test(home), 'Home hub does not switch 최근 기록 보기 vs 오늘 체크인하기 on today check-in');
-
-  // (d) No user-facing 금욕 / fake AI / medical / edit / replay claim on Home.
-  assert(!home.includes('금욕'), 'Home carries the forbidden user-facing 금욕 vocabulary');
-  for (const fake of ['AI 분석', 'AI 추천', '회복 점수', '자동 분석', '치료', '진단', '처방', '자동 차단', '클라우드 동기화', '기록 수정', '다시 재생']) {
-    assert(!home.includes(fake), `Home makes a forbidden AI/medical/edit/replay claim: ${fake}`);
-  }
-});
-
-// 60 — C12 home check-in summary: when today's check-in is actually saved
-// (todayRecord.checkin), Home shows a confirmation card that states it was saved, reads
-// back today's one-line note when present, and offers 최근 기록 보기. It is GATED on the real
-// saved record (so it never renders before completion) and reads back TODAY's note only —
-// it must never reach into a past-day ledger entry.
-check('home check-in summary is gated by real saved state and reads back today only', () => {
-  const home = read('src/screens/HomeScreen.jsx');
-
-  // (a) The summary copy + next action.
-  assert(home.includes('오늘 기록이 저장됐어요'), 'Home summary save-confirmation copy missing');
-  assert(home.includes('오늘 남긴 한 줄'), 'Home summary 오늘 남긴 한 줄 label missing');
-  assert(home.includes('최근 기록에서 다시 볼 수 있어요'), 'Home summary 최근 기록에서 다시 볼 수 있어요 copy missing');
-
-  // (b) Gated behind the real saved check-in (renders only inside the todayCheckin branch).
-  assert(
-    /\{todayCheckin \? \(\s*<section className="card home-checkin-summary"/.test(home),
-    'Home check-in summary is not gated behind the real saved todayCheckin (could show before completion)',
-  );
-  assert(/const todayCheckin = todayRecord\?\.checkin \?\? null/.test(home), 'Home summary saved state is not derived from todayRecord.checkin');
-
-  // (c) Reads back TODAY's note only — never a past-day ledger note. Scope the
-  //     past-day-leak ban to the SUMMARY CARD itself (Home may legitimately reference
-  //     checkinLedger elsewhere, e.g. counting history for the first-run guidance).
-  assert(/todayCheckin\.note/.test(home), 'Home summary does not read back today\'s note from todayCheckin.note');
-  const sStart = home.indexOf('home-checkin-summary');
-  const sEnd = home.indexOf('위기 대응 CTA', sStart);
-  assert(sStart !== -1 && sEnd !== -1 && sEnd > sStart, 'could not isolate the home-checkin-summary section');
-  const summary = home.slice(sStart, sEnd);
-  assert(summary.includes('todayCheckin.note'), 'Home summary card does not read back today\'s note (todayCheckin.note)');
-  assert(!summary.includes('checkinLedger'), 'Home summary card must not read a past-day ledger entry (checkinLedger)');
-  assert(!/day\.checkin/.test(summary), 'Home summary card must not read back a past-day check-in (day.checkin)');
-});
+// 59/60 — REMOVED in RC-2A. The Home daily-action hub (오늘의 회복 루프) and the Home
+// check-in saved-summary card were part of the "Home as daily dashboard" era; RC-2A
+// reduces Home to a status surface (timer + counters), so both were deleted from Home.
+// The recovery loop is still reachable: 잠깐 멈춤 + 오늘 기록 from Home and the bottom
+// nav, and the saved record reads back on the 오늘 기록 screen and the 기록 calendar
+// (guard 57 / records guards). Home minimal structure is pinned by the rewritten
+// guard 65 + guard 68 below.
 
 // 61 — C13 urge → check-in continuation: the breath-timer crisis flow offers an honest
 // "오늘 체크인에 한 줄 남기기" continuation alongside 마치기, routing to the real check-in.
@@ -1848,54 +1781,11 @@ check('urge completion offers an honest check-in continuation (no fake save clai
   assert(!urge.includes('금욕'), 'urge carries the forbidden user-facing 금욕 vocabulary');
 });
 
-// 62 — C15/C16/C17 pet room state shell: Home carries an "오늘의 방" shell whose copy and
-// primary action depend on REAL today signals (todayCheckin / crisisHeldToday), routing into
-// the existing loop. App must derive crisisHeldToday from the real once-per-day crisis grant
-// (crisisRewardDay === dayKey(today)) and pass it down — never a fabricated state. The shell
-// must make NO fake growth / evolution / unlock / gacha / shop / premium / persistence claim,
-// and carry no user-facing 금욕.
-check('pet room state shell reflects real today state, routes the loop, no fake growth/unlock', () => {
-  const app = read('src/App.jsx');
-  const home = read('src/screens/HomeScreen.jsx');
-
-  // (a) App derives the day-scoped crisisHeldToday from the REAL crisis grant + passes it.
-  assert(
-    /const crisisHeldToday = crisisRewardDay != null && crisisRewardDay === dayKey\(/.test(app),
-    'App does not derive crisisHeldToday from the real once-per-day crisis grant (crisisRewardDay === dayKey today)',
-  );
-  assert(/crisisHeldToday=\{crisisHeldToday\}/.test(app), 'App does not pass crisisHeldToday down to the screens');
-
-  // (b) The shell exists.
-  assert(home.includes('home-room-state'), 'Home room state shell (home-room-state) missing');
-  assert(home.includes('오늘의 방'), 'Home room state shell title (오늘의 방) missing');
-
-  // (c) Isolate the shell section (ends at the cosmetic 고양이의 방 decorate card) and assert
-  //     its 4-state copy is gated on the two real today signals.
-  const startIdx = home.indexOf('home-room-state');
-  const endIdx = home.indexOf('고양이의 방', startIdx);
-  assert(startIdx !== -1 && endIdx !== -1 && endIdx > startIdx, 'could not isolate the room-state shell section');
-  const shell = home.slice(startIdx, endIdx);
-  for (const line of [
-    '오늘은 이미 할 일을 해냈어요.',
-    '오늘의 기록이 방에 남았어요.',
-    '잠깐 멈춘 선택도 오늘의 기록이에요.',
-    '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.',
-  ]) {
-    assert(shell.includes(line), `room-state shell is missing state copy: ${line}`);
-  }
-  assert(/todayCheckin && crisisHeldToday/.test(shell), 'room-state copy is not gated on the real today signals (todayCheckin && crisisHeldToday)');
-
-  // (d) The shell routes into the existing loop with a state-adaptive primary action.
-  assert(/onNavigate\('checkin'\)/.test(shell), 'room-state shell does not route to the check-in screen');
-  assert(/onNavigate\('calendar'\)/.test(shell), 'room-state shell does not route to the records screen');
-  assert(/onNavigate\('urge'\)/.test(shell), 'room-state shell does not route to the urge screen');
-  assert(/todayCheckin \? \([\s\S]*?최근 기록 보기[\s\S]*?\) : \([\s\S]*?오늘 기록하기/.test(shell), 'room-state primary action does not adapt 최근 기록 보기 vs 오늘 기록하기 on today check-in');
-
-  // (e) No fake growth / unlock / gacha / shop / premium / persistence claim, no 금욕.
-  for (const fake of ['성장했', '진화', '레벨업', '해금', '잠금 해제', '뽑기', '가챠', '상점', '프리미엄', '결제', '저장됐어요', '저장했어요', '금욕']) {
-    assert(!shell.includes(fake), `room-state shell makes a forbidden growth/unlock/shop/persistence claim: ${fake}`);
-  }
-});
+// 62 — REMOVED in RC-2A. The Home "오늘의 방" pet-room state shell + the cosmetic 고양이의
+// 방 warmth card were part of the Home dashboard; RC-2A removed them from Home (the room
+// is reached via the 관리 → 고양이 방 꾸미기 link and after a record). The real, persisted
+// 쓰다듬기 interaction and the no-fake-growth invariants are still pinned by guard 73 on
+// the PetRewardScreen itself, which is where the room actually lives.
 
 // 63 — C19/C20/C21 honest protection setup: a dedicated 보호 설정 screen lets the user write
 // their OWN coping plan (trigger time / situation to avoid / replacement action). It is NOT a
@@ -1949,27 +1839,23 @@ check('protection setup is honest, local-only, and surfaced from the saved user 
   }
 });
 
-// 64 — C23/C24/C25 onboarding + empty states + reset trust: Home shows a first-run
-// three-step guidance card gated on a derived hasCheckinHistory (no new storage, auto-hides
-// after the first check-in); 최근 기록 shows an honest empty-state when no check-in exists;
-// and a local-data reset clears the logged data INCLUDING the new protectionPlan, through a
-// confirm sheet (never a one-tap wipe), with no account/cloud-deletion claim.
-check('onboarding, empty states, and reset are honest and clear the new local state', () => {
+// 64 — RC-2A empty states + reset trust: the Home first-run onboarding card was REMOVED
+// in the Home diet (Home is now timer + counters), so this no longer pins onboarding.
+// What it still guards: 기록 (records) shows an honest empty-state when no record exists;
+// and a local-data reset clears the logged data INCLUDING protectionPlan, through a
+// confirm sheet (never a one-tap wipe), with no account/cloud-deletion claim. The reset
+// now lives in the compact Home 관리 section, still behind the confirm sheet.
+check('records empty state + reset are honest and clear the local state (Home diet: no onboarding)', () => {
   const app = read('src/App.jsx');
   const home = read('src/screens/HomeScreen.jsx');
   const cal = read('src/screens/CalendarScreen.jsx');
 
-  // (a) First-run guidance: three steps, gated on derived history, local-only note.
-  assert(home.includes('home-onboarding'), 'Home first-run guidance card (home-onboarding) missing');
-  assert(home.includes('NoF는 이렇게 써요'), 'Home first-run guidance title missing');
-  for (const step of ['흔들릴 땐 잠깐 멈춤', '하루 끝에는 오늘 기록', '최근 기록에서 다시 확인']) {
-    assert(home.includes(step), `Home first-run guidance step missing: ${step}`);
-  }
-  assert(/const hasCheckinHistory =\s*!!todayCheckin \|\| \(checkinLedger/.test(home), 'first-run guidance is not gated on a derived check-in-history signal');
-  assert(/\{!hasCheckinHistory \? \(/.test(home), 'first-run guidance is not gated to hide after the first check-in');
-  assert(home.includes('모든 기록은 이 기기에만 저장돼요'), 'first-run guidance is missing the local-only note');
+  // (a) The Home diet removed the first-run onboarding card — it must NOT come back as a
+  //     long explanatory section (RC-2A: Home is a status surface, not a dashboard).
+  assert(!home.includes('home-onboarding'), 'Home onboarding card returned — RC-2A keeps Home minimal (timer + counters)');
+  assert(!home.includes('NoF는 이렇게 써요'), 'Home onboarding copy returned — RC-2A keeps Home minimal');
 
-  // (b) Empty state on 최근 기록, gated on real absence, with a forward CTA, still read-only.
+  // (b) Empty state on 기록, gated on real absence, with a forward CTA, still read-only.
   assert(cal.includes('calendar-empty'), '최근 기록 empty-state card (calendar-empty) missing');
   assert(cal.includes('아직 남긴 기록이 없어요'), '최근 기록 empty-state copy missing');
   assert(/const hasAnyCheckin = days\.some\(/.test(cal), '최근 기록 empty-state is not gated on a real has-any-check-in signal');
@@ -2021,20 +1907,23 @@ check('final recovery-loop guard pack: vocab, structure, a11y, styling stay inta
     }
   }
 
-  // (b) Home keeps the full daily-action structure introduced this sprint.
-  for (const hook of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state', 'home-reset']) {
-    assert(home.includes(hook), `Home lost a recovery-loop section: ${hook}`);
+  // (b) RC-2A: Home keeps the REDUCED status-surface structure — the timer hero, the
+  //     crisis/record hero actions, the counter list, and the compact 관리 links. The old
+  //     dashboard sections must stay gone so Home cannot drift back into a long scroll.
+  for (const hook of ['abstinence-timer-card', 'home-hero-actions', 'home-counters', 'home-manage']) {
+    assert(home.includes(hook), `Home lost a status-surface section: ${hook}`);
+  }
+  for (const gone of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state']) {
+    assert(!home.includes(gone), `Home dashboard section returned (RC-2A removed it): ${gone}`);
   }
 
-  // (c) The scoped a11y region labels / dialog hint stay in place.
-  assert(home.includes('aria-label="오늘의 회복 루프"'), 'Home daily-action hub lost its a11y region label');
-  assert(home.includes('aria-label="오늘의 방"'), 'Home room-state shell lost its a11y region label');
-  assert(home.includes('aria-label="NoF 사용 3단계 안내"'), 'Home first-run guidance list lost its a11y label');
-  assert(/이 기기의 기록 지우기[\s\S]{0,80}|aria-haspopup="dialog"/.test(home) && home.includes('aria-haspopup="dialog"'), 'reset trigger lost its dialog-opener a11y hint');
-
-  // (d) The onboarding list uses a real CSS class, not the old inline-style hack.
-  assert(/\.onboarding-steps\s*\{/.test(css), '.onboarding-steps CSS class missing (onboarding list must not rely on inline styles)');
-  assert(/<ol className="onboarding-steps"/.test(home), 'onboarding list is not the .onboarding-steps ordered list');
+  // (c) The reset trigger keeps its dialog-opener a11y hint, and the 관리 group is labelled.
+  assert(home.includes('aria-haspopup="dialog"'), 'reset trigger lost its dialog-opener a11y hint');
+  assert(home.includes('aria-label="관리 바로가기"'), 'Home 관리 links group lost its a11y region label');
+  // The old onboarding ordered-list / hub / room a11y labels must not linger.
+  for (const gone of ['aria-label="오늘의 회복 루프"', 'aria-label="오늘의 방"', 'aria-label="NoF 사용 3단계 안내"']) {
+    assert(!home.includes(gone), `Home kept a removed a11y region label: ${gone}`);
+  }
 });
 
 // 66 — C31/C32 reward landing confirmation: when the reward room is reached with today's
@@ -2128,12 +2017,13 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
   const reward = read('src/screens/PetRewardScreen.jsx');
   const protect = read('src/screens/ProtectionScreen.jsx');
 
-  // (a) Home core order: timer hero → 회복 루프 허브 → secondary block.
+  // (a) RC-2A Home core order: timer hero → counters → compact 관리 links. The status
+  //     surface leads with the timer, then the counters, with secondary entries last.
   const tHero = home.indexOf('timer-hero');
-  const tHub = home.indexOf('home-loop-hub');
-  const tSecondary = home.indexOf('home-secondary');
-  assert(tHero !== -1 && tHub !== -1 && tSecondary !== -1, 'Home lost a core section marker (timer-hero / home-loop-hub / home-secondary)');
-  assert(tHero < tHub && tHub < tSecondary, 'Home core order regressed — must stay timer hero → 회복 루프 허브 → secondary');
+  const tCounters = home.indexOf('home-counters');
+  const tManage = home.indexOf('home-manage');
+  assert(tHero !== -1 && tCounters !== -1 && tManage !== -1, 'Home lost a core section marker (timer-hero / home-counters / home-manage)');
+  assert(tHero < tCounters && tCounters < tManage, 'Home core order regressed — must stay timer hero → counters → 관리 links');
 
   // (b) No forbidden 금욕 / fake claim anywhere on the two closeout surfaces (file-level). 상점
   //     is intentionally absent from this list — the cosmetic room shop is a real feature.
@@ -2186,11 +2076,13 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 26 behaviors,
     'reset confirm must be scoped to the .sheet (clickInScope(".sheet", "기록 지우기"))',
   );
 
-  // (c) Must NOT assert the brittle latin-boundary "NoF는 …" innerText (freeze-audit
-  //     mistake #1: text-transform:uppercase makes the substring never match). The
-  //     hangul-stable phrase 이렇게 써요 must be used instead.
-  assert(!qa.includes('NoF는'), 'QA flow must not assert the brittle "NoF는 …" innerText; assert 이렇게 써요');
-  assert(qa.includes('이렇게 써요'), 'QA flow must assert the hangul-stable first-run phrase 이렇게 써요');
+  // (c) Must NOT reintroduce the brittle latin-boundary "NoF는 …" innerText assertion
+  //     (freeze-audit mistake #1: text-transform:uppercase makes the substring never
+  //     match). RC-2A removed the first-run onboarding card from Home, so the harness no
+  //     longer asserts its "이렇게 써요" phrase — it now asserts the Home status surface
+  //     (절제 카운터) on a fresh mount instead.
+  assert(!qa.includes('NoF는'), 'QA flow must not assert the brittle "NoF는 …" innerText');
+  assert(/check\(\s*'B02'\s*,\s*await c\.has\('절제 카운터'\)/.test(qa), 'QA flow must assert the Home counter list (절제 카운터) on a fresh mount');
 
   // (d) Forbidden user-facing copy is actually checked (금욕 vocabulary + fake-claim sweep).
   assert(qa.includes('FORBIDDEN_VOCAB') && qa.includes('금욕'), 'QA flow must sweep forbidden vocabulary (금욕)');
@@ -2268,15 +2160,13 @@ check('NoF record indicators stay clear (dot a11y name, legend on Home + 최근 
     'dot accessible name must derive from day.dateLabel + CALENDAR_LABEL[day.state]',
   );
 
-  // (b) The dot-state legend exists in the strip and shows on BOTH surfaces: Home opts in
-  //     via the `legend` prop; the 최근 기록 screen keeps its own legend row.
+  // (b) The dot-state legend exists in the strip and on the 기록 screen. RC-2A removed the
+  //     records strip from Home (Home is now timer + counters), so the legend is no longer
+  //     pinned on Home — records live on the 기록 tab.
   assert(/legend\s*\?\s*\(/.test(strip) && strip.includes('CALENDAR_LEGEND'), 'strip lost its dot-state legend');
   assert(strip.includes('aria-label="기록 표시 안내"'), 'strip legend lost its accessible group label');
-  assert(
-    /<EmberCalendarStrip\b[^>]*\blegend\b[^>]*\/>/.test(home),
-    'Home 최근 기록 strip must render the dot-state legend (legend prop)',
-  );
-  assert(cal.includes('CALENDAR_LEGEND') && cal.includes('CALENDAR_LABEL'), '최근 기록 screen lost its dot-state legend');
+  assert(!home.includes('EmberCalendarStrip'), 'Home should no longer render the records strip (RC-2A Home diet)');
+  assert(cal.includes('CALENDAR_LEGEND') && cal.includes('CALENDAR_LABEL'), '기록 screen lost its dot-state legend');
 
   // (c) Indicator copy stays honest — the legend labels never use forbidden vocabulary.
   const labelMatch = recent.match(/CALENDAR_LABEL\s*=\s*\{([\s\S]*?)\}/);
