@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 26 MVP behaviors this harness drives and asserts. Every check() references one
+// The 27 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -67,6 +67,7 @@ const BEHAVIORS = {
   B24: 'discipline counter ticks live to the second',
   B25: 'cat room 쓰다듬기 interaction changes real state',
   B26: 'bottom nav fully visible at 390x844 (all 5 labels, none clipped)',
+  B27: 'monthly calendar shows 년/월, weekday header, today, and navigates months',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -345,24 +346,18 @@ async function runFlow(c) {
   await scanOverflow(c, 'reward-confirm');
   await c.shot('reward_confirm');
 
-  // 13–14 · Reward → 최근 기록; today's day-detail shows the typed note verbatim.
+  // 13–14 · Reward → 기록 (monthly calendar); open TODAY's cell in the month grid and the
+  //         day detail reads the typed writing (회고 + 약속 + 다짐) verbatim.
   const toRecords = await c.click('최근 기록 보기');
   check('B13', toRecords && (await c.has('패턴이 보이기 시작했어요')));
-  // Open the last (today's) cell in the calendar strip, then read the detail.
-  const cellClicked = await c.eval(`(() => { const btns = [...document.querySelectorAll('button')].filter(b => (typeof b.className === 'string' && b.className.includes('ember')) || b.closest('.ember-cal-strip')); const el = btns[btns.length - 1]; if (el) { el.click(); return true; } return false; })()`);
+  const cellClicked = await c.clickSelector('.month-cell[data-today="true"]');
   await sleep(500);
-  let recHasNote = await c.has(NOTE);
-  if (!recHasNote) {
-    await c.eval(`(() => { const s = document.querySelector('.ember-cal-strip, [aria-label*="기록"]'); if (s) { const b = s.querySelectorAll('button'); if (b.length) b[b.length - 1].click(); } })()`);
-    await sleep(500);
-    recHasNote = await c.has(NOTE);
-  }
-  // The writing-first fields (회고 + 약속 + 다짐) all read back in the same day-detail.
+  const recHasNote = await c.has(NOTE);
   const recHasPromise = await c.has(PROMISE);
   const recHasResolve = await c.has(RESOLVE);
-  check('B14', recHasNote && recHasPromise && recHasResolve,
-    recHasNote && recHasPromise && recHasResolve
-      ? '' : `today writing not fully read back (note:${recHasNote} promise:${recHasPromise} resolve:${recHasResolve}, cell clicked: ${cellClicked})`);
+  check('B14', cellClicked && recHasNote && recHasPromise && recHasResolve,
+    cellClicked && recHasNote && recHasPromise && recHasResolve
+      ? '' : `today writing not fully read back (cell:${cellClicked} note:${recHasNote} promise:${recHasPromise} resolve:${recHasResolve})`);
   await c.shot('records_today_note');
 
   // 15 · RC-2A: Home no longer carries a saved-summary card (it is a status surface). The
@@ -493,6 +488,24 @@ async function runFlow(c) {
   })()`);
   check('B26', nav.ok, nav.ok ? '' : JSON.stringify(nav));
   await c.shot('bottom_nav_visible');
+
+  // 27 · The 기록 screen is a REAL monthly calendar: it shows the current 년/월, a weekday
+  //      header and a distinguishable today cell, and the ‹/› controls move to the previous
+  //      month and back. Asserts on the rendered DOM (month-nav label changes then returns).
+  await c.clickExact('홈'); await sleep(150);
+  await c.clickExact('기록'); await sleep(300);
+  const onCal = await c.has('패턴이 보이기 시작했어요');
+  const readMonth = `(() => { const el = document.querySelector('.month-nav-label'); return el ? el.textContent.trim() : null; })()`;
+  const monthNow = await c.eval(readMonth);
+  const hasWeekday = await c.eval(`(() => !!document.querySelector('.month-weekday'))()`);
+  const hasToday = await c.eval(`(() => !!document.querySelector('.month-cell[data-today="true"]'))()`);
+  await c.clickSelector('button[aria-label="이전 달"]'); await sleep(250);
+  const monthPrev = await c.eval(readMonth);
+  await c.clickSelector('button[aria-label="다음 달"]'); await sleep(250);
+  const monthBack = await c.eval(readMonth);
+  const calOk = onCal && !!monthNow && hasWeekday && hasToday && monthPrev !== monthNow && monthBack === monthNow;
+  check('B27', calOk, calOk ? '' : `cal:${onCal} now:${monthNow} weekday:${hasWeekday} today:${hasToday} prev:${monthPrev} back:${monthBack}`);
+  await c.shot('records_month_nav');
 }
 
 async function main() {

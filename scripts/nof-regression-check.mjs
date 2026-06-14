@@ -1490,31 +1490,35 @@ check('check-in ledger is localStorage-only + day-keyed, no fabricated history',
   );
 });
 
-// Records history read (Records / Calendar): the day-ledger must read REAL past-day
-// check-ins from the rolling checkinLedger and NEVER fabricate them. recentDays reads
-// the ledger entry for a day with an honest null fallback (no invented history);
-// CalendarScreen threads the ledger into the builder and labels a past day's check-in
-// block day-aware ("그 날의 체크인"), not the hardcoded "오늘의". No fake cloud/AI/medical
-// claims and no shaming vocabulary on the read surface (COPY_POLICY §0.5.8.1).
+// Records history read (RC-2A monthly calendar): the 기록 calendar must read REAL records
+// from the rolling checkinLedger by date and NEVER fabricate them. The seeded sample was
+// removed from recentDays.js, and CalendarScreen reads the ledger entry for a date with an
+// honest null fallback (today from the live record, past days from the ledger). A past
+// day's block is labelled day-aware ("그날의 기록"). No fake cloud/AI/medical claims and no
+// shaming vocabulary on the read surface (COPY_POLICY §0.5.8.1).
 check('records reads historical check-ins from the ledger, no fabricated history', () => {
   const rd = read('src/constants/recentDays.js');
   const cal = read('src/screens/CalendarScreen.jsx');
 
-  // (a) recentDays reads the ledger entry for the day, defaulting to null (honest absence).
-  assert(/checkinLedger/.test(rd), 'recentDays does not consult the check-in ledger');
+  // (a) The fabricated past-day SEED sample is gone from recentDays.js entirely.
+  assert(!/const SEED\s*=/.test(rd), 'recentDays.js still defines a fabricated SEED sample of past records');
+  assert(!rd.includes('밤 늦게 짧게 무너질 뻔했어요'), 'recentDays.js still carries a fabricated past-record reflection');
+
+  // (b) The calendar reads the real ledger by date, with an honest null fallback (no invented
+  //     history) — today from the live record, every other day straight from the ledger.
+  assert(/checkinLedger/.test(cal), 'CalendarScreen does not read the check-in ledger');
   assert(
-    /checkinLedger\[dateMs\] \?\? null/.test(rd),
-    'recentDays does not read ledger[dateMs] with an honest null fallback (risk of fabricated history)',
+    /ledger\[dateMs\] \?\? null/.test(cal),
+    'CalendarScreen does not read ledger[dateMs] with an honest null fallback (risk of fabricated history)',
   );
+  assert(/const recordFor = /.test(cal), 'CalendarScreen has no single ledger-by-date record resolver (recordFor)');
+  // It must NOT pull in the old seeded day-builder.
+  assert(!cal.includes('buildDayRecords'), 'CalendarScreen must not use the seeded day-record builder (read the ledger by date)');
 
-  // (b) CalendarScreen threads the ledger into the day-record builder.
-  assert(/checkinLedger/.test(cal), 'CalendarScreen does not pass the check-in ledger');
-  assert(/buildDayRecords\(\s*\{[\s\S]*checkinLedger/.test(cal), 'CalendarScreen does not feed checkinLedger into buildDayRecords');
-
-  // (c) A past day's check-in block is labelled day-aware, not hardcoded "오늘의 체크인".
+  // (c) A past day's record block is labelled day-aware, not the hardcoded "오늘의".
   assert(
     /day\.isToday \? '오늘의 기록' : '그날의 기록'/.test(cal),
-    'CalendarScreen does not label a past-day check-in as 그날의 기록',
+    'CalendarScreen does not label a past-day record as 그날의 기록',
   );
 
   // (d) No fake cloud/AI/medical/blocking + no shaming vocabulary on the read surface.
@@ -1855,11 +1859,12 @@ check('records empty state + reset are honest and clear the local state (Home di
   assert(!home.includes('home-onboarding'), 'Home onboarding card returned — RC-2A keeps Home minimal (timer + counters)');
   assert(!home.includes('NoF는 이렇게 써요'), 'Home onboarding copy returned — RC-2A keeps Home minimal');
 
-  // (b) Empty state on 기록, gated on real absence, with a forward CTA, still read-only.
-  assert(cal.includes('calendar-empty'), '최근 기록 empty-state card (calendar-empty) missing');
-  assert(cal.includes('아직 남긴 기록이 없어요'), '최근 기록 empty-state copy missing');
-  assert(/const hasAnyCheckin = days\.some\(/.test(cal), '최근 기록 empty-state is not gated on a real has-any-check-in signal');
-  assert(/\{!hasAnyCheckin \? \(/.test(cal), '최근 기록 empty-state is not gated to hide once a check-in exists');
+  // (b) Empty state on 기록, gated on REAL absence (ledger empty + no today record), with a
+  //     forward CTA, still read-only.
+  assert(cal.includes('calendar-empty'), '기록 empty-state card (calendar-empty) missing');
+  assert(cal.includes('아직 남긴 기록이 없어요'), '기록 empty-state copy missing');
+  assert(/const hasAnyCheckin = Object\.keys\(ledger\)\.length > 0 \|\| !!todayRecord\?\.checkin/.test(cal), '기록 empty-state is not gated on a real has-any-record signal (ledger/today)');
+  assert(/\{!hasAnyCheckin \? \(/.test(cal), '기록 empty-state is not gated to hide once a record exists');
   const ceStart = cal.indexOf('calendar-empty');
   const ceEnd = cal.indexOf('이 기록을 보는 방법', ceStart);
   assert(ceStart !== -1 && ceEnd !== -1 && ceEnd > ceStart, 'could not isolate the calendar-empty section');
@@ -2044,7 +2049,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 26 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 27 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2061,7 +2066,7 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 26 behaviors,
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
   //     still reporting 23/23 PASS.
-  for (let i = 1; i <= 26; i += 1) {
+  for (let i = 1; i <= 27; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2140,39 +2145,38 @@ check('NoF font policy stays local/system-safe (no external font CDN, Hangul fal
   }
 });
 
-// 71 — C46 R-14 record-indicator clarity guard. The calendar warmth dots must stay
-// understandable without guessing: every dot carries a date+state accessible name, the
-// dot-state legend is reachable on BOTH the 최근 기록 screen and Home, and indicator copy
-// never drifts into forbidden vocabulary. Locks the R-14 clarity work in place.
-check('NoF record indicators stay clear (dot a11y name, legend on Home + 최근 기록, honest copy)', () => {
-  const strip = read('src/components/EmberCalendarStrip.jsx');
+// 71 — RC-2A monthly calendar record-indicator clarity. The 기록 calendar must stay
+// understandable without guessing: it is a real month grid with year/month navigation, a
+// weekday header, today distinguishable, and each day cell carries a date + record-state
+// accessible name. The record dot renders only for a day that actually has a saved record,
+// and the indicator copy never drifts into forbidden vocabulary. (Home no longer carries a
+// records strip — records live on the 기록 tab.)
+check('NoF record indicators stay clear (monthly grid: date+state a11y, today marker, honest copy)', () => {
   const home = read('src/screens/HomeScreen.jsx');
   const cal = read('src/screens/CalendarScreen.jsx');
-  const recent = read('src/constants/recentDays.js');
 
-  // (a) Each dot is named by date + state (R-14 a11y), not the weekday alone.
-  assert(
-    strip.includes('${dayName} ${stateLabel} 요약 보기'),
-    'calendar dot aria-label must name the day (date) + state + 요약 보기, not the weekday only',
-  );
-  assert(
-    strip.includes('day.dateLabel') && strip.includes('CALENDAR_LABEL[day.state]'),
-    'dot accessible name must derive from day.dateLabel + CALENDAR_LABEL[day.state]',
-  );
+  // (a) Real month grid with year + month navigation controls and a weekday header.
+  assert(cal.includes('month-grid') && cal.includes('month-cell'), '기록 is not a month grid (month-grid / month-cell missing)');
+  assert(cal.includes('month-weekday') && /WEEKDAYS\s*=\s*\[/.test(cal), 'month grid is missing a weekday header row');
+  assert(/aria-label="이전 달"/.test(cal) && /aria-label="다음 달"/.test(cal), 'month grid is missing previous/next month controls');
+  assert(/aria-label="이전 연도"/.test(cal) && /aria-label="다음 연도"/.test(cal), 'month grid is missing previous/next year controls');
+  assert(/\$\{view\.year\}년 \$\{view\.month \+ 1\}월/.test(cal), 'month grid does not show the current 년/월 label');
 
-  // (b) The dot-state legend exists in the strip and on the 기록 screen. RC-2A removed the
-  //     records strip from Home (Home is now timer + counters), so the legend is no longer
-  //     pinned on Home — records live on the 기록 tab.
-  assert(/legend\s*\?\s*\(/.test(strip) && strip.includes('CALENDAR_LEGEND'), 'strip lost its dot-state legend');
-  assert(strip.includes('aria-label="기록 표시 안내"'), 'strip legend lost its accessible group label');
+  // (b) Each day cell carries a date + record-state accessible name, and today is marked.
+  assert(/aria-label=\{`\$\{view\.month \+ 1\}월 \$\{cell\.d\}일/.test(cal), 'day cell aria-label does not name the date');
+  assert(cal.includes('기록 있음') && cal.includes('기록 없음'), 'day cell aria-label does not name the record state (기록 있음/없음)');
+  assert(/data-today=\{cell\.isToday\}/.test(cal), 'today cell is not distinguishable (data-today)');
+
+  // (c) The record dot renders ONLY for a day with a real saved record (no fabricated dots).
+  assert(/data-has-record=\{cell\.hasRecord\}/.test(cal), 'record dot is not gated on a real record (data-has-record)');
+  assert(/cell\.hasRecord \? <span className="month-cell-dot"/.test(cal), 'record dot is not gated on cell.hasRecord');
+
+  // (d) Home no longer renders a records strip — records live on the 기록 tab.
   assert(!home.includes('EmberCalendarStrip'), 'Home should no longer render the records strip (RC-2A Home diet)');
-  assert(cal.includes('CALENDAR_LEGEND') && cal.includes('CALENDAR_LABEL'), '기록 screen lost its dot-state legend');
 
-  // (c) Indicator copy stays honest — the legend labels never use forbidden vocabulary.
-  const labelMatch = recent.match(/CALENDAR_LABEL\s*=\s*\{([\s\S]*?)\}/);
-  assert(labelMatch, 'recentDays.js must define CALENDAR_LABEL');
-  for (const bad of ['금욕', '치료', '진단', '처방', '실패', '회복 점수', '타락', '죄']) {
-    assert(!labelMatch[1].includes(bad), `record indicator label must not use forbidden word "${bad}"`);
+  // (e) Indicator / calendar copy stays honest — no forbidden vocabulary on the read surface.
+  for (const bad of ['금욕', '치료', '진단', '처방', '회복 점수', '타락', '죄', 'AI 분석']) {
+    assert(!cal.includes(bad), `기록 calendar copy must not use forbidden word "${bad}"`);
   }
 });
 

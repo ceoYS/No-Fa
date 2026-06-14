@@ -1,20 +1,25 @@
 import { useMemo, useState } from 'react';
-import EmberCalendarStrip from '../components/EmberCalendarStrip.jsx';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
-import { BADGE_LABEL, listBadges } from '../constants/discipline.js';
-import {
-  buildDayRecords,
-  rangeDays,
-  RANGE_OPTIONS,
-  CALENDAR_LEGEND,
-  CALENDAR_LABEL,
-} from '../constants/recentDays.js';
+import { BADGE_LABEL, listBadges, summarizeRules } from '../constants/discipline.js';
+
+// RC-2A: 기록 is now a REAL monthly calendar (year/month grid), not a rolling N-day strip.
+// Every day cell maps to an actual calendar date; the dot/record is read ONLY from the
+// real localStorage ledger (today from the live record, past days from checkinLedger) —
+// empty days stay empty and no past record is ever fabricated. Week starts on Sunday.
+const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
+const DAY_MS = 86400000;
 
 const ABSTINENCE_TEXT = {
   clean: '이어가는 중',
   relapse: '다시 시작한 날',
   unknown: '기록 전',
 };
+
+function startOfDay(ms) {
+  const d = new Date(ms);
+  d.setHours(0, 0, 0, 0);
+  return d.getTime();
+}
 
 export default function CalendarScreen({
   onNavigate,
@@ -25,76 +30,157 @@ export default function CalendarScreen({
   checkinLedger = null,
 }) {
   const now = Date.now();
-  const [rangeId, setRangeId] = useState('7d');
+  const todayKey = startOfDay(now);
+  const ledger = checkinLedger ?? {};
+
+  const [view, setView] = useState(() => {
+    const d = new Date(now);
+    return { year: d.getFullYear(), month: d.getMonth() };
+  });
   const [detail, setDetail] = useState(null);
-
-  const days = useMemo(
-    () =>
-      buildDayRecords(
-        { rules, todayRecord, checkinLedger, abstinence: { startMs: abstinenceStartMs, now } },
-        rangeDays(rangeId, now),
-      ),
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [rules, todayRecord, checkinLedger, abstinenceStartMs, rangeId],
-  );
-  const [selected, setSelected] = useState(days.length - 1);
-  // Empty-state signal (C24): no check-in exists across the visible range. The strip
-  // still renders the day cells, but without any logged check-in the screen should say
-  // so plainly and point at the first action, rather than looking mysteriously blank.
-  const hasAnyCheckin = days.some((d) => d.checkin);
-
   useDismissOnEscape(detail !== null, () => setDetail(null));
 
-  const openDay = (i) => {
-    setSelected(i);
-    setDetail(days[i] ?? null);
+  // The single source of a day's record: today reads the live record, every other day
+  // reads the rolling ledger by its dateMs. A day with no saved entry returns null — we
+  // never invent one (no seeded/sample history).
+  const recordFor = (dateMs) => {
+    if (dateMs === todayKey) return todayRecord?.checkin ?? ledger[dateMs] ?? null;
+    return ledger[dateMs] ?? null;
   };
+  // Real has-any signal across all saved days (drives the honest empty state).
+  const hasAnyCheckin = Object.keys(ledger).length > 0 || !!todayRecord?.checkin;
+
+  // Build the month grid: leading weekday blanks + the real days of this month.
+  const cells = useMemo(() => {
+    const lead = new Date(view.year, view.month, 1).getDay();
+    const daysInMonth = new Date(view.year, view.month + 1, 0).getDate();
+    const out = [];
+    for (let i = 0; i < lead; i += 1) out.push(null);
+    for (let d = 1; d <= daysInMonth; d += 1) {
+      const dateMs = startOfDay(new Date(view.year, view.month, d).getTime());
+      out.push({
+        d,
+        dateMs,
+        isToday: dateMs === todayKey,
+        isFuture: dateMs > todayKey,
+        hasRecord: !!recordFor(dateMs),
+      });
+    }
+    return out;
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [view.year, view.month, checkinLedger, todayRecord, todayKey]);
+
+  const goPrevMonth = () =>
+    setView((v) => (v.month === 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: v.month - 1 }));
+  const goNextMonth = () =>
+    setView((v) => (v.month === 11 ? { year: v.year + 1, month: 0 } : { year: v.year, month: v.month + 1 }));
+  const goPrevYear = () => setView((v) => ({ ...v, year: v.year - 1 }));
+  const goNextYear = () => setView((v) => ({ ...v, year: v.year + 1 }));
+
+  // Build the full day record for the detail sheet from REAL data only. Past days carry
+  // no fabricated discipline counts (those were never stored) — only today's are live.
+  const buildDay = (dateMs) => {
+    const date = new Date(dateMs);
+    const wd = WEEKDAYS[date.getDay()];
+    const isToday = dateMs === todayKey;
+    const checkin = recordFor(dateMs);
+    const withinRun = dateMs >= startOfDay(abstinenceStartMs);
+    const abstinenceState = isToday
+      ? todayRecord?.abstinenceState ?? (withinRun ? 'clean' : 'unknown')
+      : withinRun
+        ? 'clean'
+        : 'unknown';
+    const s = isToday ? summarizeRules(rules) : { kept: 0, held: 0, missed: 0 };
+    return {
+      dateMs,
+      dateLabel: `${date.getMonth() + 1}월 ${date.getDate()}일 (${wd})${isToday ? ' · 오늘' : ''}`,
+      isToday,
+      abstinenceState,
+      streakDay: withinRun ? Math.floor((dateMs - startOfDay(abstinenceStartMs)) / DAY_MS) + 1 : 0,
+      keptCount: s.kept,
+      heldCount: s.held,
+      missedCount: s.missed,
+      failureReason: isToday ? todayRecord?.failureReason ?? null : null,
+      triggers: isToday ? todayRecord?.triggers ?? [] : checkin?.triggers ?? [],
+      reflection: isToday ? todayRecord?.reflection ?? null : null,
+      nextAction: isToday ? todayRecord?.nextAction ?? null : null,
+      badges: isToday ? todayRecord?.badges ?? {} : {},
+      checkin,
+    };
+  };
+
+  const openDay = (dateMs) => setDetail(buildDay(dateMs));
+
+  const monthLabel = `${view.year}년 ${view.month + 1}월`;
+  const cur = new Date(now);
+  const atCurrentMonth = view.year === cur.getFullYear() && view.month === cur.getMonth();
 
   return (
     <div className="screen">
       <header className="screen-header">
         <div>
           <p className="screen-greeting">패턴이 보이기 시작했어요</p>
-          <h1 className="screen-title">최근 기록</h1>
+          <h1 className="screen-title">기록</h1>
         </div>
-        <span className="pill pill-ember">{RANGE_OPTIONS.find((o) => o.id === rangeId)?.label}</span>
       </header>
 
       <p className="screen-subtitle">
-        날짜를 누르면 그 날의 기록을 자세히 볼 수 있어요. 절제 상태, 규율, 복기까지 한 곳에서요.
+        날짜를 누르면 그 날 남긴 글을 볼 수 있어요. 기록이 없는 날은 비어 있어요.
       </p>
 
-      <div className="range-row" role="group" aria-label="기간 선택">
-        {RANGE_OPTIONS.map((opt) => (
-          <button
-            key={opt.id}
-            type="button"
-            className="chip range-chip"
-            data-selected={rangeId === opt.id}
-            aria-pressed={rangeId === opt.id}
-            onClick={() => {
-              setRangeId(opt.id);
-              setSelected(rangeDays(opt.id, now) - 1);
-            }}
-          >
-            {opt.label}
+      {/* 월간 달력 — 실제 달력 기반. 이전/다음 달, 이전/다음 연도로 이동한다. */}
+      <section className="card month-calendar">
+        <div className="month-nav" role="group" aria-label="달 이동">
+          <button type="button" className="month-nav-btn" aria-label="이전 연도" onClick={goPrevYear}>
+            «
           </button>
-        ))}
-      </div>
+          <button type="button" className="month-nav-btn" aria-label="이전 달" onClick={goPrevMonth}>
+            ‹
+          </button>
+          <span className="month-nav-label" aria-live="polite">{monthLabel}</span>
+          <button type="button" className="month-nav-btn" aria-label="다음 달" onClick={goNextMonth}>
+            ›
+          </button>
+          <button type="button" className="month-nav-btn" aria-label="다음 연도" onClick={goNextYear}>
+            »
+          </button>
+        </div>
 
-      <section className="card">
-        <span className="card-label">{RANGE_OPTIONS.find((o) => o.id === rangeId)?.label}</span>
-        <EmberCalendarStrip
-          days={days}
-          selectedIndex={selected}
-          onSelectDay={openDay}
-          label={`${RANGE_OPTIONS.find((o) => o.id === rangeId)?.label ?? '최근'} 기록`}
-        />
+        {!atCurrentMonth ? (
+          <button
+            type="button"
+            className="btn btn-ghost btn-block month-today-btn"
+            onClick={() => setView({ year: cur.getFullYear(), month: cur.getMonth() })}
+          >
+            이번 달로
+          </button>
+        ) : null}
 
-        <div className="row" style={{ flexWrap: 'wrap', gap: 'var(--sp-2)' }}>
-          {CALENDAR_LEGEND.map((state) => (
-            <Legend key={state} state={state} text={CALENDAR_LABEL[state]} />
+        <div className="month-weekdays" aria-hidden="true">
+          {WEEKDAYS.map((w) => (
+            <span key={w} className="month-weekday">{w}</span>
           ))}
+        </div>
+
+        <div className="month-grid" role="grid" aria-label={`${monthLabel} 기록 달력`}>
+          {cells.map((cell, i) =>
+            cell === null ? (
+              <span key={`blank-${i}`} className="month-cell month-cell-empty" aria-hidden="true" />
+            ) : (
+              <button
+                key={cell.dateMs}
+                type="button"
+                className="month-cell"
+                data-today={cell.isToday}
+                data-has-record={cell.hasRecord}
+                aria-label={`${view.month + 1}월 ${cell.d}일${cell.isToday ? ' 오늘' : ''} ${cell.hasRecord ? '기록 있음' : '기록 없음'}`}
+                onClick={() => openDay(cell.dateMs)}
+              >
+                <span className="month-cell-num">{cell.d}</span>
+                {cell.hasRecord ? <span className="month-cell-dot" aria-hidden="true" /> : null}
+              </button>
+            ),
+          )}
         </div>
       </section>
 
@@ -102,7 +188,7 @@ export default function CalendarScreen({
         <section className="card calendar-empty">
           <span className="card-label">아직 남긴 기록이 없어요</span>
           <p className="hairline-note">
-            오늘 기록부터 시작하면, 여기에 그날의 기분·규율·한 줄이 차곡차곡 쌓여요.
+            오늘 기록부터 시작하면, 달력의 그 날짜에 그날의 글이 차곡차곡 쌓여요.
           </p>
           <button
             type="button"
@@ -117,9 +203,9 @@ export default function CalendarScreen({
       <section className="card">
         <span className="card-label">이 기록을 보는 방법</span>
         <ul className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-          <li className="hairline-note">· 날짜를 누르면 그 날 절제 상태·규율·복기·다음 행동을 볼 수 있어요.</li>
-          <li className="hairline-note">· 다시 시작한 날도 빨강 없이 따뜻한 톤으로 남겨요.</li>
-          <li className="hairline-note">· 복기한 날은 못 지킨 뒤 다시 돌아본 날이에요.</li>
+          <li className="hairline-note">· 점이 있는 날짜에는 그 날 남긴 글이 있어요. 눌러서 볼 수 있어요.</li>
+          <li className="hairline-note">· 오늘은 테두리로 표시돼요. 화살표로 이전/다음 달과 연도를 넘겨봐요.</li>
+          <li className="hairline-note">· 기록이 없는 날은 비어 있어요. 없는 기록을 지어내지 않아요.</li>
         </ul>
       </section>
 
@@ -140,15 +226,6 @@ export default function CalendarScreen({
         />
       ) : null}
     </div>
-  );
-}
-
-function Legend({ state, text }) {
-  return (
-    <span className="pill" style={{ fontSize: 'var(--fs-small)' }}>
-      <span aria-hidden="true" className="legend-dot" data-tone={state} />
-      {text}
-    </span>
   );
 }
 
@@ -229,7 +306,12 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
               아직 오늘 기록을 남기지 않았어요. 아래 ‘오늘 기록하기’로 이어서 1분이면 남길 수 있어요.
             </p>
           </div>
-        ) : null}
+        ) : (
+          <div className="day-detail-block">
+            <span className="card-label">그날의 기록</span>
+            <p className="hairline-note">이 날에는 남긴 기록이 없어요.</p>
+          </div>
+        )}
 
         {day.failureReason ? (
           <div className="day-detail-block">

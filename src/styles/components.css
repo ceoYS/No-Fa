@@ -2920,3 +2920,107 @@ button.room-token:active {
   color: var(--text-secondary);
   border-color: var(--text-muted);
 }
+
+/* monthly calendar (RC-2A 기록) -------------------------------------- */
+.month-calendar {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-3);
+}
+
+.month-nav {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: var(--sp-2);
+}
+
+.month-nav-btn {
+  width: 34px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--r-md);
+  border: 1px solid var(--border-soft);
+  color: var(--text-secondary);
+  font-size: var(--fs-body);
+  background: var(--bg-surface-raised);
+}
+
+.month-nav-btn:hover {
+  color: var(--text-primary);
+  border-color: var(--border-medium);
+}
+
+.month-nav-label {
+  flex: 1;
+  text-align: center;
+  font-size: var(--fs-h2);
+  color: var(--text-primary);
+  letter-spacing: 0.01em;
+}
+
+.month-today-btn {
+  font-size: var(--fs-small);
+  padding-top: var(--sp-2);
+  padding-bottom: var(--sp-2);
+}
+
+.month-weekdays,
+.month-grid {
+  display: grid;
+  grid-template-columns: repeat(7, 1fr);
+  gap: var(--sp-1);
+}
+
+.month-weekday {
+  text-align: center;
+  font-size: var(--fs-micro);
+  color: var(--text-quiet);
+  padding-bottom: var(--sp-1);
+}
+
+.month-cell {
+  position: relative;
+  aspect-ratio: 1 / 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  border-radius: var(--r-md);
+  border: 1px solid transparent;
+  color: var(--text-secondary);
+  font-size: var(--fs-small);
+  transition: background var(--dur-fast) var(--ease-soft), border-color var(--dur-fast) var(--ease-soft);
+}
+
+.month-cell:hover {
+  background: var(--bg-surface-raised);
+}
+
+.month-cell-empty {
+  pointer-events: none;
+}
+
+.month-cell[data-today='true'] {
+  border-color: var(--accent-ember);
+  color: var(--text-ember);
+}
+
+.month-cell[data-has-record='true'] {
+  background: var(--accent-ember-soft);
+  color: var(--text-primary);
+}
+
+.month-cell-num {
+  line-height: 1;
+}
+
+.month-cell-dot {
+  width: 5px;
+  height: 5px;
+  border-radius: var(--r-pill);
+  background: var(--accent-ember);
+}

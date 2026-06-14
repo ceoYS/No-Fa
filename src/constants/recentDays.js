@@ -53,31 +53,10 @@ export function rangeDays(rangeId, now = Date.now()) {
   return opt.days;
 }
 
-// Seeded sample for recent past days, keyed by day-offset (1 = yesterday). Today
-// (offset 0) is always derived live; offsets past this map are clean-but-unlogged
-// within the current run, or untracked before it.
-const SEED = {
-  1: { kept: 3, held: 1, missed: 0, triggers: ['밤 시간'] },
-  2: {
-    kept: 2,
-    held: 1,
-    missed: 1,
-    failureReason: '밤 늦게 짧게 무너질 뻔했어요',
-    triggers: ['밤 시간', '외로움'],
-    reflection: '피곤하면 방심하게 돼요.',
-    nextAction: '밤 11시 멈춤 알림 켜기',
-  },
-  3: { kept: 4, held: 0, missed: 0 },
-  4: { kept: 3, held: 1, missed: 0, triggers: ['스트레스'] },
-  5: {
-    kept: 2,
-    held: 0,
-    missed: 2,
-    failureReason: '주말 루틴이 무너졌어요',
-    triggers: ['루틴 무너짐'],
-  },
-  6: { kept: 3, held: 0, missed: 0 },
-};
+// RC-2A: the fabricated past-day SEED sample was REMOVED. Records must reflect only the
+// user's REAL saved entries (the localStorage ledger); a past day with no entry stays
+// honestly empty. The monthly calendar (CalendarScreen) reads the ledger by date directly
+// and never calls this builder for sample data.
 
 function emptyBadges() {
   return { reflected: false, routineDone: false, nextActionWritten: false };
@@ -158,26 +137,9 @@ function buildOneDay(offset, ctx) {
     return { ...base, abstinenceState: 'unknown', streakDay: 0, state: 'untracked' };
   }
 
-  // Within the current run. Overlay a seeded sample if we have one.
-  const seed = SEED[offset];
-  if (!seed) {
-    return { ...base, abstinenceState: 'clean', streakDay: streakForDay, state: 'kept' };
-  }
-  const reflected = !!seed.reflection;
-  return {
-    ...base,
-    abstinenceState: 'clean',
-    streakDay: streakForDay,
-    keptCount: seed.kept ?? 0,
-    missedCount: seed.missed ?? 0,
-    heldCount: seed.held ?? 0,
-    failureReason: seed.failureReason ?? null,
-    triggers: seed.triggers ?? [],
-    reflection: seed.reflection ?? null,
-    nextAction: seed.nextAction ?? null,
-    badges: { ...emptyBadges(), reflected, nextActionWritten: !!seed.nextAction },
-    state: seed.missed > 0 ? (reflected ? 'recovered' : 'needs_check') : 'kept',
-  };
+  // Within the current run, but with no fabricated sample — an honest clean-but-unlogged
+  // day. Real per-day records come from the ledger (read directly by the calendar).
+  return { ...base, abstinenceState: 'clean', streakDay: streakForDay, state: 'kept' };
 }
 
 // Build the day-ledger oldest → today (today is the last element).
