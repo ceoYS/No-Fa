@@ -1895,6 +1895,58 @@ check('protection setup is honest, local-only, and surfaced from the saved user 
   }
 });
 
+// 64 — C23/C24/C25 onboarding + empty states + reset trust: Home shows a first-run
+// three-step guidance card gated on a derived hasCheckinHistory (no new storage, auto-hides
+// after the first check-in); 최근 기록 shows an honest empty-state when no check-in exists;
+// and a local-data reset clears the logged data INCLUDING the new protectionPlan, through a
+// confirm sheet (never a one-tap wipe), with no account/cloud-deletion claim.
+check('onboarding, empty states, and reset are honest and clear the new local state', () => {
+  const app = read('src/App.jsx');
+  const home = read('src/screens/HomeScreen.jsx');
+  const cal = read('src/screens/CalendarScreen.jsx');
+
+  // (a) First-run guidance: three steps, gated on derived history, local-only note.
+  assert(home.includes('home-onboarding'), 'Home first-run guidance card (home-onboarding) missing');
+  assert(home.includes('NoF는 이렇게 써요'), 'Home first-run guidance title missing');
+  for (const step of ['흔들릴 땐 잠깐 멈춤', '하루 끝에는 체크인', '최근 기록에서 다시 확인']) {
+    assert(home.includes(step), `Home first-run guidance step missing: ${step}`);
+  }
+  assert(/const hasCheckinHistory =\s*!!todayCheckin \|\| \(checkinLedger/.test(home), 'first-run guidance is not gated on a derived check-in-history signal');
+  assert(/\{!hasCheckinHistory \? \(/.test(home), 'first-run guidance is not gated to hide after the first check-in');
+  assert(home.includes('모든 기록은 이 기기에만 저장돼요'), 'first-run guidance is missing the local-only note');
+
+  // (b) Empty state on 최근 기록, gated on real absence, with a forward CTA, still read-only.
+  assert(cal.includes('calendar-empty'), '최근 기록 empty-state card (calendar-empty) missing');
+  assert(cal.includes('아직 남긴 기록이 없어요'), '최근 기록 empty-state copy missing');
+  assert(/const hasAnyCheckin = days\.some\(/.test(cal), '최근 기록 empty-state is not gated on a real has-any-check-in signal');
+  assert(/\{!hasAnyCheckin \? \(/.test(cal), '최근 기록 empty-state is not gated to hide once a check-in exists');
+  const ceStart = cal.indexOf('calendar-empty');
+  const ceEnd = cal.indexOf('이 기록을 보는 방법', ceStart);
+  assert(ceStart !== -1 && ceEnd !== -1 && ceEnd > ceStart, 'could not isolate the calendar-empty section');
+  const emptyCard = cal.slice(ceStart, ceEnd);
+  assert(emptyCard.includes('오늘 체크인하기') && /onNavigate\('checkin'\)/.test(emptyCard), '최근 기록 empty-state does not offer a 오늘 체크인하기 CTA to the check-in screen');
+
+  // (c) Reset clears the logged data INCLUDING the new protectionPlan, and routes home.
+  const m = app.match(/const resetLocalData = \(\) => \{[\s\S]*?\};/);
+  assert(m, 'resetLocalData handler not found');
+  for (const clear of ['setTodayRecord(null)', 'setCheckinLedger({})', 'setProtectionPlan(null)', 'setCheckinRewardDay(null)', 'setCrisisRewardDay(null)']) {
+    assert(m[0].includes(clear), `resetLocalData does not clear: ${clear}`);
+  }
+  assert(/onResetLocalData=\{resetLocalData\}/.test(app), 'App does not pass onResetLocalData down');
+
+  // (d) Reset goes through a confirm sheet — the real onResetLocalData is never a one-tap wipe.
+  assert(home.includes('aria-label="데이터 초기화 확인"'), 'reset confirm dialog (aria-label) missing');
+  assert(home.includes('setConfirmReset(true)'), 'reset CTA does not open the confirm sheet');
+  assert(!/onClick=\{\(\)\s*=>\s*onResetLocalData/.test(home), 'reset CTA calls onResetLocalData directly — it must go through the confirm sheet');
+  assert(/onResetLocalData\?\.\(\)/.test(home), 'reset confirm sheet never calls the real onResetLocalData');
+
+  // (e) No fake account/cloud-deletion claim — only on-device local data is cleared.
+  for (const fake of ['계정 삭제', '클라우드 삭제', '서버에서 삭제', '클라우드 동기화', '계정을 삭제']) {
+    assert(!home.includes(fake), `reset surface makes a fake account/cloud-deletion claim: ${fake}`);
+  }
+  assert(home.includes('계정이나 클라우드는 없'), 'reset surface is missing the honest "no account/cloud" disclosure');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
