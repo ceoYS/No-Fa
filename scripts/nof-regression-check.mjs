@@ -1261,19 +1261,36 @@ check('check-in journal is honest: local-only disclosure, saved state, no fake c
     'CheckinScreen is missing the local-only storage disclosure (이 기기에만 저장…)',
   );
 
-  // (b) The four daily journal fields exist (mood / urge / trigger / free note), and
-  // the note is threaded through onCompleteCheckin AND persisted by App.
+  // (b) RC-1: the check-in is WRITING-FIRST. The user's own three writing fields
+  // (오늘 회고 / 나와의 약속 / 오늘의 다짐) exist as the primary content and the gate, and
+  // all three are threaded through onCompleteCheckin AND persisted by App. 오늘 회고 reuses
+  // the persisted `note` field so the records/home read-back keeps flowing.
+  for (const field of ['오늘 회고', '나와의 약속', '오늘의 다짐']) {
+    assert(screen.includes(field), `check-in writing field (${field}) missing`);
+  }
+  assert(/<textarea/.test(screen), 'check-in free-text writing (textarea) missing');
+  assert(/onCompleteCheckin\(\{[\s\S]*?note[\s\S]*?promise[\s\S]*?resolve/.test(screen), 'check-in does not pass note + promise + resolve to onCompleteCheckin');
+  // The gate is the user's writing, not the optional survey: step1Ready reads the
+  // three writing fields, never mood/urge.
+  assert(
+    /const step1Ready = \[note, promise, resolve\]\.some/.test(screen),
+    'check-in gate (step1Ready) is not driven by the user writing fields (note/promise/resolve)',
+  );
+  // (b2) The optional 오늘 상태 survey (mood / urge / trigger) stays available but secondary.
+  assert(screen.includes('오늘 상태 (선택)'), 'optional 오늘 상태 (선택) survey section missing');
   assert(screen.includes('오늘 기분'), 'check-in mood field (오늘 기분) missing');
   assert(screen.includes('충동 강도'), 'check-in urge field (충동 강도) missing');
   assert(screen.includes('트리거'), 'check-in trigger field (트리거) missing');
-  assert(/<textarea/.test(screen), 'check-in free-text note (textarea) missing');
-  assert(/onCompleteCheckin\(\{[\s\S]*?note/.test(screen), 'check-in does not pass the note to onCompleteCheckin');
-  // App normalizes the note into savedCheckin and writes that object to today's record
-  // (and, since Records history, the rolling ledger) — so the note is persisted.
+  // App normalizes the three writing fields into savedCheckin and writes that object to
+  // today's record (and the rolling ledger) — so the user's words are persisted.
   const appSrc = read('src/App.jsx');
   assert(
     /note:\s*typeof checkin\.note === 'string'/.test(appSrc) && /checkin:\s*savedCheckin/.test(appSrc),
     'App.completeCheckin does not persist the check-in note',
+  );
+  assert(
+    /promise:\s*typeof checkin\.promise === 'string'/.test(appSrc) && /resolve:\s*typeof checkin\.resolve === 'string'/.test(appSrc),
+    'App.completeCheckin does not persist the 나와의 약속 / 오늘의 다짐 writing fields',
   );
 
   // (c) Saved/empty state: re-opening after today's check-in reads the saved record
@@ -1305,8 +1322,11 @@ check('check-in journal is honest: local-only disclosure, saved state, no fake c
 check('records day-detail surfaces the check-in note + calm empty state, no fake cloud/AI/medical/shame', () => {
   const screen = read('src/screens/CalendarScreen.jsx');
 
-  // (a) The day-detail check-in block reads the persisted note back (the v2 gap).
+  // (a) The day-detail check-in block reads the persisted writing back: 오늘 회고 (note),
+  // 나와의 약속 (promise) and 오늘의 다짐 (resolve) — the user's own words (RC-1).
   assert(/day\.checkin\.note/.test(screen), 'CalendarScreen day-detail does not read the check-in note (day.checkin.note)');
+  assert(/day\.checkin\.promise/.test(screen), 'CalendarScreen day-detail does not read back 나와의 약속 (day.checkin.promise)');
+  assert(/day\.checkin\.resolve/.test(screen), 'CalendarScreen day-detail does not read back 오늘의 다짐 (day.checkin.resolve)');
 
   // (b) Mood / urge / trigger read-back stays present alongside the note.
   assert(screen.includes('오늘의 체크인'), 'CalendarScreen is missing the 오늘의 체크인 detail block');

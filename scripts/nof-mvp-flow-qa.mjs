@@ -50,11 +50,11 @@ const BEHAVIORS = {
   B07: 'protection plan persists locally',
   B08: 'urge shows saved alternative action',
   B09: 'urge check-in continuation works',
-  B10: 'complete check-in with typed note',
+  B10: 'complete writing-first check-in (회고/약속/다짐)',
   B11: 'reward landing appears',
   B12: 'reward landing save confirmation appears only after actual save',
   B13: 'reward to recent records opens records',
-  B14: 'records show today note',
+  B14: 'records show today writing (회고/약속/다짐)',
   B15: 'home saved summary appears',
   B16: 'protection clear action clears plan',
   B17: 'urge returns to no-plan empty state',
@@ -67,7 +67,10 @@ const BEHAVIORS = {
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
+// RC-1 check-in is writing-first: NOTE is 오늘 회고, plus 나와의 약속 / 오늘의 다짐.
 const NOTE = '오늘은 흔들렸지만 버텼다 QA체크';
+const PROMISE = '내일은 밤 11시에 휴대폰 내려놓기 QA약속';
+const RESOLVE = '오늘 하루도 나를 믿어보기 QA다짐';
 const ALT = '물 한 잔 마시고 거실로 나가기 QA';
 
 // B20 user-facing vocabulary that must never reach the screen.
@@ -319,16 +322,17 @@ async function runFlow(c) {
   const toCheckin = await c.click('오늘 체크인에 한 줄 남기기');
   check('B09', held && toCheckin && (await c.has('1분 기록')));
 
-  // 10 · Complete the check-in with mood + urge intensity + a typed note. Verify each
-  //      input actually registered (a silently-failed selector must not pass as "done").
-  await c.clickSelector('.chip[aria-pressed]'); // first real mood chip (not the preview chips)
-  const urgeSet = await c.eval(`(() => { const b = [...document.querySelectorAll('button')].find(e => e.getAttribute('aria-label') === '충동 강도 3'); if (b) { b.click(); return true; } return false; })()`);
-  const noteTyped = await c.type('textarea[aria-label="오늘 한 줄 메모"]', NOTE);
-  const moodSet = await c.eval(`[...document.querySelectorAll('.chip[aria-pressed]')].some(e => e.getAttribute('aria-pressed') === 'true')`);
-  await c.click('다음 · 오늘의 규율 점검');
+  // 10 · Complete the WRITING-first check-in (RC-1): the user's own 회고 (the gate), plus
+  //      나와의 약속 / 오늘의 다짐. Verify each writing input actually registered (a silently
+  //      failed selector must not pass as "done") and that typing the 회고 enables 다음.
+  const retroTyped = await c.type('textarea[aria-label="오늘 회고"]', NOTE);
+  const promiseTyped = await c.type('textarea[aria-label="나와의 약속"]', PROMISE);
+  const resolveTyped = await c.type('textarea[aria-label="오늘의 다짐"]', RESOLVE);
+  const nextEnabled = await c.click('다음 · 오늘의 규율 점검'); // writing-gated; only clicks once step1Ready
   const finished = await c.click('오늘 기록 마치기');
-  check('B10', moodSet && urgeSet && noteTyped && finished,
-    moodSet && urgeSet && noteTyped && finished ? '' : `mood:${moodSet} urge:${urgeSet} note:${noteTyped} finish:${finished}`);
+  check('B10', retroTyped && promiseTyped && resolveTyped && nextEnabled && finished,
+    retroTyped && promiseTyped && resolveTyped && nextEnabled && finished
+      ? '' : `retro:${retroTyped} promise:${promiseTyped} resolve:${resolveTyped} next:${nextEnabled} finish:${finished}`);
   await sleep(400);
 
   // 11–12 · Reward landing appears; its save confirmation is gated on the real save.
@@ -350,7 +354,12 @@ async function runFlow(c) {
     await sleep(500);
     recHasNote = await c.has(NOTE);
   }
-  check('B14', recHasNote, recHasNote ? '' : `today note not found in records detail (calendar cell clicked: ${cellClicked})`);
+  // The writing-first fields (회고 + 약속 + 다짐) all read back in the same day-detail.
+  const recHasPromise = await c.has(PROMISE);
+  const recHasResolve = await c.has(RESOLVE);
+  check('B14', recHasNote && recHasPromise && recHasResolve,
+    recHasNote && recHasPromise && recHasResolve
+      ? '' : `today writing not fully read back (note:${recHasNote} promise:${recHasPromise} resolve:${recHasResolve}, cell clicked: ${cellClicked})`);
   await c.shot('records_today_note');
 
   // 15 · Home shows the saved check-in summary + the note (route home via bottom nav).

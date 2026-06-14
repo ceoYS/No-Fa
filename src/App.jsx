@@ -548,9 +548,13 @@ export default function App() {
       moodLabel: checkin.moodLabel ?? null,
       urge: typeof checkin.urge === 'number' ? checkin.urge : null,
       triggers: Array.isArray(checkin.triggers) ? checkin.triggers : [],
-      // Optional free-text journal line. Trim to drop whitespace-only notes to
-      // null so the saved-summary read-back stays clean (no empty quote block).
+      // RC-1 writing-first fields. 오늘 회고 keeps the `note` field name (records / home
+      // read-back + the 잠깐 멈춤 한마디 hand-off all flow through it); 나와의 약속 / 오늘의
+      // 다짐 are the new user-written lines. All three trim whitespace-only input to null
+      // so the saved-summary read-back stays clean (no empty quote block).
       note: typeof checkin.note === 'string' && checkin.note.trim() ? checkin.note.trim() : null,
+      promise: typeof checkin.promise === 'string' && checkin.promise.trim() ? checkin.promise.trim() : null,
+      resolve: typeof checkin.resolve === 'string' && checkin.resolve.trim() ? checkin.resolve.trim() : null,
       completedAt: now,
     };
     setTodayRecord((prev) => ({

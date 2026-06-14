@@ -19,9 +19,14 @@ const TRIGGERS = [
 
 const URGE_SCALE = [1, 2, 3, 4, 5];
 
-// Free-text note cap. Short by design — a journal line, not an essay — so the
-// saved record stays glanceable and the textarea never grows into the bottom nav.
-const NOTE_MAX = 140;
+// RC-1: the check-in is writing-first. What the user feels meaning in is their OWN
+// words, not a preset survey — so 오늘 회고 / 나와의 약속 / 오늘의 다짐 are the primary
+// fields and the gate, while 오늘 상태(기분·트리거·충동) stays as an OPTIONAL secondary
+// touch. 회고 keeps the persisted `note` field name so the records / home read-back and
+// the 잠깐 멈춤 한마디 hand-off (checkinNoteDraft) keep flowing end-to-end unchanged.
+const RETRO_MAX = 200; // 오늘 회고 — the longest field; a real diary line, still glanceable.
+const PROMISE_MAX = 100; // 나와의 약속
+const RESOLVE_MAX = 100; // 오늘의 다짐
 
 // Reverse-resolve persisted labels back to chip ids. Today's saved check-in stores
 // human-readable labels (so the records/calendar layer never imports this screen's
@@ -59,12 +64,14 @@ export default function CheckinScreen({
   // open today (no saved record) goes straight into the form.
   const [editing, setEditing] = useState(() => !savedCheckin);
   const [step, setStep] = useState(1);
+  // Writing-first fields (RC-1). 회고 reuses the persisted `note`; 약속/다짐 are new.
+  const [note, setNote] = useState(() => savedCheckin?.note ?? checkinNoteDraft ?? '');
+  const [promise, setPromise] = useState(() => savedCheckin?.promise ?? '');
+  const [resolve, setResolve] = useState(() => savedCheckin?.resolve ?? '');
+  // Optional 오늘 상태 — kept, but no longer the gate.
   const [mood, setMood] = useState(() => moodIdFromLabel(savedCheckin?.moodLabel));
   const [triggers, setTriggers] = useState(() => triggerIdsFromLabels(savedCheckin?.triggers));
   const [urge, setUrge] = useState(() => (typeof savedCheckin?.urge === 'number' ? savedCheckin.urge : null));
-  // Seed the note from today's saved check-in if present; otherwise prefill the one-line
-  // reflection carried from the crisis read-back (C3) so 체크인으로 이어가기 doesn't drop it.
-  const [note, setNote] = useState(() => savedCheckin?.note ?? checkinNoteDraft ?? '');
 
   // '특별히 없음'(none) is mutually exclusive: picking it clears the others, and
   // picking any real trigger clears 'none'. Keeps the saved record honest — no
@@ -76,12 +83,15 @@ export default function CheckinScreen({
       return [...t.filter((x) => x !== 'none'), id];
     });
 
-  const step1Ready = mood && urge !== null;
+  // The gate is the user's OWN writing: at least one of 회고 / 약속 / 다짐 has text.
+  // The optional 오늘 상태 never blocks finishing — a record made only of the user's
+  // words is the whole point (RC-1 feedback #4).
+  const step1Ready = [note, promise, resolve].some((v) => v.trim().length > 0);
 
-  // Resolve the step-1 selections to human-readable labels and hand them up so the
-  // app can persist them into today's record. Resolving ids → labels here keeps the
-  // records/calendar layer from importing this screen's chip definitions. The note
-  // is a trimmed free-text line (optional) saved alongside the structured fields.
+  // Resolve the optional step-1 selections to human-readable labels and hand them up
+  // with the three writing fields so the app can persist them into today's record.
+  // Resolving ids → labels here keeps the records/calendar layer from importing this
+  // screen's chip definitions.
   const finishCheckin = () => {
     if (!onCompleteCheckin) {
       onNavigate('reward');
@@ -91,67 +101,95 @@ export default function CheckinScreen({
     const triggerLabels = triggers
       .map((id) => TRIGGERS.find((t) => t.id === id)?.label)
       .filter(Boolean);
-    onCompleteCheckin({ moodLabel, urge, triggers: triggerLabels, note: note.trim() });
+    onCompleteCheckin({
+      moodLabel,
+      urge,
+      triggers: triggerLabels,
+      note: note.trim(),
+      promise: promise.trim(),
+      resolve: resolve.trim(),
+    });
   };
 
   // Saved-state summary — today is already logged. A calm read-back of what was
-  // saved, with one affordance to re-open and edit it. The local-only storage is
+  // written, with one affordance to re-open and edit it. The local-only storage is
   // disclosed plainly here too: nothing about this leaves the device.
   if (!editing && savedCheckin) {
     const summaryTriggers = Array.isArray(savedCheckin.triggers) ? savedCheckin.triggers : [];
+    const hasState =
+      savedCheckin.moodLabel || typeof savedCheckin.urge === 'number' || summaryTriggers.length > 0;
     return (
       <div className="screen">
         <header className="screen-header">
           <div>
-            <p className="screen-greeting">오늘 기록을 남겼어요</p>
-            <h1 className="screen-title">오늘의 체크인</h1>
+            <p className="screen-greeting">오늘 글을 남겼어요</p>
+            <h1 className="screen-title">오늘의 기록</h1>
           </div>
           <span className="pill pill-moss">완료</span>
         </header>
 
         <p className="screen-subtitle">
-          오늘 남긴 기록이에요. 이 기기에만 저장돼요. 언제든 다시 고칠 수 있어요.
+          오늘 내가 쓴 글이에요. 이 기기에만 저장돼요. 언제든 다시 고칠 수 있어요.
         </p>
 
         <section className="card checkin-saved-confirm">
           <span className="card-label">오늘 체크인이 저장됐어요</span>
           <p className="hairline-note">
-            최근 기록에서 다시 볼 수 있어요. 오늘은 여기까지 해도 충분해요.
+            최근 기록에서 내가 쓴 글을 다시 볼 수 있어요. 오늘은 여기까지 해도 충분해요.
           </p>
         </section>
 
         <section className="card">
-          <div className="card-row">
-            <span className="card-label">오늘 기분</span>
-            <span className="discipline-summary">{savedCheckin.moodLabel ?? '기록 안 함'}</span>
-          </div>
-          <div className="card-row">
-            <span className="card-label">충동 강도</span>
-            <span className="discipline-summary">
-              {typeof savedCheckin.urge === 'number' ? `${savedCheckin.urge} / 5` : '기록 안 함'}
-            </span>
-          </div>
-          <div className="day-detail-block">
-            <span className="card-label">오늘 트리거</span>
-            {summaryTriggers.length > 0 ? (
-              <div className="sheet-chip-grid">
-                {summaryTriggers.map((t) => (
-                  <span key={t} className="chip" data-selected="false">
-                    {t}
-                  </span>
-                ))}
-              </div>
-            ) : (
-              <p className="hairline-note">고른 트리거가 없어요.</p>
-            )}
-          </div>
           {savedCheckin.note ? (
             <div className="day-detail-block">
-              <span className="card-label">한 줄 메모</span>
+              <span className="card-label">오늘 회고</span>
               <p className="day-detail-reflection">“{savedCheckin.note}”</p>
             </div>
           ) : null}
+          {savedCheckin.promise ? (
+            <div className="day-detail-block">
+              <span className="card-label">나와의 약속</span>
+              <p className="day-detail-reflection">“{savedCheckin.promise}”</p>
+            </div>
+          ) : null}
+          {savedCheckin.resolve ? (
+            <div className="day-detail-block">
+              <span className="card-label">오늘의 다짐</span>
+              <p className="day-detail-reflection">“{savedCheckin.resolve}”</p>
+            </div>
+          ) : null}
+          {!savedCheckin.note && !savedCheckin.promise && !savedCheckin.resolve ? (
+            <p className="hairline-note">오늘은 글 없이 상태만 남겼어요.</p>
+          ) : null}
         </section>
+
+        {hasState ? (
+          <section className="card">
+            <span className="card-label">오늘 상태</span>
+            <div className="card-row">
+              <span className="card-label">오늘 기분</span>
+              <span className="discipline-summary">{savedCheckin.moodLabel ?? '기록 안 함'}</span>
+            </div>
+            <div className="card-row">
+              <span className="card-label">충동 강도</span>
+              <span className="discipline-summary">
+                {typeof savedCheckin.urge === 'number' ? `${savedCheckin.urge} / 5` : '기록 안 함'}
+              </span>
+            </div>
+            {summaryTriggers.length > 0 ? (
+              <div className="day-detail-block">
+                <span className="card-label">오늘 트리거</span>
+                <div className="sheet-chip-grid">
+                  {summaryTriggers.map((t) => (
+                    <span key={t} className="chip" data-selected="false">
+                      {t}
+                    </span>
+                  ))}
+                </div>
+              </div>
+            ) : null}
+          </section>
+        ) : null}
 
         <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
           <button
@@ -190,7 +228,7 @@ export default function CheckinScreen({
     <div className="screen">
       <header className="screen-header">
         <div>
-          <p className="screen-greeting">오늘 상태 남기기</p>
+          <p className="screen-greeting">오늘 하루를 글로 남겨요</p>
           <h1 className="screen-title">1분 기록</h1>
         </div>
         <span className="pill">{step} / 2</span>
@@ -199,7 +237,8 @@ export default function CheckinScreen({
       {step === 1 ? (
         <>
           <p className="screen-subtitle">
-            패턴을 보기 위한 개인 기록이에요. 이 기기에만 저장되고 밖으로 공유되지 않아요. 답을 골라주면 돼요.
+            내가 쓴 글이 가장 큰 힘이 돼요. 한 가지만 적어도 충분해요. 이 기기에만 저장되고 밖으로
+            공유되지 않아요.
           </p>
 
           {fromRecord ? (
@@ -210,8 +249,66 @@ export default function CheckinScreen({
           ) : null}
 
           <section className="card">
-            <span className="card-label">오늘 기분</span>
-            <div className="chip-grid">
+            <div className="card-row">
+              <span className="card-label">오늘 회고</span>
+              <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
+                {note.length}/{RETRO_MAX}
+              </span>
+            </div>
+            <textarea
+              className="sheet-input reflect-input"
+              value={note}
+              onChange={(e) => setNote(e.target.value.slice(0, RETRO_MAX))}
+              placeholder="오늘 하루는 어땠나요? 떠오르는 대로 적어요."
+              maxLength={RETRO_MAX}
+              rows={3}
+              aria-label="오늘 회고"
+            />
+          </section>
+
+          <section className="card">
+            <div className="card-row">
+              <span className="card-label">나와의 약속</span>
+              <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
+                {promise.length}/{PROMISE_MAX}
+              </span>
+            </div>
+            <textarea
+              className="sheet-input reflect-input"
+              value={promise}
+              onChange={(e) => setPromise(e.target.value.slice(0, PROMISE_MAX))}
+              placeholder="나와 지키고 싶은 약속을 한 줄로 적어요. 비워둬도 괜찮아요."
+              maxLength={PROMISE_MAX}
+              rows={2}
+              aria-label="나와의 약속"
+            />
+          </section>
+
+          <section className="card">
+            <div className="card-row">
+              <span className="card-label">오늘의 다짐</span>
+              <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
+                {resolve.length}/{RESOLVE_MAX}
+              </span>
+            </div>
+            <textarea
+              className="sheet-input reflect-input"
+              value={resolve}
+              onChange={(e) => setResolve(e.target.value.slice(0, RESOLVE_MAX))}
+              placeholder="오늘의 다짐을 한 줄로 적어요. 비워둬도 괜찮아요."
+              maxLength={RESOLVE_MAX}
+              rows={2}
+              aria-label="오늘의 다짐"
+            />
+            <p className="hairline-note">내가 쓴 글은 이 기기에만 저장돼요. 밖으로 공유되지 않아요.</p>
+          </section>
+
+          <section className="card">
+            <span className="card-label">오늘 상태 (선택)</span>
+            <p className="hairline-note text-quiet">
+              남기고 싶으면 골라요. 비워둬도 글만으로 충분해요.
+            </p>
+            <div className="chip-grid" style={{ marginTop: 'var(--sp-2)' }}>
               {MOODS.map((m) => (
                 <button
                   key={m.id}
@@ -219,35 +316,14 @@ export default function CheckinScreen({
                   className="chip"
                   data-selected={mood === m.id}
                   aria-pressed={mood === m.id}
-                  onClick={() => setMood(m.id)}
+                  onClick={() => setMood((cur) => (cur === m.id ? null : m.id))}
                 >
                   <span className="chip-emoji">{m.emoji}</span>
                   <span>{m.label}</span>
                 </button>
               ))}
             </div>
-          </section>
-
-          <section className="card">
-            <span className="card-label">오늘 트리거 (복수 선택)</span>
-            <div className="chip-grid">
-              {TRIGGERS.map((t) => (
-                <button
-                  key={t.id}
-                  type="button"
-                  className="chip"
-                  data-selected={triggers.includes(t.id)}
-                  aria-pressed={triggers.includes(t.id)}
-                  onClick={() => toggleTrigger(t.id)}
-                >
-                  <span>{t.label}</span>
-                </button>
-              ))}
-            </div>
-          </section>
-
-          <section className="card">
-            <div className="card-row">
+            <div className="card-row" style={{ marginTop: 'var(--sp-3)' }}>
               <span className="card-label">충동 강도</span>
               <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
                 1 약함 · 5 강함
@@ -262,31 +338,29 @@ export default function CheckinScreen({
                   data-selected={urge === n}
                   aria-pressed={urge === n}
                   aria-label={`충동 강도 ${n}`}
-                  onClick={() => setUrge(n)}
+                  onClick={() => setUrge((cur) => (cur === n ? null : n))}
                 >
                   {n}
                 </button>
               ))}
             </div>
-          </section>
-
-          <section className="card">
-            <div className="card-row">
-              <span className="card-label">한 줄 메모 (선택)</span>
-              <span className="text-quiet" style={{ fontSize: 'var(--fs-small)' }}>
-                {note.length}/{NOTE_MAX}
-              </span>
+            <div className="day-detail-block" style={{ marginTop: 'var(--sp-3)' }}>
+              <span className="card-label">오늘 트리거 (복수 선택)</span>
+              <div className="chip-grid">
+                {TRIGGERS.map((t) => (
+                  <button
+                    key={t.id}
+                    type="button"
+                    className="chip"
+                    data-selected={triggers.includes(t.id)}
+                    aria-pressed={triggers.includes(t.id)}
+                    onClick={() => toggleTrigger(t.id)}
+                  >
+                    <span>{t.label}</span>
+                  </button>
+                ))}
+              </div>
             </div>
-            <textarea
-              className="sheet-input reflect-input"
-              value={note}
-              onChange={(e) => setNote(e.target.value.slice(0, NOTE_MAX))}
-              placeholder="오늘 떠오른 생각을 한 줄로 남겨도 좋아요. 비워둬도 괜찮아요."
-              maxLength={NOTE_MAX}
-              rows={2}
-              aria-label="오늘 한 줄 메모"
-            />
-            <p className="hairline-note">이 기기에만 저장돼요. 밖으로 공유되지 않아요.</p>
           </section>
 
           <button
@@ -298,6 +372,11 @@ export default function CheckinScreen({
           >
             다음 · 오늘의 규율 점검
           </button>
+          {!step1Ready ? (
+            <p className="hairline-note" style={{ textAlign: 'center' }}>
+              회고·약속·다짐 중 한 가지만 적어도 다음으로 넘어갈 수 있어요.
+            </p>
+          ) : null}
         </>
       ) : (
         <>

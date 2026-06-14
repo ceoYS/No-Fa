@@ -199,7 +199,22 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
               </div>
             ) : null}
             {day.checkin.note ? (
-              <p className="day-detail-reflection">“{day.checkin.note}”</p>
+              <div className="day-detail-block">
+                <span className="card-label">오늘 회고</span>
+                <p className="day-detail-reflection">“{day.checkin.note}”</p>
+              </div>
+            ) : null}
+            {day.checkin.promise ? (
+              <div className="day-detail-block">
+                <span className="card-label">나와의 약속</span>
+                <p className="day-detail-reflection">“{day.checkin.promise}”</p>
+              </div>
+            ) : null}
+            {day.checkin.resolve ? (
+              <div className="day-detail-block">
+                <span className="card-label">오늘의 다짐</span>
+                <p className="day-detail-reflection">“{day.checkin.resolve}”</p>
+              </div>
             ) : null}
             <p className="hairline-note">
               {day.isToday
