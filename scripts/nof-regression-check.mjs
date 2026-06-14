@@ -2017,6 +2017,51 @@ check('reward landing confirmation is gated by the saved today check-in (no fake
   }
 });
 
+// 67 — C34/C35 protection plan management: the saved-plan card exposes an explicit
+// "계획 비우기" clear that routes through the EXISTING saveProtectionPlan all-blank path (which
+// normalizes to null — the real clear-to-null contract in App), discloses it is this-device-only,
+// and falls back to an honest empty state. The clear must leave 잠깐 멈춤 honestly empty, and the
+// surface must make NO account/cloud-deletion, blocker, AI, or medical claim.
+check('protection plan management is honest: explicit local-only clear + saved/empty states', () => {
+  const screen = read('src/screens/ProtectionScreen.jsx');
+  const app = read('src/App.jsx');
+
+  // (a) Saved-plan card with an explicit, wired clear action (a button bound to clearPlan).
+  assert(screen.includes('protection-saved'), 'saved protection plan card (protection-saved) missing');
+  assert(screen.includes('계획 비우기'), 'protection plan is missing the explicit 계획 비우기 clear action');
+  assert(/onClick=\{clearPlan\}/.test(screen), 'the 계획 비우기 action is not wired to the clearPlan handler');
+
+  // (b) The clear routes through the EXISTING handler with all-blank fields, and App still maps
+  //     an all-blank save to null (so the clear genuinely sets protectionPlan === null).
+  assert(
+    /const clearPlan = \(\) => \{[\s\S]*?onSaveProtectionPlan\?\.\(\{ triggerTime: '', situation: '', altAction: '' \}\)/.test(screen),
+    'clearPlan does not clear through the existing onSaveProtectionPlan all-blank path',
+  );
+  assert(
+    /const empty = !next\.triggerTime && !next\.situation && !next\.altAction;\s*setProtectionPlan\(empty \? null/.test(app),
+    'App.saveProtectionPlan no longer clears an all-blank plan to null',
+  );
+
+  // (c) This-device-only disclosure on the clear, and no off-device / blocker / AI / medical claim.
+  assert(screen.includes('이 기기에 저장된 보호 설정만'), 'protection clear is missing the this-device-only disclosure');
+  for (const fake of ['계정 삭제', '클라우드 삭제', '서버에서 삭제', '클라우드 동기화', '자동 차단', '차단했어요', 'AI 추천', 'AI 분석', '치료', '진단', '처방', '금욕']) {
+    assert(!screen.includes(fake), `protection management makes a forbidden account/cloud/blocker/AI/medical claim: ${fake}`);
+  }
+
+  // (d) Honest empty state, gated on the real protectionPlan.
+  assert(screen.includes('protection-empty'), 'protection empty-state card (protection-empty) missing');
+  assert(screen.includes('아직 보호 설정이 없어요'), 'protection empty-state copy missing');
+  assert(/\{protectionPlan \? \([\s\S]*?\) : \(/.test(screen), 'protection saved/empty states are not gated on the real protectionPlan');
+
+  // (e) Clearing leaves 잠깐 멈춤 honestly empty (its read-back is gated on a real saved plan).
+  const urge = read('src/screens/UrgeScreen.jsx');
+  assert(urge.includes('아직 보호 설정이 없어요'), 'urge no-plan empty state missing (clear must leave it honestly empty)');
+  assert(
+    /protectionPlan && \(protectionPlan\.altAction \|\| protectionPlan\.situation \|\| protectionPlan\.triggerTime\)/.test(urge),
+    'urge does not gate the plan read-back on a real saved plan',
+  );
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
