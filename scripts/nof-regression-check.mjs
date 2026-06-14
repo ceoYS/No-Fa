@@ -2047,7 +2047,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 27 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 30 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2060,11 +2060,11 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 27 behaviors,
   const helper = read('scripts/nof-cdp-client.mjs'); // throws if the CDP helper is missing
   const qa = read('scripts/nof-mvp-flow-qa.mjs');    // throws if the flow script is missing
 
-  // (a) All 23 behaviors are driven by a REAL check('B##', <expr>) call — not just a
+  // (a) All 30 behaviors are driven by a REAL check('B##', <expr>) call — not just a
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
-  //     still reporting 23/23 PASS.
-  for (let i = 1; i <= 27; i += 1) {
+  //     still reporting 30/30 PASS.
+  for (let i = 1; i <= 30; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2324,6 +2324,56 @@ check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluf
   assert(/ledger\[dateMs\] \?\? null/.test(cal), '기록 calendar does not read records from the ledger by date');
   assert(!cal.includes('buildDayRecords'), '기록 calendar must not use the old seeded day builder');
   assert(!/const SEED\s*=/.test(read('src/constants/recentDays.js')), 'a fabricated SEED of past records returned to recentDays.js');
+});
+
+// 76 — RC-2B real cat room. A single cross-cutting net pinning the RC-2B intent so a
+// future change can't quietly revert it: the cat room offers REAL drag-and-drop item
+// placement (pointer events, normalized coords) that persists across reload, items
+// are repositionable + removable, the snack hand-off is a real travel that updates
+// real fed state, and NONE of it makes a fake cat motion/eating claim (the cat art is
+// still a static composite — placement uses honest framed cards, not fake sprites).
+check('RC-2B real cat room: drag placement persists, snack handoff animates, honest copy', () => {
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const app = read('src/App.jsx');
+  const css = read('src/styles/components.css');
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+
+  // (a) Real pointer-event drag/drop in the decorator: place from the tray AND move a
+  //     placed card; plus a remove/return action. (Two onPointerDown wirings: tray + card.)
+  assert((dec.match(/onPointerDown=\{/g) || []).length >= 2, 'decorator must wire pointer drag for BOTH tray place and card move');
+  assert(
+    /addEventListener\('pointermove'/.test(dec) && /addEventListener\('pointerup'/.test(dec),
+    'decorator drag does not track window pointermove/pointerup',
+  );
+  assert(/beginCardDrag/.test(dec) && /onMove\?\.\(/.test(dec), 'decorator cannot reposition a placed card (no onMove)');
+  assert(/onRemove\?\.\(/.test(dec), 'decorator has no remove/return action for a placed item');
+
+  // (b) Coordinates are normalized percent of the stage and clamped inside it (mobile-safe).
+  assert(/clamp01/.test(dec) && /\* 100\}%/.test(dec), 'placement coordinates are not normalized percent of the stage');
+
+  // (c) Placement is wired to App and persisted through saveState (survives a reload).
+  assert(/onPlace=\{onPlaceItemAt\}/.test(screen) && /onMove=\{onMoveItem\}/.test(screen), 'decorator place/move are not wired to App handlers');
+  const saveBody = app.match(/saveState\(\{[\s\S]*?\}\)/);
+  assert(saveBody && /placements,/.test(saveBody[0]), 'placements are not persisted through saveState');
+
+  // (d) The stale 배치 계획 (준비 중) placeholder is gone — placement is implemented.
+  assert(!screen.includes('배치 계획') && !screen.includes('준비 중'), 'stale 배치 계획/준비 중 placement placeholder wording remains');
+
+  // (e) Snack hand-off is a real travel that updates real fed state — no cat-eating claim.
+  assert(/@keyframes snack-toss \{[\s\S]*?translateY\(-?\d+px\)[\s\S]*?\}/.test(css), 'snack-toss is not a real translateY travel');
+  assert(screen.includes('petFedToday') && screen.includes('오늘 간식 놓아주기 완료'), 'feed does not surface the real persisted fed-today state');
+  for (const fake of ['먹었', '먹는', '움직였', '달려', '골골', '야옹', '반응했']) {
+    assert(!dec.includes(fake) && !screen.includes(fake), `cat room makes a fake cat-motion/eating claim: ${fake}`);
+  }
+
+  // (f) The browser QA covers the three new behaviors with REAL (non-constant) assertions,
+  //     and drives a real pointer drag for the reposition behavior.
+  for (const id of ['B28', 'B29', 'B30']) {
+    assert(new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`).test(qa), `QA flow has no real check('${id}', …)`);
+    assert(!new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`).test(qa), `QA flow check('${id}') is gutted to a constant`);
+  }
+  assert(/pointerDrag\(/.test(qa), 'QA flow does not drive a real pointer drag (reposition) for B29');
 });
 
 let failed = 0;

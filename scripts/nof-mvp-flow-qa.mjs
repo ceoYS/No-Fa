@@ -68,6 +68,9 @@ const BEHAVIORS = {
   B25: 'cat room 쓰다듬기 interaction changes real state',
   B26: 'bottom nav fully visible at 390x844 (all 5 labels, none clipped)',
   B27: 'monthly calendar shows 년/월, weekday header, today, and navigates months',
+  B28: 'room item can be placed and persists after reload',
+  B29: 'placed room item can be dragged to a new position',
+  B30: 'snack hand-off visibly animates and updates real fed state',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -506,6 +509,49 @@ async function runFlow(c) {
   const calOk = onCal && !!monthNow && hasWeekday && hasToday && monthPrev !== monthNow && monthBack === monthNow;
   check('B27', calOk, calOk ? '' : `cal:${onCal} now:${monthNow} weekday:${hasWeekday} today:${hasToday} prev:${monthPrev} back:${monthBack}`);
   await c.shot('records_month_nav');
+
+  // 28 · 고양이 방 꾸미기 — REAL placement. Open the room, enter 배치 mode, tap a tray item
+  //      to place it, and a placed card appears on the stage; after a HARD RELOAD the card
+  //      is still there (coordinates persisted to localStorage), asserted on rendered DOM.
+  await c.clickExact('홈'); await sleep(200);
+  await c.click('고양이 방 꾸미기'); await sleep(350);
+  await c.click('아이템 배치하기'); await sleep(300);
+  const trayBefore = await c.eval(`document.querySelectorAll('.room-tray-item').length`);
+  const placedBefore = await c.eval(`document.querySelectorAll('.room-card').length`);
+  await c.clickSelector('.room-tray-item'); await sleep(350); // tap-to-place the first tray item
+  const placedAfter = await c.eval(`document.querySelectorAll('.room-card').length`);
+  await c.reload(); await sleep(400);
+  await c.clickExact('홈'); await sleep(200);
+  await c.click('고양이 방 꾸미기'); await sleep(350);
+  await c.click('아이템 배치하기'); await sleep(300);
+  const placedAfterReload = await c.eval(`document.querySelectorAll('.room-card').length`);
+  const placeOk = trayBefore > 0 && placedAfter > placedBefore && placedAfterReload >= placedAfter;
+  check('B28', placeOk, placeOk ? '' : `tray:${trayBefore} before:${placedBefore} after:${placedAfter} reload:${placedAfterReload}`);
+  await c.shot('room_place_persist');
+
+  // 29 · A placed card can be DRAGGED to a new position. Read the lamp card's left% before
+  //      and after a real pointer drag (pointerdown → pointermove → pointerup); it must move.
+  const lampSel = '.room-card[data-item="ember_lamp"]';
+  const leftBefore = await c.eval(`(() => { const el = document.querySelector('${lampSel}'); return el ? parseFloat(el.style.left) : null; })()`);
+  const dragged = await c.pointerDrag(lampSel, 0.28, 0.82);
+  const leftAfter = await c.eval(`(() => { const el = document.querySelector('${lampSel}'); return el ? parseFloat(el.style.left) : null; })()`);
+  const moveOk = dragged && leftBefore != null && leftAfter != null && Math.abs(leftAfter - leftBefore) > 5;
+  check('B29', moveOk, moveOk ? '' : `dragged:${dragged} left ${leftBefore} -> ${leftAfter}`);
+  await c.shot('room_card_repositioned');
+
+  // 30 · The snack hand-off is a REAL visible motion that updates real state. Leave 배치
+  //      mode, press 간식 놓아주기 → the snack token animates (data-active) and the fed state
+  //      appears (지금까지 놓아준 간식 + 오늘 간식 놓아주기 완료), gated on a real feed.
+  await c.click('배치 마치기'); await sleep(300);
+  const fedBefore = await c.has('지금까지 놓아준 간식');
+  const fed = await c.click('간식 놓아주기');
+  const tossActive = await c.eval(`!!document.querySelector('.snack-toss-token[data-active="true"]')`);
+  await sleep(1000);
+  const fedAfter = await c.has('지금까지 놓아준 간식');
+  const fedTodayShown = await c.has('오늘 간식 놓아주기 완료');
+  const feedOk = fed && !fedBefore && tossActive && fedAfter && fedTodayShown;
+  check('B30', feedOk, feedOk ? '' : `fed:${fed} before:${fedBefore} toss:${tossActive} after:${fedAfter} today:${fedTodayShown}`);
+  await c.shot('room_snack_handoff');
 }
 
 async function main() {

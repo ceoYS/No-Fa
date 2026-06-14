@@ -183,6 +183,31 @@ export class CDP {
     return ok;
   }
 
+  // Drive a REAL pointer drag (mouse/touch unified) by dispatching PointerEvents:
+  // pointerdown on `sel` at its centre, two pointermove steps toward a target inside
+  // `stageSel`, then pointerup. This exercises the component's actual pointer-drag
+  // path (the same one a finger/mouse takes), so a reposition can be asserted on the
+  // rendered DOM rather than faked. toXFrac/toYFrac are fractions of the stage rect.
+  async pointerDrag(sel, toXFrac, toYFrac, stageSel = '.room-decorator-stage', settle = 350) {
+    const ok = await this.eval(`(() => {
+      const el = document.querySelector(${JSON.stringify(sel)});
+      const stage = document.querySelector(${JSON.stringify(stageSel)});
+      if (!el || !stage) return false;
+      const r = el.getBoundingClientRect();
+      const sr = stage.getBoundingClientRect();
+      const x1 = r.left + r.width / 2, y1 = r.top + r.height / 2;
+      const x2 = sr.left + sr.width * ${Number(toXFrac)}, y2 = sr.top + sr.height * ${Number(toYFrac)};
+      const mk = (type, x, y) => new PointerEvent(type, { clientX: x, clientY: y, bubbles: true, cancelable: true, pointerId: 1, pointerType: 'mouse', button: 0 });
+      el.dispatchEvent(mk('pointerdown', x1, y1));
+      window.dispatchEvent(mk('pointermove', (x1 + x2) / 2, (y1 + y2) / 2));
+      window.dispatchEvent(mk('pointermove', x2, y2));
+      window.dispatchEvent(mk('pointerup', x2, y2));
+      return true;
+    })()`);
+    await sleep(settle);
+    return ok;
+  }
+
   // React-safe text entry: use the native value setter then dispatch a bubbling
   // 'input' event so React's onChange fires (plain el.value = x does not).
   async type(sel, val, settle = 180) {
