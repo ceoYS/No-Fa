@@ -431,6 +431,7 @@ export default function HomeScreen({
             days={recentDays}
             selectedIndex={selectedDay}
             onSelectDay={setSelectedDay}
+            legend
           />
           <p className="hairline-note" aria-live="polite">
             {daySummary(recentDays[selectedDay])}
