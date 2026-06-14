@@ -315,6 +315,8 @@ export default function PetRewardScreen({
           ownedDecor={ownedDecor}
           reacting={sceneReacting}
           onPlace={onPlaceItemAt}
+          onMove={onMoveItem}
+          onRemove={onRemovePlacement}
           onDone={() => setPlacementMode(false)}
           label="고양이 방 꾸미기"
         />

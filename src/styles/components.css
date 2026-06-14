@@ -1969,6 +1969,34 @@ button.room-token:active {
   z-index: 1;
 }
 
+/* a placed card is a draggable button in edit mode — reset chrome, show grab */
+button.room-card {
+  border: 0;
+  padding: 0;
+  background: transparent;
+  cursor: grab;
+  touch-action: none;
+  -webkit-tap-highlight-color: transparent;
+}
+
+button.room-card:active {
+  cursor: grabbing;
+}
+
+.room-card.is-selected .room-card-face {
+  outline: 2px solid var(--ember-300);
+  outline-offset: 2px;
+}
+
+.room-card.is-dragging {
+  z-index: 50;
+}
+
+.room-card.is-dragging .room-card-face {
+  transform: scale(1.08);
+  box-shadow: 0 12px 26px rgba(0, 0, 0, 0.52);
+}
+
 /* honest framed card: real (rectangular) art thumbnail + the item name */
 .room-card-face {
   display: flex;

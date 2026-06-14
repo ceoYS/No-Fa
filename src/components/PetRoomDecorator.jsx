@@ -50,14 +50,18 @@ export default function PetRoomDecorator({
   editable = false,
   reacting = false,
   onPlace,
+  onMove,
+  onRemove,
   onDone,
   onCatTap,
   label,
 }) {
   const stageRef = useRef(null);
-  const dragRef = useRef(null); // { item, startX, startY, moved }
+  const dragRef = useRef(null); // { mode:'tray'|'move', id, item?, startX, startY, moved }
   const suppressClick = useRef(false);
-  const [ghost, setGhost] = useState(null); // { item, x, y } in client px
+  const [ghost, setGhost] = useState(null); // tray drag ghost { item, x, y } in client px
+  const [livePos, setLivePos] = useState(null); // live normalized pos of the card being moved
+  const [selectedId, setSelectedId] = useState(null);
 
   const placedIds = new Set(placements.map((p) => p.itemId));
   const trayItems = ownedDecor.filter((it) => !placedIds.has(it.id));
@@ -75,32 +79,60 @@ export default function PetRoomDecorator({
     };
   };
 
-  const endTrayDrag = (e) => {
+  const endDrag = (e) => {
     const drag = dragRef.current;
     dragRef.current = null;
-    window.removeEventListener('pointermove', moveTrayDrag);
-    window.removeEventListener('pointerup', endTrayDrag);
+    window.removeEventListener('pointermove', onDragMove);
+    window.removeEventListener('pointerup', endDrag);
     setGhost(null);
-    if (!drag || !drag.moved) return; // no travel → let the click handler tap-place
-    suppressClick.current = true; // a real drag committed → don't ALSO tap-place
+    setLivePos(null);
+    if (!drag) return;
+
+    if (drag.mode === 'tray') {
+      if (!drag.moved) return; // no travel → the click handler tap-places it
+      suppressClick.current = true; // a real drag committed → don't ALSO tap-place
+      const pos = normalizeFromClient(e.clientX, e.clientY);
+      if (pos && pos.inside) onPlace?.(drag.id, pos.x, pos.y);
+      return;
+    }
+    // mode 'move' — repositioning an already-placed card.
+    if (!drag.moved) {
+      setSelectedId((cur) => (cur === drag.id ? null : drag.id)); // a tap selects / deselects
+      return;
+    }
     const pos = normalizeFromClient(e.clientX, e.clientY);
-    if (pos && pos.inside) onPlace?.(drag.item.id, pos.x, pos.y);
+    if (pos) onMove?.(drag.id, pos.x, pos.y); // clamped → never falls off the stage
   };
 
-  const moveTrayDrag = (e) => {
+  const onDragMove = (e) => {
     const drag = dragRef.current;
     if (!drag) return;
     if (Math.hypot(e.clientX - drag.startX, e.clientY - drag.startY) > TAP_SLOP) drag.moved = true;
-    setGhost((g) => (g ? { ...g, x: e.clientX, y: e.clientY } : g));
+    if (drag.mode === 'tray') {
+      setGhost((g) => (g ? { ...g, x: e.clientX, y: e.clientY } : g));
+      return;
+    }
+    const pos = normalizeFromClient(e.clientX, e.clientY); // live-follow the moving card
+    if (pos) setLivePos({ id: drag.id, x: pos.x, y: pos.y });
   };
 
   const beginTrayDrag = (item, e) => {
     if (!editable) return;
     suppressClick.current = false;
-    dragRef.current = { item, startX: e.clientX, startY: e.clientY, moved: false };
+    dragRef.current = { mode: 'tray', id: item.id, item, startX: e.clientX, startY: e.clientY, moved: false };
     setGhost({ item, x: e.clientX, y: e.clientY });
-    window.addEventListener('pointermove', moveTrayDrag);
-    window.addEventListener('pointerup', endTrayDrag);
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', endDrag);
+  };
+
+  // Reposition a placed card (mouse + touch). A press with no travel is a tap → it
+  // selects the card (revealing 보관함으로 치우기); a press that travels moves it live.
+  const beginCardDrag = (placement, e) => {
+    if (!editable) return;
+    e.preventDefault();
+    dragRef.current = { mode: 'move', id: placement.itemId, startX: e.clientX, startY: e.clientY, moved: false };
+    window.addEventListener('pointermove', onDragMove);
+    window.addEventListener('pointerup', endDrag);
   };
 
   // Tap-to-place (also the keyboard / click path the QA harness drives): drop the
@@ -140,15 +172,31 @@ export default function PetRoomDecorator({
         {placements.map((p) => {
           const item = ITEM_BY_ID[p.itemId];
           if (!item) return null;
+          const live = livePos && livePos.id === p.itemId ? livePos : null;
+          const x = live ? live.x : p.x ?? 0.5;
+          const y = live ? live.y : p.y ?? 0.6;
+          const style = { left: `${x * 100}%`, top: `${y * 100}%`, zIndex: (p.z ?? 1) + 3 };
+          if (!editable) {
+            return (
+              <div key={p.itemId} className="room-card" style={style} data-item={p.itemId}>
+                <ItemCardFace item={item} />
+              </div>
+            );
+          }
+          const cls = `room-card${selectedId === p.itemId ? ' is-selected' : ''}${live ? ' is-dragging' : ''}`;
           return (
-            <div
+            <button
               key={p.itemId}
-              className="room-card"
-              style={{ left: `${(p.x ?? 0.5) * 100}%`, top: `${(p.y ?? 0.6) * 100}%`, zIndex: (p.z ?? 1) + 3 }}
+              type="button"
+              className={cls}
+              style={style}
               data-item={p.itemId}
+              aria-label={`${item.name} · 끌어서 옮기기`}
+              aria-pressed={selectedId === p.itemId}
+              onPointerDown={(e) => beginCardDrag(p, e)}
             >
               <ItemCardFace item={item} />
-            </div>
+            </button>
           );
         })}
 
@@ -160,8 +208,32 @@ export default function PetRoomDecorator({
       {editable ? (
         <>
           <p className="room-decorator-help" aria-live="polite">
-            아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요.
+            아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요. 놓인 카드는 다시 끌어 옮길 수 있어요.
           </p>
+          {selectedId && placedIds.has(selectedId) ? (
+            <div className="room-select-bar">
+              <span className="room-select-name">{ITEM_BY_ID[selectedId]?.name} 선택됨</span>
+              <div className="room-select-actions">
+                <button
+                  type="button"
+                  className="room-select-btn"
+                  onClick={() => {
+                    onRemove?.(selectedId);
+                    setSelectedId(null);
+                  }}
+                >
+                  보관함으로 치우기
+                </button>
+                <button
+                  type="button"
+                  className="room-select-btn room-select-btn--ghost"
+                  onClick={() => setSelectedId(null)}
+                >
+                  선택 해제
+                </button>
+              </div>
+            </div>
+          ) : null}
           <div className="room-tray" role="list" aria-label="배치할 아이템">
             {trayItems.length === 0 ? (
               <p className="hairline-note">방에 놓을 아이템이 없어요. 상점에서 데려오면 여기에 모여요.</p>
