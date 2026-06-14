@@ -2597,6 +2597,16 @@ button.room-token:active {
   color: var(--text-primary);
 }
 
+/* Live-status label shown on every counter card (RC-1): all items read "절제 중 ·
+   지금까지" above the per-second ticking clock, so each one feels alive — not a
+   selection badge (selection stays visual-only, guard #27). */
+.counter-card-status {
+  font-size: var(--fs-micro);
+  color: var(--text-muted);
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+}
+
 .counter-card-time {
   font-size: var(--fs-h2);
   font-weight: 700;

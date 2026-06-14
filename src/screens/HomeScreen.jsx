@@ -310,14 +310,17 @@ export default function HomeScreen({
                 className="counter-card"
                 data-selected={selected}
                 aria-pressed={selected}
-                aria-label={`${c.name} — ${el.days}일 ${el.hh}:${el.mm}`}
+                aria-label={`${c.name} — 절제 중 ${el.days}일 ${el.hh}:${el.mm}:${el.ss}`}
                 onClick={() => onSelectCounter?.(c.id)}
               >
                 <div className="counter-card-head">
                   <span className="counter-card-name">{c.name}</span>
+                  <span className="counter-card-status">절제 중 · 지금까지</span>
                 </div>
+                {/* RC-1: every counter ticks live to the second (not just the hero) — the
+                    1초 now 틱이 카드를 다시 그려, 모든 절제 항목이 실시간으로 흐른다. */}
                 <div className="counter-card-time">
-                  {el.days}일 {el.hh}:{el.mm}
+                  {el.days}일 {el.hh}:{el.mm}:{el.ss}
                 </div>
                 <div className="counter-mini-progress" aria-hidden="true">
                   <span className="counter-mini-progress-fill" style={{ width: `${pct}%` }} />

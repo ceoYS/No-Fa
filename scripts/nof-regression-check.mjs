@@ -2120,7 +2120,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 23 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 24 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2137,7 +2137,7 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 23 behaviors,
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
   //     still reporting 23/23 PASS.
-  for (let i = 1; i <= 23; i += 1) {
+  for (let i = 1; i <= 24; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2250,6 +2250,24 @@ check('NoF record indicators stay clear (dot a11y name, legend on Home + 최근 
   for (const bad of ['금욕', '치료', '진단', '처방', '실패', '회복 점수', '타락', '죄']) {
     assert(!labelMatch[1].includes(bad), `record indicator label must not use forbidden word "${bad}"`);
   }
+});
+
+// 72 — RC-1 live counters. Feedback #1: the counters must show every 절제 item in real
+// time, down to seconds — not just the selected hero. The 1-second Home tick already
+// re-renders the list; this pins that each counter card derives elapsed from the live
+// `now` and renders seconds, with an honest 절제 중 status and no 금욕 vocabulary.
+check('discipline counters tick live to the second on Home', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  // (a) The 1-second tick that drives every counter card's re-render.
+  assert(/setInterval\(\(\) => setNow\(Date\.now\(\)\), 1000\)/.test(home), 'Home lost its 1-second now tick');
+  // (b) Each counter card's elapsed is derived from the live `now` (not a frozen stamp).
+  assert(/const el = formatElapsed\(now - c\.startMs\)/.test(home), 'counter card elapsed is not derived from the live now');
+  // (c) The card renders seconds (el.ss), so all items tick visibly — not just hh:mm.
+  assert(/counter-card-time[\s\S]{0,120}el\.ss/.test(home), 'counter card does not render live seconds (el.ss)');
+  assert(/formatElapsed[\s\S]*?ss:/.test(home) || /ss = String/.test(home), 'formatElapsed does not expose seconds');
+  // (d) Honest live-status copy, one vocabulary (no 금욕).
+  assert(home.includes('절제 중'), 'counter card is missing the 절제 중 live-status label');
+  assert(!home.includes('금욕'), 'counter surface uses forbidden 금욕 vocabulary');
 });
 
 let failed = 0;

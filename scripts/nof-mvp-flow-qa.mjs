@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 23 MVP behaviors this harness drives and asserts. Every check() references one
+// The 24 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -64,6 +64,7 @@ const BEHAVIORS = {
   B21: 'no fake AI/medical/cloud/blocker/edit/replay/growth claim',
   B22: '390x844 no critical horizontal overflow',
   B23: 'route home works',
+  B24: 'discipline counter ticks live to the second',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -435,6 +436,18 @@ async function runFlow(c) {
   await c.clickExact('홈'); await sleep(200);
   const backHome = await c.has('절제 시간');
   check('B23', awayFromHome && backHome);
+
+  // 24 · Every discipline counter ticks LIVE to the second (RC-1 feedback #1). Read a
+  //      counter card's elapsed text, wait past a second, read again — it must advance.
+  //      This proves the seconds are real (not a frozen stamp), on the rendered DOM.
+  await c.clickExact('홈'); await sleep(300);
+  const readCounter = `(() => { const el = document.querySelector('.counter-card-time'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
+  const tick1 = await c.eval(readCounter);
+  await sleep(1500);
+  const tick2 = await c.eval(readCounter);
+  const ticked = !!tick1 && !!tick2 && tick1 !== tick2;
+  check('B24', ticked, ticked ? '' : `counter time did not advance live: "${tick1}" -> "${tick2}"`);
+  await c.shot('home_counter_tick');
 }
 
 async function main() {
