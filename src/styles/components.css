@@ -754,6 +754,43 @@
   background: var(--ember-300);
 }
 
+/* C23 first-run guidance — the 3-step core-loop primer shown to a brand-new user.
+ * Numbered steps with a calm outlined-ember marker, matching the recap-list rhythm.
+ * Replaces the prior inline-style list so the spacing/markers stay consistent. */
+.onboarding-steps {
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  counter-reset: onboarding;
+}
+
+.onboarding-steps li {
+  display: flex;
+  gap: var(--sp-2);
+  align-items: center;
+  color: var(--text-primary);
+  font-size: var(--fs-body);
+  line-height: var(--lh-snug);
+  counter-increment: onboarding;
+}
+
+.onboarding-steps li::before {
+  content: counter(onboarding);
+  flex: none;
+  width: 1.5em;
+  height: 1.5em;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  border: 1px solid var(--ember-300);
+  color: var(--ember-300);
+  font-size: var(--fs-small);
+  font-weight: 600;
+}
+
 /* calendar (최근 기록 — tapped-day summary + legend) ----------------- */
 .calendar-summary {
   font-size: var(--fs-body);

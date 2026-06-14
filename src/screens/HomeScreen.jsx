@@ -164,10 +164,7 @@ export default function HomeScreen({
       {!hasCheckinHistory ? (
         <section className="card home-onboarding">
           <span className="card-label">NoF는 이렇게 써요</span>
-          <ol
-            className="onboarding-steps"
-            style={{ margin: 'var(--sp-2) 0 0', paddingLeft: 'var(--sp-4)', display: 'grid', gap: 'var(--sp-2)' }}
-          >
+          <ol className="onboarding-steps">
             <li>흔들릴 땐 잠깐 멈춤</li>
             <li>하루 끝에는 체크인</li>
             <li>최근 기록에서 다시 확인</li>
