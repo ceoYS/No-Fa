@@ -1983,6 +1983,40 @@ check('final recovery-loop guard pack: vocab, structure, a11y, styling stay inta
   assert(/<ol className="onboarding-steps"/.test(home), 'onboarding list is not the .onboarding-steps ordered list');
 });
 
+// 66 — C31/C32 reward landing confirmation: when the reward room is reached with today's
+// check-in actually saved (checkinDoneToday, derived from the persisted todayRecord.checkin),
+// the landing opens with a short save acknowledgement and the two next-action routes
+// (최근 기록 → calendar, 홈 → home). It is gated on the real saved state so it can never render
+// before a save, and makes NO growth / unlock / shop / cloud / AI / medical / 금욕 claim.
+check('reward landing confirmation is gated by the saved today check-in (no fake growth/cloud claim)', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+
+  // (a) The confirmation card exists with its save + read-back copy.
+  assert(screen.includes('reward-checkin-confirm'), 'reward landing confirmation card (reward-checkin-confirm) missing');
+  assert(screen.includes('오늘 체크인이 저장됐어요'), 'reward landing is missing the save confirmation copy');
+  assert(screen.includes('최근 기록에서 다시 볼 수 있어요'), 'reward landing is missing the records read-back copy');
+
+  // (b) Gated behind a REAL saved today check-in (derived from persisted todayRecord.checkin).
+  assert(/const checkinDoneToday = todayRecord\?\.checkin/.test(screen), 'reward confirmation is not derived from the persisted todayRecord.checkin');
+  assert(
+    /\{checkinDoneToday \? \(\s*<section className="card reward-checkin-confirm"/.test(screen),
+    'reward confirmation is not gated behind the real saved check-in (could show before completion)',
+  );
+
+  // (c) Isolate the card and assert BOTH next-action routes live inside it.
+  const start = screen.indexOf('reward-checkin-confirm');
+  const end = screen.indexOf('{placementMode ? (', start);
+  assert(start !== -1 && end !== -1 && end > start, 'could not isolate the reward-checkin-confirm card');
+  const card = screen.slice(start, end);
+  assert(card.includes('최근 기록 보기') && /onNavigate\('calendar'\)/.test(card), 'reward confirmation 최근 기록 보기 does not route to the records screen');
+  assert(card.includes('홈으로 가기') && /onNavigate\('home'\)/.test(card), 'reward confirmation 홈으로 가기 does not route home');
+
+  // (d) No fake growth / unlock / shop / cloud / AI / medical / 금욕 claim inside the card.
+  for (const fake of ['성장했', '진화', '레벨업', '해금', '잠금 해제', '뽑기', '가챠', '상점', '프리미엄', '결제', '클라우드', '동기화', 'AI 분석', 'AI 추천', '회복 점수', '치료', '진단', '처방', '금욕']) {
+    assert(!card.includes(fake), `reward confirmation makes a forbidden growth/unlock/shop/cloud/AI claim: ${fake}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
