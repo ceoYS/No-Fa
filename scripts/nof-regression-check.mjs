@@ -167,21 +167,26 @@ check('no discipline delete affordance (only comments may mention it)', () => {
   assert(offenders.length === 0, `delete affordance in code: ${offenders.join(', ')}`);
 });
 
-// 5 — scene mode must keep drag disabled, and no item sprite may be flagged ready.
-check('scene mode keeps drag disabled until item sprites are ready', () => {
-  const screen = read('src/screens/PetRewardScreen.jsx');
-  assert(
-    /if \(sceneMode \|\| !isItemSpriteReady\(item\.assetId\)\) return;/.test(screen),
-    'startInventoryDrag guard (sceneMode || !isItemSpriteReady) missing',
-  );
-  assert(
-    screen.includes('!sceneMode && isItemSpriteReady(it.assetId)'),
-    'inventory placeable gate (!sceneMode && isItemSpriteReady) missing',
-  );
+// 5 — RC-2B: room placement is REAL now, but it stays honest — placed items are
+// framed CARDS (real art thumbnail + name), never a claim that transparent overlay
+// sprites exist. So no petAssets entry may flip spriteReady, and the decorator must
+// place via pointer events on a normalized (percent) coordinate stage.
+check('real room placement stays honest (framed cards, no transparent-sprite claim)', () => {
   assert(
     !/spriteReady:\s*true/.test(read('src/constants/petAssets.js')),
-    'a petAssets entry sets spriteReady:true — drag would activate without approved transparent sprites',
+    'a petAssets entry sets spriteReady:true — real placement must use honest framed cards, not a fake sprite claim',
   );
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  assert(/onPointerDown=\{/.test(dec), 'decorator has no pointer-event drag handler (onPointerDown)');
+  assert(
+    /addEventListener\('pointermove'/.test(dec) && /addEventListener\('pointerup'/.test(dec),
+    'decorator drag does not track pointermove/pointerup',
+  );
+  // normalized (percent) coordinates, clamped inside the stage rect — layout-safe on mobile.
+  assert(/clamp01/.test(dec) && /getBoundingClientRect\(\)/.test(dec), 'decorator placement is not normalized to the stage rect');
+  assert(/\* 100\}%/.test(dec), 'placed cards are not positioned by percent coordinates');
+  // honest framed item cards (thumbnail + name), never a raw transparent-sprite overlay.
+  assert(dec.includes('room-card-face') && dec.includes('room-card-name'), 'decorator does not render honest framed item cards');
 });
 
 // 6 — forbidden fake-motion / emoji-furniture / blob-cat tokens absent from source.
@@ -435,28 +440,21 @@ check('discipline filters/groups rules by counter', () => {
   assert(screen.includes('지키는 중'), 'rule group summary does not report today rule status');
 });
 
-// 24 — the 배치 계획 mode must be an HONEST placeholder: with the current
-// non-transparent decor art it must NOT overlay rectangular item crops on the room
-// (no placement-token-img, no pointer drag). It shows the finished room + an owned
-// item inventory and states real placement waits on transparent sprites.
-check('pet room 배치 계획 mode is an honest no-overlay placeholder', () => {
+// 24 — RC-2B: the old 배치 계획 (준비 중) placeholder is replaced by a REAL decorator.
+// The pet room wires the decorator to App's persisted placement handler, and the
+// stale "배치 계획" / "준비 중" placeholder wording is gone (placement is implemented).
+check('pet room offers real placement (decorator wired + persisted, no 준비 중 placeholder)', () => {
   const screen = read('src/screens/PetRewardScreen.jsx');
-  assert(screen.includes('PetPlacementEditor'), 'PetPlacementEditor not used by the pet room');
+  assert(screen.includes('PetRoomDecorator'), 'PetRoomDecorator not used by the pet room');
   assert(screen.includes('placementMode'), 'no placement-mode state in PetRewardScreen');
-  const editor = read('src/components/PetPlacementEditor.jsx');
-  assert(
-    editor.includes('배치 기능은 투명 아이템 이미지가 준비되면 제공돼요'),
-    'placement mode is missing the honest pending copy',
-  );
-  assert(
-    !editor.includes('placement-token-img'),
-    'placement mode still overlays rectangular item images (placement-token-img)',
-  );
-  assert(
-    !/onPointerDown/.test(editor),
-    'placement mode still drags item tokens — drag must wait for transparent sprites',
-  );
-  assert(!/spriteReady:\s*true/.test(editor), 'placement editor flips spriteReady — must not claim final sprites');
+  assert(/onPlace=\{onPlaceItemAt\}/.test(screen), 'decorator place action is not wired to App onPlaceItemAt');
+  // the stale placeholder wording must be gone now that placement is real.
+  assert(!screen.includes('배치 계획'), 'stale "배치 계획" placeholder wording is still present');
+  assert(!screen.includes('준비 중'), 'stale "준비 중" placement placeholder wording is still present');
+  // App must persist placements through saveState (a placement survives reload).
+  const app = read('src/App.jsx');
+  assert(/const placeItemAt = \(itemId, x, y\) =>/.test(app), 'App has no placeItemAt handler');
+  assert(/saveState\(\{[\s\S]*?placements,[\s\S]*?\}\)/.test(app), 'placements are not persisted through saveState');
 });
 
 // 25 — the snack feed must animate a real hand-off MOVEMENT (a travel), but with

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
-import PetPlacementEditor from '../components/PetPlacementEditor.jsx';
+import PetRoomDecorator from '../components/PetRoomDecorator.jsx';
 import PetSceneViewer from '../components/PetSceneViewer.jsx';
 import usePetSound from '../hooks/usePetSound.js';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
@@ -91,7 +91,6 @@ export default function PetRewardScreen({
   onFeedSnack,
   onPetPet,
 }) {
-  const editorRef = useRef(null);
   const motionTimer = useRef(null);
   const sceneReactionTimer = useRef(null);
   const snackTossTimer = useRef(null);
@@ -99,8 +98,8 @@ export default function PetRewardScreen({
   const tapCount = useRef(0);
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // 'inventory' | 'shop' | null
-  // 배치 편집 (placement preview) — explicit opt-in MVP mode that lets owned items
-  // be dragged over a plain room. Honest about being a preview (see editor note).
+  // 방 꾸미기 — explicit opt-in editing mode (RC-2B). Owned items are tapped or
+  // dragged from a tray onto the room as honest framed cards; coordinates persist.
   const [placementMode, setPlacementMode] = useState(false);
   const [catMotion, setCatMotion] = useState('idle');
   const [tapMsg, setTapMsg] = useState(null);
@@ -187,16 +186,6 @@ export default function PetRewardScreen({
     setSceneReacting(true);
     clearTimeout(sceneReactionTimer.current);
     sceneReactionTimer.current = setTimeout(() => setSceneReacting(false), ms);
-  };
-
-  // A drag from the 보관함 must drop onto the room behind it, so close the sheet
-  // the moment a token press starts; the drag itself is tracked on window. An
-  // item without transparent sprite art is not placeable yet — leave it in the
-  // sheet until spriteReady is explicitly enabled in petAssets.js.
-  const startInventoryDrag = (item, e) => {
-    if (sceneMode || !isItemSpriteReady(item.assetId)) return;
-    setSheet(null);
-    editorRef.current?.beginPlaceDrag(item, e);
   };
 
   const handleFeed = () => {
@@ -319,16 +308,19 @@ export default function PetRewardScreen({
       ) : null}
 
       {placementMode ? (
-        <PetPlacementEditor
+        <PetRoomDecorator
+          editable
           theme={activeRoomTheme}
-          ownedItems={ownedItems}
+          placements={placements}
+          ownedDecor={ownedDecor}
+          reacting={sceneReacting}
+          onPlace={onPlaceItemAt}
           onDone={() => setPlacementMode(false)}
-          label="아이템 배치 계획"
+          label="고양이 방 꾸미기"
         />
       ) : (
         <>
           <PetRoomEditor
-            ref={editorRef}
             theme={activeRoomTheme}
             placements={placements}
             tone="bright"
@@ -369,9 +361,7 @@ export default function PetRewardScreen({
                   feedback so the same sentence never stacks twice. Kept mounted (empty
                   when idle) so it stays a stable live region and reserves its space. */}
               {stageReady
-                ? sceneMode
-                  ? tapMsg ?? ''
-                  : tapMsg ?? '아이템을 끌어서 방에 놓아보세요. 놓인 아이템은 다시 끌어 옮길 수 있어요.'
+                ? tapMsg ?? '아이템 배치하기로 방을 꾸미고, 간식을 놓아줄 수 있어요.'
                 : '승인된 고양이와 방 이미지를 연결하면 꾸미기를 시작할 수 있어요.'}
             </p>
           )}
@@ -381,7 +371,7 @@ export default function PetRewardScreen({
             className="btn btn-ghost btn-block placement-enter-btn"
             onClick={() => setPlacementMode(true)}
           >
-            아이템 배치 계획 (준비 중)
+            아이템 배치하기
           </button>
         </>
       )}
@@ -562,8 +552,6 @@ export default function PetRewardScreen({
         <InventorySheet
           ownedDecor={ownedDecor}
           placedIds={placedIds}
-          sceneMode={sceneMode}
-          onStartDrag={startInventoryDrag}
           onClose={() => setSheet(null)}
         />
       ) : null}
@@ -591,8 +579,7 @@ function DecorThumb({ assetId, className = 'inv-thumb-img', pendingClass = 'inv-
   return src ? <img className={className} src={src} alt="" /> : <span className={pendingClass} aria-hidden="true" />;
 }
 
-function InventorySheet({ ownedDecor, placedIds, sceneMode, onStartDrag, onClose }) {
-  const anyPlaceable = !sceneMode && ownedDecor.some((it) => isItemSpriteReady(it.assetId));
+function InventorySheet({ ownedDecor, placedIds, onClose }) {
   return (
     <div className="sheet-backdrop" onClick={onClose}>
       <div
@@ -606,46 +593,21 @@ function InventorySheet({ ownedDecor, placedIds, sceneMode, onStartDrag, onClose
         <div>
           <h2 className="sheet-title">아이템 보관함</h2>
           <p className="sheet-help">
-            {sceneMode
-              ? '현재는 완성된 방 이미지로 보여주고 있어요. 배치 기능은 투명 아이템 이미지가 준비되면 제공돼요.'
-              : anyPlaceable
-              ? '끌어서 방에 놓아보세요. 이미 놓인 아이템도 다시 끌 수 있어요.'
-              : '이미지 연결 후 방에 배치할 수 있어요.'}
+            가진 아이템을 모아 봐요. ‘아이템 배치하기’에서 끌어다 방에 놓을 수 있어요.
           </p>
-          {sceneMode ? (
-            <p className="sheet-help">간식은 보관함에 배치하지 않고 간식 주기 버튼으로 사용해요.</p>
-          ) : null}
+          <p className="sheet-help">간식은 보관함에 두지 않고 ‘간식 놓아주기’ 버튼으로 사용해요.</p>
         </div>
         {ownedDecor.length === 0 ? (
           <p className="hairline-note">아직 가진 아이템이 없어요. 상점에서 데려와 보세요.</p>
         ) : (
           <div className="inv-grid">
-            {ownedDecor.map((it) => {
-              const placeable = !sceneMode && isItemSpriteReady(it.assetId);
-              const content = (
-                <>
-                  <DecorThumb assetId={it.assetId} />
-                  <span className="inv-thumb-name">{it.name}</span>
-                  {placeable && placedIds.has(it.id) ? <span className="inv-thumb-badge">방에 있음</span> : null}
-                  {!placeable ? <span className="inv-thumb-status">배치 준비 중</span> : null}
-                </>
-              );
-              return placeable ? (
-                <button
-                  key={it.id}
-                  type="button"
-                  className="inv-thumb"
-                  data-locked="false"
-                  onPointerDown={(e) => onStartDrag(it, e)}
-                >
-                  {content}
-                </button>
-              ) : (
-                <div key={it.id} className="inv-thumb" data-locked="true">
-                  {content}
-                </div>
-              );
-            })}
+            {ownedDecor.map((it) => (
+              <div key={it.id} className="inv-thumb" data-locked="false">
+                <DecorThumb assetId={it.assetId} />
+                <span className="inv-thumb-name">{it.name}</span>
+                {placedIds.has(it.id) ? <span className="inv-thumb-badge">방에 있음</span> : null}
+              </div>
+            ))}
           </div>
         )}
         <button type="button" className="btn btn-ghost btn-block" onClick={onClose}>
