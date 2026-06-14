@@ -2163,6 +2163,37 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 23 behaviors,
   );
 });
 
+// 70 — C44 R-9 font loading policy guard. The app's type must resolve with zero
+// external runtime dependency, so it renders deterministically in local preview, on
+// managed company networks, and offline. This locks the two halves of R-9: no
+// external font <link> creeps back into index.html, and the system stack keeps a
+// deterministic Hangul fallback (system-ui alone has no Hangul on Windows).
+check('NoF font policy stays local/system-safe (no external font CDN, Hangul fallback intact)', () => {
+  const html = read('index.html');
+  const flat = html.replace(/\s+/g, ' ');
+  // No external stylesheet <link> may return — that external font CDN was the R-9 dependency we removed.
+  assert(
+    !/<link\b[^>]*rel=["']stylesheet["'][^>]*href=["']https?:\/\//i.test(flat) &&
+      !/<link\b[^>]*href=["']https?:\/\/[^>]*["'][^>]*rel=["']stylesheet["']/i.test(flat),
+    'index.html must not load an external stylesheet (font CDN); R-9 keeps fonts local/system-safe',
+  );
+  for (const host of ['fonts.googleapis.com', 'fonts.gstatic.com', 'cdn.jsdelivr.net', 'rsms.me']) {
+    assert(!flat.includes(host), `index.html must not reference the external font host ${host}`);
+  }
+
+  const tokens = read('src/styles/tokens.css');
+  assert(/--font-base\s*:/.test(tokens), 'tokens.css must define --font-base');
+  // Check the actual --font-kr declaration value (not the whole file) so the fallback
+  // can't be "satisfied" by a face name that only appears in a comment.
+  const krMatch = tokens.match(/--font-kr\s*:\s*([^;]+);/);
+  assert(krMatch, 'tokens.css must define the Korean font stack --font-kr');
+  const krStack = krMatch[1];
+  // A deterministic Hangul fallback must survive in the stack even when no webfont is installed.
+  for (const face of ['Apple SD Gothic Neo', 'Noto Sans KR', 'Malgun Gothic']) {
+    assert(krStack.includes(face), `--font-kr declaration must keep the Hangul fallback "${face}"`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
