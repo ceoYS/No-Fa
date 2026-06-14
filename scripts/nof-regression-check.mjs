@@ -2194,6 +2194,44 @@ check('NoF font policy stays local/system-safe (no external font CDN, Hangul fal
   }
 });
 
+// 71 — C46 R-14 record-indicator clarity guard. The calendar warmth dots must stay
+// understandable without guessing: every dot carries a date+state accessible name, the
+// dot-state legend is reachable on BOTH the 최근 기록 screen and Home, and indicator copy
+// never drifts into forbidden vocabulary. Locks the R-14 clarity work in place.
+check('NoF record indicators stay clear (dot a11y name, legend on Home + 최근 기록, honest copy)', () => {
+  const strip = read('src/components/EmberCalendarStrip.jsx');
+  const home = read('src/screens/HomeScreen.jsx');
+  const cal = read('src/screens/CalendarScreen.jsx');
+  const recent = read('src/constants/recentDays.js');
+
+  // (a) Each dot is named by date + state (R-14 a11y), not the weekday alone.
+  assert(
+    strip.includes('${dayName} ${stateLabel} 요약 보기'),
+    'calendar dot aria-label must name the day (date) + state + 요약 보기, not the weekday only',
+  );
+  assert(
+    strip.includes('day.dateLabel') && strip.includes('CALENDAR_LABEL[day.state]'),
+    'dot accessible name must derive from day.dateLabel + CALENDAR_LABEL[day.state]',
+  );
+
+  // (b) The dot-state legend exists in the strip and shows on BOTH surfaces: Home opts in
+  //     via the `legend` prop; the 최근 기록 screen keeps its own legend row.
+  assert(/legend\s*\?\s*\(/.test(strip) && strip.includes('CALENDAR_LEGEND'), 'strip lost its dot-state legend');
+  assert(strip.includes('aria-label="기록 표시 안내"'), 'strip legend lost its accessible group label');
+  assert(
+    /<EmberCalendarStrip\b[^>]*\blegend\b[^>]*\/>/.test(home),
+    'Home 최근 기록 strip must render the dot-state legend (legend prop)',
+  );
+  assert(cal.includes('CALENDAR_LEGEND') && cal.includes('CALENDAR_LABEL'), '최근 기록 screen lost its dot-state legend');
+
+  // (c) Indicator copy stays honest — the legend labels never use forbidden vocabulary.
+  const labelMatch = recent.match(/CALENDAR_LABEL\s*=\s*\{([\s\S]*?)\}/);
+  assert(labelMatch, 'recentDays.js must define CALENDAR_LABEL');
+  for (const bad of ['금욕', '치료', '진단', '처방', '실패', '회복 점수', '타락', '죄']) {
+    assert(!labelMatch[1].includes(bad), `record indicator label must not use forbidden word "${bad}"`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
