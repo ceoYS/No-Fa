@@ -164,7 +164,7 @@ export default function HomeScreen({
       {!hasCheckinHistory ? (
         <section className="card home-onboarding">
           <span className="card-label">NoF는 이렇게 써요</span>
-          <ol className="onboarding-steps">
+          <ol className="onboarding-steps" aria-label="NoF 사용 3단계 안내">
             <li>흔들릴 땐 잠깐 멈춤</li>
             <li>하루 끝에는 체크인</li>
             <li>최근 기록에서 다시 확인</li>
@@ -176,7 +176,7 @@ export default function HomeScreen({
       {/* 1.5) 오늘의 회복 루프 (C11) — 상태에 맞춰 "지금 할 수 있는 행동"을 한 곳에 모은
           데일리 액션 허브. 잠깐 멈춤은 항상 접근 가능하고, 오늘 체크인이 없으면 체크인하기를,
           이미 했으면 최근 기록 보기를 강조한다. 새 저장/라우트 없이 기존 화면으로만 잇는다. */}
-      <section className="card home-loop-hub">
+      <section className="card home-loop-hub" aria-label="오늘의 회복 루프">
         <div className="card-row">
           <span className="card-label">오늘의 회복 루프</span>
           {todayCheckin ? (
@@ -442,7 +442,7 @@ export default function HomeScreen({
             the existing room composite + tone; it makes NO growth / unlock / shop / save claim.
             Before any of today's actions it simply waits; after a check-in or a held crisis it
             notes that today's action left a trace. */}
-        <section className="card home-room-state">
+        <section className="card home-room-state" aria-label="오늘의 방">
           <div className="card-row">
             <span className="card-label">오늘의 방</span>
             {todayCheckin || crisisHeldToday ? (
@@ -598,6 +598,7 @@ export default function HomeScreen({
           <button
             type="button"
             className="btn btn-ghost btn-block"
+            aria-haspopup="dialog"
             onClick={() => setConfirmReset(true)}
           >
             이 기기의 기록 지우기
