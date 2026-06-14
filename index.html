@@ -6,13 +6,9 @@
     <meta name="theme-color" content="#0E0A07" />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>NoF · P0 Prototype</title>
-    <link rel="preconnect" href="https://cdn.jsdelivr.net" />
-    <link
-      rel="stylesheet"
-      href="https://cdn.jsdelivr.net/gh/orioncactus/pretendard@v1.3.9/dist/web/variable/pretendardvariable-dynamic-subset.min.css"
-    />
-    <link rel="preconnect" href="https://rsms.me/" />
-    <link rel="stylesheet" href="https://rsms.me/inter/inter.css" />
+    <!-- R-9: external font CDNs removed for deterministic offline/managed-network
+         rendering. Type resolves from the system font stack in tokens.css
+         (Pretendard/Inter are used only when locally installed). -->
   </head>
   <body>
     <div id="root"></div>
