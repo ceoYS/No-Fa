@@ -2305,6 +2305,43 @@ check('cat room has a real 쓰다듬기 interaction: visible cue + honest day-sc
   }
 });
 
+// 74 — RC-1 product reality loop. A single cross-cutting net pinning the RC-1 intent so a
+// future change can't quietly revert it: the check-in is writing-first (회고/약속/다짐 are the
+// primary fields + the gate — the user's own words), that writing reads back in records,
+// counters tick live to the second, the cat room has a real 쓰다듬기 interaction, and no
+// forbidden user-facing vocabulary regressed onto the changed surfaces.
+check('RC-1 product loop: writing-first check-in, live counters, real cat interaction', () => {
+  const checkin = read('src/screens/CheckinScreen.jsx');
+  const cal = read('src/screens/CalendarScreen.jsx');
+  const home = read('src/screens/HomeScreen.jsx');
+  const reward = read('src/screens/PetRewardScreen.jsx');
+
+  // (a) Writing is the primary check-in concept and the gate (not the optional survey).
+  for (const field of ['오늘 회고', '나와의 약속', '오늘의 다짐']) {
+    assert(checkin.includes(field), `check-in lost the writing-first field: ${field}`);
+  }
+  assert(/const step1Ready = \[note, promise, resolve\]\.some/.test(checkin), 'check-in gate is no longer the user writing (회고/약속/다짐)');
+
+  // (b) The user's own writing reads back in records.
+  assert(/day\.checkin\.promise/.test(cal) && /day\.checkin\.resolve/.test(cal), 'records do not read back the user writing (약속/다짐)');
+
+  // (c) Counters tick to the second on Home (every item, not just the hero).
+  assert(/counter-card-time[\s\S]{0,120}el\.ss/.test(home), 'counters no longer tick to the second');
+
+  // (d) The cat room has a real, visible, persisted 쓰다듬기 interaction.
+  assert(
+    reward.includes('쓰다듬기') && /onClick=\{handlePet\}/.test(reward) && reward.includes('pet-affection-token'),
+    'cat room lost the real 쓰다듬기 interaction',
+  );
+
+  // (e) No forbidden user-facing vocabulary regressed onto the RC-1 surfaces.
+  for (const [name, src] of [['CheckinScreen', checkin], ['HomeScreen', home], ['PetRewardScreen', reward]]) {
+    for (const bad of ['금욕', 'AI 분석', 'AI 추천', '회복 점수', '자동 차단', '클라우드 동기화', '치료', '진단', '처방']) {
+      assert(!src.includes(bad), `${name} regressed forbidden vocabulary: ${bad}`);
+    }
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
