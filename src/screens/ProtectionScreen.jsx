@@ -11,10 +11,12 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
   const [situation, setSituation] = useState(protectionPlan?.situation ?? '');
   const [altAction, setAltAction] = useState(protectionPlan?.altAction ?? '');
   const [justSaved, setJustSaved] = useState(false);
+  const [justCleared, setJustCleared] = useState(false);
 
   const onEdit = (setter) => (e) => {
     setter(e.target.value.slice(0, 120));
     setJustSaved(false);
+    setJustCleared(false);
   };
   const hasAny = [triggerTime, situation, altAction].some((v) => v.trim().length > 0);
 
@@ -25,6 +27,21 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
       altAction: altAction.trim(),
     });
     setJustSaved(true);
+    setJustCleared(false);
+  };
+
+  // C34 — explicit "계획 비우기" action. Routes through the SAME saveProtectionPlan handler
+  // with all-blank fields, which normalizes an all-empty save to null (no empty husk persisted),
+  // so the cleared plan is dropped from the localStorage-only bundle on this device only. It also
+  // empties the on-screen fields so the form returns to its blank state. This is NOT a blocker
+  // and clears nothing off-device — there is no account and no cloud.
+  const clearPlan = () => {
+    onSaveProtectionPlan?.({ triggerTime: '', situation: '', altAction: '' });
+    setTriggerTime('');
+    setSituation('');
+    setAltAction('');
+    setJustSaved(false);
+    setJustCleared(true);
   };
 
   return (
@@ -61,8 +78,42 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
             <p className="hairline-note">대체 행동 · {protectionPlan.altAction}</p>
           ) : null}
           <p className="hairline-note text-quiet">이 설정은 이 기기에만 저장돼요.</p>
+
+          {/* C35 — saved plan return path: jump straight to 잠깐 멈춤 where this plan is
+              surfaced, plus C34's explicit clear action right where the saved plan lives. */}
+          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => onNavigate('urge')}
+            >
+              잠깐 멈춤에서 확인하기
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block protection-clear-btn"
+              onClick={clearPlan}
+            >
+              계획 비우기
+            </button>
+          </div>
+          <p className="hairline-note text-quiet">계획 비우기는 이 기기에 저장된 보호 설정만 지워요.</p>
         </section>
-      ) : null}
+      ) : (
+        /* C35 — empty state. When no plan is saved yet, say plainly what to write and what it
+           unlocks downstream (잠깐 멈춤 read-back). Also acknowledges a just-completed clear. */
+        <section className="card protection-empty">
+          <span className="card-label">아직 보호 설정이 없어요</span>
+          <p className="hairline-note">
+            흔들리는 시간대와 대체 행동을 적어두면, 잠깐 멈춤에서 다시 볼 수 있어요.
+          </p>
+          {justCleared ? (
+            <p className="hairline-note text-quiet" aria-live="polite">
+              보호 설정을 비웠어요. 이 기기에 저장된 보호 설정만 지웠어요.
+            </p>
+          ) : null}
+        </section>
+      )}
 
       <section className="card">
         <label className="field-label" htmlFor="protect-time">트리거 시간대</label>
