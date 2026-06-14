@@ -253,6 +253,37 @@ export default function PetRewardScreen({
         </div>
       </header>
 
+      {/* C31 — reward landing save confirmation. Shown ONLY when today's check-in is
+          actually saved (checkinDoneToday, derived from the persisted todayRecord.checkin),
+          so it can never appear before a real save. It gives a short save acknowledgement
+          and the two next-action routes (최근 기록 / 홈) — no growth / unlock / shop / cloud
+          claim, and it does not change the room's cosmetic semantics. */}
+      {checkinDoneToday ? (
+        <section className="card reward-checkin-confirm">
+          <div className="card-row">
+            <span className="card-label">오늘 체크인이 저장됐어요</span>
+            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>완료</span>
+          </div>
+          <p className="hairline-note">최근 기록에서 다시 볼 수 있어요.</p>
+          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+            <button
+              type="button"
+              className="btn btn-primary btn-block"
+              onClick={() => onNavigate('calendar')}
+            >
+              최근 기록 보기
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => onNavigate('home')}
+            >
+              홈으로 가기
+            </button>
+          </div>
+        </section>
+      ) : null}
+
       {placementMode ? (
         <PetPlacementEditor
           theme={activeRoomTheme}
