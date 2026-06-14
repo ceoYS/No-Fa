@@ -1947,6 +1947,42 @@ check('onboarding, empty states, and reset are honest and clear the new local st
   assert(home.includes('계정이나 클라우드는 없'), 'reset surface is missing the honest "no account/cloud" disclosure');
 });
 
+// 65 — final guard pack for the 24h MVP recovery loops. A single cross-cutting sweep so a
+// future change to any recovery screen fails loud if it (a) leaks forbidden user-facing
+// vocabulary, (b) drops the core daily-action structure on Home, (c) loses the scoped a11y
+// region labels added this sprint, or (d) reverts the onboarding list back to inline styles.
+check('final recovery-loop guard pack: vocab, structure, a11y, styling stay intact', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  const urge = read('src/screens/UrgeScreen.jsx');
+  const checkin = read('src/screens/CheckinScreen.jsx');
+  const cal = read('src/screens/CalendarScreen.jsx');
+  const protect = read('src/screens/ProtectionScreen.jsx');
+  const css = read('src/styles/components.css');
+
+  // (a) No forbidden user-facing vocabulary anywhere on the recovery-loop screens.
+  const FORBIDDEN = ['금욕', '중독 치료', 'AI 분석', 'AI 추천', '회복 점수', '실패 복구', '자동 차단', '클라우드 동기화', '다시 재생', '기록 수정'];
+  for (const [name, src] of [['HomeScreen', home], ['UrgeScreen', urge], ['CheckinScreen', checkin], ['CalendarScreen', cal], ['ProtectionScreen', protect]]) {
+    for (const bad of FORBIDDEN) {
+      assert(!src.includes(bad), `${name} carries forbidden user-facing vocabulary: ${bad}`);
+    }
+  }
+
+  // (b) Home keeps the full daily-action structure introduced this sprint.
+  for (const hook of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state', 'home-reset']) {
+    assert(home.includes(hook), `Home lost a recovery-loop section: ${hook}`);
+  }
+
+  // (c) The scoped a11y region labels / dialog hint stay in place.
+  assert(home.includes('aria-label="오늘의 회복 루프"'), 'Home daily-action hub lost its a11y region label');
+  assert(home.includes('aria-label="오늘의 방"'), 'Home room-state shell lost its a11y region label');
+  assert(home.includes('aria-label="NoF 사용 3단계 안내"'), 'Home first-run guidance list lost its a11y label');
+  assert(/이 기기의 기록 지우기[\s\S]{0,80}|aria-haspopup="dialog"/.test(home) && home.includes('aria-haspopup="dialog"'), 'reset trigger lost its dialog-opener a11y hint');
+
+  // (d) The onboarding list uses a real CSS class, not the old inline-style hack.
+  assert(/\.onboarding-steps\s*\{/.test(css), '.onboarding-steps CSS class missing (onboarding list must not rely on inline styles)');
+  assert(/<ol className="onboarding-steps"/.test(home), 'onboarding list is not the .onboarding-steps ordered list');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
