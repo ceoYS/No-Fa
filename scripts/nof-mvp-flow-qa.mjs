@@ -303,7 +303,7 @@ async function runFlow(c) {
 
   // 6–7 · Hard reload keeps the app; plan persists locally across the reload.
   await c.reload();
-  check('B06', await c.has('절제 시간'));
+  check('B06', await c.waitForText('절제 시간', 6000)); // wait for re-hydration, not a fixed sleep
   await c.click('보호 설정 적기');
   check('B07', (await c.has('저장된 보호 설정')) && (await c.has(ALT)));
   await c.shot('protection_persisted');
@@ -315,17 +315,20 @@ async function runFlow(c) {
   await c.shot('urge_with_plan');
 
   // 9 · Urge → check-in continuation (start the 5-min hold so the CTA appears).
-  await c.click('5분 같이 버티기');
+  const held = await c.click('5분 같이 버티기');
   const toCheckin = await c.click('오늘 체크인에 한 줄 남기기');
-  check('B09', toCheckin && (await c.has('1분 기록')));
+  check('B09', held && toCheckin && (await c.has('1분 기록')));
 
-  // 10 · Complete the check-in with mood + urge intensity + a typed note.
+  // 10 · Complete the check-in with mood + urge intensity + a typed note. Verify each
+  //      input actually registered (a silently-failed selector must not pass as "done").
   await c.clickSelector('.chip[aria-pressed]'); // first real mood chip (not the preview chips)
-  await c.eval(`(() => { const b = [...document.querySelectorAll('button')].find(e => e.getAttribute('aria-label') === '충동 강도 3'); if (b) b.click(); return !!b; })()`);
-  await c.type('textarea[aria-label="오늘 한 줄 메모"]', NOTE);
+  const urgeSet = await c.eval(`(() => { const b = [...document.querySelectorAll('button')].find(e => e.getAttribute('aria-label') === '충동 강도 3'); if (b) { b.click(); return true; } return false; })()`);
+  const noteTyped = await c.type('textarea[aria-label="오늘 한 줄 메모"]', NOTE);
+  const moodSet = await c.eval(`[...document.querySelectorAll('.chip[aria-pressed]')].some(e => e.getAttribute('aria-pressed') === 'true')`);
   await c.click('다음 · 오늘의 규율 점검');
   const finished = await c.click('오늘 기록 마치기');
-  check('B10', finished);
+  check('B10', moodSet && urgeSet && noteTyped && finished,
+    moodSet && urgeSet && noteTyped && finished ? '' : `mood:${moodSet} urge:${urgeSet} note:${noteTyped} finish:${finished}`);
   await sleep(400);
 
   // 11–12 · Reward landing appears; its save confirmation is gated on the real save.
@@ -336,10 +339,10 @@ async function runFlow(c) {
   await c.shot('reward_confirm');
 
   // 13–14 · Reward → 최근 기록; today's day-detail shows the typed note verbatim.
-  await c.click('최근 기록 보기');
-  check('B13', await c.has('패턴이 보이기 시작했어요'));
+  const toRecords = await c.click('최근 기록 보기');
+  check('B13', toRecords && (await c.has('패턴이 보이기 시작했어요')));
   // Open the last (today's) cell in the calendar strip, then read the detail.
-  await c.eval(`(() => { const btns = [...document.querySelectorAll('button')].filter(b => (typeof b.className === 'string' && b.className.includes('ember')) || b.closest('.ember-cal-strip')); const el = btns[btns.length - 1]; if (el) el.click(); })()`);
+  const cellClicked = await c.eval(`(() => { const btns = [...document.querySelectorAll('button')].filter(b => (typeof b.className === 'string' && b.className.includes('ember')) || b.closest('.ember-cal-strip')); const el = btns[btns.length - 1]; if (el) { el.click(); return true; } return false; })()`);
   await sleep(500);
   let recHasNote = await c.has(NOTE);
   if (!recHasNote) {
@@ -347,7 +350,7 @@ async function runFlow(c) {
     await sleep(500);
     recHasNote = await c.has(NOTE);
   }
-  check('B14', recHasNote, recHasNote ? '' : 'today note not found in records detail');
+  check('B14', recHasNote, recHasNote ? '' : `today note not found in records detail (calendar cell clicked: ${cellClicked})`);
   await c.shot('records_today_note');
 
   // 15 · Home shows the saved check-in summary + the note (route home via bottom nav).
@@ -365,9 +368,15 @@ async function runFlow(c) {
   );
   await c.shot('protection_cleared');
 
-  // 17 · Urge returns to the no-plan empty state after the clear.
-  await c.clickExact('잠깐 멈춤');
-  check('B17', (await c.has('아직 보호 설정이 없어요')) && !(await c.has(ALT)));
+  // 17 · Urge returns to the no-plan empty state after the clear. The urge-unique title
+  //      '지금 충동을 멈춰요' is asserted too: '아직 보호 설정이 없어요' ALSO renders on the
+  //      cleared ProtectionScreen, so without it a failed nav (staying on Protection)
+  //      would falsely pass B17.
+  const toUrgeEmpty = await c.clickExact('잠깐 멈춤');
+  check(
+    'B17',
+    toUrgeEmpty && (await c.has('지금 충동을 멈춰요')) && (await c.has('아직 보호 설정이 없어요')) && !(await c.has(ALT)),
+  );
   await c.shot('urge_empty_after_clear');
 
   // 18–19 · Reset local data through the confirm sheet (.sheet-scoped); home returns
@@ -383,21 +392,30 @@ async function runFlow(c) {
   await c.shot('home_after_reset');
 
   // 20–21 · Forbidden vocabulary / fake-claim sweep across the MVP-loop screens
-  // (rendered text, not source).
-  const blobs = [];
-  blobs.push(await c.text()); // home (first-run)
-  await c.clickExact('잠깐 멈춤'); await sleep(300); blobs.push(await c.text());
-  await c.clickExact('홈'); await sleep(200);
-  await c.click('오늘 체크인하기'); await sleep(300); blobs.push(await c.text());
-  await c.clickExact('홈'); await sleep(200);
-  await c.click('고양이 방 꾸미기'); await sleep(400); blobs.push(await c.text());
-  await c.clickExact('홈'); await sleep(200);
-  await c.click('보호 설정 적기'); await sleep(300); blobs.push(await c.text());
+  // (rendered text, not source). Each hop is VERIFIED to actually leave home and reach
+  // its screen; an unreached screen invalidates the sweep — we cannot claim "no
+  // forbidden copy" on a screen we never rendered — so it fails B20/B21 loudly.
+  const blobs = [await c.text()]; // home (first-run)
+  const missed = [];
+  const sweep = async (name, navFn) => {
+    const clicked = await navFn();
+    await sleep(350);
+    const left = clicked && !(await c.has('절제 시간')); // '절제 시간' is home-unique
+    if (left) blobs.push(await c.text());
+    else missed.push(name);
+    await c.clickExact('홈');
+    await sleep(200);
+  };
+  await sweep('urge', () => c.clickExact('잠깐 멈춤'));
+  await sweep('checkin', () => c.click('오늘 체크인하기'));
+  await sweep('room', () => c.click('고양이 방 꾸미기'));
+  await sweep('protection', () => c.click('보호 설정 적기'));
   const blob = blobs.join('\n');
   const vocabHits = FORBIDDEN_VOCAB.filter((w) => blob.includes(w));
   const claimHits = FORBIDDEN_CLAIMS.filter((w) => blob.includes(w));
-  check('B20', vocabHits.length === 0, vocabHits.join(','));
-  check('B21', claimHits.length === 0, claimHits.join(','));
+  const sweepNote = missed.length ? ` sweep-incomplete:${missed.join(',')}` : '';
+  check('B20', vocabHits.length === 0 && missed.length === 0, (vocabHits.join(',') + sweepNote).trim());
+  check('B21', claimHits.length === 0 && missed.length === 0, (claimHits.join(',') + sweepNote).trim());
 
   // 22 · No critical horizontal overflow on any screen captured at 390x844.
   check('B22', overflowSeen.length === 0, overflowSeen.map((o) => `${o.screen}:${o.bad.join('|')}`).join(' ; '));
@@ -435,6 +453,16 @@ async function main() {
 
 main().catch((e) => {
   console.error('NoF MVP QA crashed:', e?.message || e);
+  // Report partial progress so a mid-flow crash is honest about how far it got
+  // (crash at B20 vs crash at setup are very different signals) — never silent.
+  if (results.length) {
+    const passed = results.filter((r) => r.ok).length;
+    console.log(`\n=== NoF MVP QA: ${passed}/${results.length} behaviors checked before crash ===`);
+    const fails = results.filter((r) => !r.ok);
+    if (fails.length) {
+      console.log('FAILED/INCOMPLETE:\n' + fails.map((f) => ` - ${f.id} ${f.label}${f.extra ? ' :: ' + f.extra : ''}`).join('\n'));
+    }
+  }
   cleanup();
   process.exit(1);
 });

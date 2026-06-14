@@ -2113,10 +2113,16 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 23 behaviors,
   const helper = read('scripts/nof-cdp-client.mjs'); // throws if the CDP helper is missing
   const qa = read('scripts/nof-mvp-flow-qa.mjs');    // throws if the flow script is missing
 
-  // (a) All 23 required behavior labels B01..B23 are present (machine-checkable coverage).
+  // (a) All 23 behaviors are driven by a REAL check('B##', <expr>) call — not just a
+  //     substring, and never a constant like check('B##', true). This stops the harness
+  //     being silently gutted (labels kept, assertions swapped for a tautology) while
+  //     still reporting 23/23 PASS.
   for (let i = 1; i <= 23; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
-    assert(qa.includes(id), `QA flow is missing required behavior label ${id}`);
+    const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
+    const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
+    assert(called.test(qa), `QA flow has no real check('${id}', …) call`);
+    assert(!constant.test(qa), `QA flow check('${id}', …) is gutted to a constant assertion`);
   }
 
   // (b) Reset confirmation is scoped to the open .sheet — never a broad substring click
