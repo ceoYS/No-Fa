@@ -1,0 +1,439 @@
+#!/usr/bin/env node
+// NoF MVP flow browser QA — drives the real recovery loop end-to-end over CDP.
+//
+// This is the repeatable, repo-owned form of the one-off freeze-audit QA that cleared
+// 24/24. It actually clicks through the MVP journey in a real Chrome and asserts on
+// rendered DOM text — not source strings — so a regression in the user's core loop
+// fails this command loudly. It adds NO npm dependency (Node 22 global WebSocket +
+// raw CDP via ./nof-cdp-client.mjs).
+//
+// Honesty contract:
+//   - It clicks where a user clicks; it does not fake coverage.
+//   - If it cannot drive a browser it FAILS with exact launch instructions (never a
+//     green "passed" it did not earn).
+//   - All artifacts (screenshots, throwaway browser profile) live in NOF_QA_OUT,
+//     outside the repo, so nothing QA-generated is ever committed.
+//
+// Two harness mistakes the freeze audit caught — deliberately avoided here:
+//   1. Never assert the brittle latin-boundary phrase "NoF는 …": a .card-label
+//      text-transform:uppercase renders innerText as "NOF는". We assert on the
+//      hangul-stable phrase "이렇게 써요" instead.
+//   2. Never confirm the reset by a broad substring click on "기록 지우기": that
+//      substring also matches the trigger "이 기기의 기록 지우기" behind the backdrop.
+//      We scope the confirm click to the open `.sheet`.
+//
+// Config (env):
+//   NOF_CDP_URL     CDP endpoint               (default http://localhost:9222)
+//   NOF_APP_URL     app URL to drive           (default http://localhost:4173/)
+//   NOF_QA_OUT      screenshot/profile dir     (default /tmp/nof-mvp-qa)
+//   NOF_CHROME      browser binary to launch   (default: auto-discover)
+//   NOF_CHROME_LIBS prepend to LD_LIBRARY_PATH (for a browser missing system libs)
+import { spawn, spawnSync } from 'node:child_process';
+import fs from 'node:fs';
+import os from 'node:os';
+import path from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
+
+const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
+
+// The 23 MVP behaviors this harness drives and asserts. Every check() references one
+// of these labels, so coverage is machine-checkable (the regression guard counts them).
+const BEHAVIORS = {
+  B01: 'fresh app mounts',
+  B02: 'first-run guidance visible',
+  B03: 'home daily action hub visible',
+  B04: 'protection empty state visible',
+  B05: 'save protection plan',
+  B06: 'hard reload',
+  B07: 'protection plan persists locally',
+  B08: 'urge shows saved alternative action',
+  B09: 'urge check-in continuation works',
+  B10: 'complete check-in with typed note',
+  B11: 'reward landing appears',
+  B12: 'reward landing save confirmation appears only after actual save',
+  B13: 'reward to recent records opens records',
+  B14: 'records show today note',
+  B15: 'home saved summary appears',
+  B16: 'protection clear action clears plan',
+  B17: 'urge returns to no-plan empty state',
+  B18: 'reset local data through confirm sheet',
+  B19: 'home returns to first-run/empty state',
+  B20: 'no user-facing 금욕',
+  B21: 'no fake AI/medical/cloud/blocker/edit/replay/growth claim',
+  B22: '390x844 no critical horizontal overflow',
+  B23: 'route home works',
+};
+
+// Test data planted by the flow and read back to prove persistence (not source scans).
+const NOTE = '오늘은 흔들렸지만 버텼다 QA체크';
+const ALT = '물 한 잔 마시고 거실로 나가기 QA';
+
+// B20 user-facing vocabulary that must never reach the screen.
+const FORBIDDEN_VOCAB = ['금욕'];
+// B21 fake AI / medical / cloud / blocker / edit / replay / growth-unlock claims.
+const FORBIDDEN_CLAIMS = [
+  'AI 분석', 'AI 추천', '회복 점수', '치료', '진단', '처방',
+  '실패 복구', '다시 재생', '기록 수정', '자동 차단', '클라우드 동기화',
+  '잠금 해제', '해금', '프리미엄',
+];
+
+const log = (s) => console.log(`[qa] ${s}`);
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+const results = [];
+function check(id, ok, extra = '') {
+  const label = BEHAVIORS[id] || id;
+  results.push({ id, label, ok: !!ok, extra });
+  console.log(`${ok ? 'PASS' : 'FAIL'} ${id} — ${label}${extra ? ' :: ' + extra : ''}`);
+}
+
+const overflowSeen = [];
+async function scanOverflow(c, screen) {
+  const o = await c.overflow();
+  if (o.bad && o.bad.length) overflowSeen.push({ screen, ...o });
+  return o;
+}
+
+// ---------------------------------------------------------------------------
+// Process lifecycle: any server / browser we start, we stop. detached:true makes
+// each child its own group leader so we can kill its whole subtree (vite's node
+// children, chrome's gpu/crashpad helpers) and never leak a process.
+// ---------------------------------------------------------------------------
+const spawned = [];
+let cleaned = false;
+function cleanup() {
+  if (cleaned) return;
+  cleaned = true;
+  for (const { child } of spawned) {
+    try { if (child.pid) process.kill(-child.pid, 'SIGTERM'); } catch { /* gone */ }
+    try { child.kill('SIGKILL'); } catch { /* gone */ }
+  }
+}
+process.on('exit', cleanup);
+process.on('SIGINT', () => { cleanup(); process.exit(130); });
+process.on('SIGTERM', () => { cleanup(); process.exit(143); });
+
+function repoRoot() {
+  return path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+}
+
+async function httpReachable(url, timeoutMs = 1500) {
+  const ctrl = new AbortController();
+  const t = setTimeout(() => ctrl.abort(), timeoutMs);
+  try {
+    const r = await fetch(url, { signal: ctrl.signal });
+    return r.status > 0;
+  } catch {
+    return false;
+  } finally {
+    clearTimeout(t);
+  }
+}
+
+async function waitUntil(fn, timeoutMs, intervalMs) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    if (await fn()) return true;
+    await sleep(intervalMs);
+  }
+  return false;
+}
+
+// Serve the BUILT app. Reuse a server already answering at APP_URL; otherwise build
+// (if dist is missing) and start `vite preview` on the URL's host/port, tracked for
+// cleanup. Option A from the sprint, done with no leaked process.
+async function ensureServer(root) {
+  if (await httpReachable(APP_URL)) {
+    log(`reusing app server at ${APP_URL}`);
+    return;
+  }
+  if (!fs.existsSync(path.join(root, 'dist', 'index.html'))) {
+    log('no dist/ — running npm run build first');
+    const b = spawnSync('npm', ['run', 'build'], { cwd: root, stdio: 'inherit' });
+    if (b.status !== 0) throw new Error('npm run build failed; cannot serve preview');
+  }
+  const u = new URL(APP_URL);
+  const host = u.hostname || '127.0.0.1';
+  const port = u.port || '4173';
+  log(`starting vite preview on ${host}:${port}`);
+  const child = spawn('npm', ['run', 'preview', '--', '--host', host, '--port', port, '--strictPort'], {
+    cwd: root,
+    detached: true,
+    stdio: 'ignore',
+  });
+  spawned.push({ name: 'preview', child });
+  const up = await waitUntil(() => httpReachable(APP_URL), 25000, 400);
+  if (!up) throw new Error(`vite preview did not come up at ${APP_URL}`);
+  log(`app server ready at ${APP_URL}`);
+}
+
+function isExecutable(p) {
+  try { fs.accessSync(p, fs.constants.X_OK); return true; } catch { return false; }
+}
+function resolveBin(candidate) {
+  if (!candidate) return null;
+  if (candidate.includes('/')) return fs.existsSync(candidate) ? candidate : null;
+  for (const dir of (process.env.PATH || '').split(':')) {
+    const p = path.join(dir, candidate);
+    if (isExecutable(p)) return p;
+  }
+  return null;
+}
+// Playwright-managed chromium builds, newest first (used by the freeze audit; no repo
+// dependency is added — we only reuse a binary if it happens to be on disk).
+function playwrightChromes() {
+  const base = path.join(os.homedir(), '.cache', 'ms-playwright');
+  const out = [];
+  try {
+    for (const e of fs.readdirSync(base)) {
+      if (/^chromium-\d+$/.test(e)) out.push(path.join(base, e, 'chrome-linux64', 'chrome'));
+    }
+  } catch { /* no cache */ }
+  return out.sort().reverse();
+}
+function findBrowser() {
+  const candidates = [];
+  if (process.env.NOF_CHROME) candidates.push(process.env.NOF_CHROME);
+  candidates.push('google-chrome-stable', 'google-chrome', 'chromium', 'chromium-browser');
+  candidates.push(...playwrightChromes());
+  candidates.push('/mnt/c/Program Files/Google/Chrome/Application/chrome.exe');
+  candidates.push('/mnt/c/Program Files (x86)/Microsoft/Edge/Application/msedge.exe');
+  for (const c of candidates) {
+    const r = resolveBin(c);
+    if (r) return r;
+  }
+  return null;
+}
+
+function printChromeInstructions(cdpBase) {
+  const port = (() => { try { return new URL(cdpBase).port || '9222'; } catch { return '9222'; } })();
+  const profile = path.join(QA_OUT, 'chrome-profile');
+  console.error('\n──────────────────────────────────────────────────────────────');
+  console.error(`NoF QA: no Chrome DevTools endpoint at ${cdpBase} and no launchable browser found.`);
+  console.error('Start Chrome/Chromium with remote debugging, then re-run `npm run qa:mvp`:\n');
+  console.error('  chrome \\');
+  console.error(`    --remote-debugging-port=${port} \\`);
+  console.error('    --headless=new \\');
+  console.error('    --no-first-run \\');
+  console.error('    --disable-gpu \\');
+  console.error(`    --user-data-dir=${profile}\n`);
+  console.error('Or point the harness at an existing endpoint / specific binary:');
+  console.error(`  NOF_CDP_URL=${cdpBase}      (CDP endpoint to connect to)`);
+  console.error('  NOF_CHROME=/path/to/chrome           (auto-launch this binary)');
+  console.error('  NOF_CHROME_LIBS=/path/to/libs        (prepend to LD_LIBRARY_PATH if libs are missing)');
+  console.error('──────────────────────────────────────────────────────────────\n');
+}
+
+// Use a CDP endpoint already listening; otherwise auto-launch a discovered browser
+// headless. If none can be launched, print exact instructions and exit non-zero —
+// the harness must never claim a pass it could not drive.
+async function ensureBrowser() {
+  if (await cdpReachable(CDP_URL)) {
+    log(`reusing CDP endpoint at ${CDP_URL}`);
+    return;
+  }
+  const bin = findBrowser();
+  if (!bin) {
+    printChromeInstructions(CDP_URL);
+    process.exit(2);
+  }
+  const port = (() => { try { return new URL(CDP_URL).port || '9222'; } catch { return '9222'; } })();
+  const profile = path.join(QA_OUT, 'chrome-profile');
+  fs.mkdirSync(profile, { recursive: true });
+  const args = [
+    `--remote-debugging-port=${port}`,
+    '--remote-debugging-address=127.0.0.1',
+    '--headless=new',
+    '--no-first-run',
+    '--no-default-browser-check',
+    '--disable-gpu',
+    '--disable-dev-shm-usage',
+    `--user-data-dir=${profile}`,
+    'about:blank',
+  ];
+  const env = { ...process.env };
+  if (process.env.NOF_CHROME_LIBS) {
+    env.LD_LIBRARY_PATH = process.env.NOF_CHROME_LIBS + (env.LD_LIBRARY_PATH ? ':' + env.LD_LIBRARY_PATH : '');
+  }
+  log(`launching browser: ${bin}`);
+  const child = spawn(bin, args, { env, detached: true, stdio: 'ignore' });
+  spawned.push({ name: 'chrome', child });
+  const up = await waitUntil(() => cdpReachable(CDP_URL), 20000, 400);
+  if (!up) {
+    printChromeInstructions(CDP_URL);
+    throw new Error(`browser launched but CDP never became reachable at ${CDP_URL}`);
+  }
+  log(`CDP endpoint ready at ${CDP_URL}`);
+}
+
+// ---------------------------------------------------------------------------
+// The MVP flow. Each numbered step maps to one or more B## behaviors.
+// ---------------------------------------------------------------------------
+async function runFlow(c) {
+  // 1–3 · Fresh open → first-run guidance → daily action hub.
+  await c.goto(APP_URL);
+  await c.clearLS();
+  await c.goto(APP_URL);
+  check('B01', await c.has('절제 시간'));
+  // hangul-stable phrase — never the brittle latin-boundary "NoF는 …".
+  check('B02', await c.has('이렇게 써요'));
+  check('B03', (await c.has('오늘의 회복 루프')) && (await c.has('오늘 체크인하기')));
+  await scanOverflow(c, 'home-fresh');
+  await c.shot('home_fresh');
+
+  // 4 · Home → 잠깐 멈춤 (bottom-nav center) → urge empty-protection honesty.
+  await c.clickExact('잠깐 멈춤');
+  const onUrge = await c.has('지금 충동을 멈춰요');
+  check('B04', onUrge && (await c.has('아직 보호 설정이 없어요')) && (await c.has('보호 설정 적기')));
+  await scanOverflow(c, 'urge-empty-protection');
+  await c.shot('urge_empty_protection');
+
+  // 5 · → 보호 설정 → save plan.
+  await c.click('보호 설정 적기');
+  const onProtect = await c.has('흔들리는 순간을 미리 적어둬요');
+  await c.type('#protect-time', '밤 11시 이후');
+  await c.type('#protect-situation', '잠자리에서 휴대폰을 들 때');
+  await c.type('#protect-alt', ALT);
+  await c.click('보호 설정 저장');
+  check('B05', onProtect && (await c.has('저장된 보호 설정')) && (await c.has(ALT)));
+  await scanOverflow(c, 'protection-saved');
+  await c.shot('protection_saved');
+
+  // 6–7 · Hard reload keeps the app; plan persists locally across the reload.
+  await c.reload();
+  check('B06', await c.has('절제 시간'));
+  await c.click('보호 설정 적기');
+  check('B07', (await c.has('저장된 보호 설정')) && (await c.has(ALT)));
+  await c.shot('protection_persisted');
+
+  // 8 · Urge surfaces the saved alternative action.
+  await c.click('잠깐 멈춤에서 확인하기');
+  check('B08', (await c.has(ALT)) && (await c.has('내가 정해둔 대체 행동')));
+  await scanOverflow(c, 'urge-with-plan');
+  await c.shot('urge_with_plan');
+
+  // 9 · Urge → check-in continuation (start the 5-min hold so the CTA appears).
+  await c.click('5분 같이 버티기');
+  const toCheckin = await c.click('오늘 체크인에 한 줄 남기기');
+  check('B09', toCheckin && (await c.has('1분 기록')));
+
+  // 10 · Complete the check-in with mood + urge intensity + a typed note.
+  await c.clickSelector('.chip[aria-pressed]'); // first real mood chip (not the preview chips)
+  await c.eval(`(() => { const b = [...document.querySelectorAll('button')].find(e => e.getAttribute('aria-label') === '충동 강도 3'); if (b) b.click(); return !!b; })()`);
+  await c.type('textarea[aria-label="오늘 한 줄 메모"]', NOTE);
+  await c.click('다음 · 오늘의 규율 점검');
+  const finished = await c.click('오늘 기록 마치기');
+  check('B10', finished);
+  await sleep(400);
+
+  // 11–12 · Reward landing appears; its save confirmation is gated on the real save.
+  const onReward = await c.waitForText('고양이 방', 4000);
+  check('B11', onReward);
+  check('B12', onReward && (await c.has('오늘 체크인이 저장됐어요')));
+  await scanOverflow(c, 'reward-confirm');
+  await c.shot('reward_confirm');
+
+  // 13–14 · Reward → 최근 기록; today's day-detail shows the typed note verbatim.
+  await c.click('최근 기록 보기');
+  check('B13', await c.has('패턴이 보이기 시작했어요'));
+  // Open the last (today's) cell in the calendar strip, then read the detail.
+  await c.eval(`(() => { const btns = [...document.querySelectorAll('button')].filter(b => (typeof b.className === 'string' && b.className.includes('ember')) || b.closest('.ember-cal-strip')); const el = btns[btns.length - 1]; if (el) el.click(); })()`);
+  await sleep(500);
+  let recHasNote = await c.has(NOTE);
+  if (!recHasNote) {
+    await c.eval(`(() => { const s = document.querySelector('.ember-cal-strip, [aria-label*="기록"]'); if (s) { const b = s.querySelectorAll('button'); if (b.length) b[b.length - 1].click(); } })()`);
+    await sleep(500);
+    recHasNote = await c.has(NOTE);
+  }
+  check('B14', recHasNote, recHasNote ? '' : 'today note not found in records detail');
+  await c.shot('records_today_note');
+
+  // 15 · Home shows the saved check-in summary + the note (route home via bottom nav).
+  await c.clickExact('홈');
+  check('B15', (await c.has('오늘 체크인이 저장됐어요')) && (await c.has(NOTE)));
+  await scanOverflow(c, 'home-saved');
+  await c.shot('home_saved');
+
+  // 16 · Protection clear empties the plan honestly.
+  await c.click('보호 설정 적기');
+  await c.click('계획 비우기');
+  check(
+    'B16',
+    (await c.has('아직 보호 설정이 없어요')) && (await c.has('보호 설정을 비웠어요')) && !(await c.has(ALT)),
+  );
+  await c.shot('protection_cleared');
+
+  // 17 · Urge returns to the no-plan empty state after the clear.
+  await c.clickExact('잠깐 멈춤');
+  check('B17', (await c.has('아직 보호 설정이 없어요')) && !(await c.has(ALT)));
+  await c.shot('urge_empty_after_clear');
+
+  // 18–19 · Reset local data through the confirm sheet (.sheet-scoped); home returns
+  // to first-run and the saved note is gone.
+  await c.clickExact('홈');
+  await c.click('이 기기의 기록 지우기');
+  const sheetOpen = await c.has('정말 이 기기의 기록을 지울까요');
+  check('B18', sheetOpen);
+  await c.clickInScope('.sheet', '기록 지우기'); // scoped: never the trigger behind the backdrop
+  await sleep(500);
+  check('B19', (await c.has('이렇게 써요')) && !(await c.has(NOTE)));
+  await scanOverflow(c, 'home-after-reset');
+  await c.shot('home_after_reset');
+
+  // 20–21 · Forbidden vocabulary / fake-claim sweep across the MVP-loop screens
+  // (rendered text, not source).
+  const blobs = [];
+  blobs.push(await c.text()); // home (first-run)
+  await c.clickExact('잠깐 멈춤'); await sleep(300); blobs.push(await c.text());
+  await c.clickExact('홈'); await sleep(200);
+  await c.click('오늘 체크인하기'); await sleep(300); blobs.push(await c.text());
+  await c.clickExact('홈'); await sleep(200);
+  await c.click('고양이 방 꾸미기'); await sleep(400); blobs.push(await c.text());
+  await c.clickExact('홈'); await sleep(200);
+  await c.click('보호 설정 적기'); await sleep(300); blobs.push(await c.text());
+  const blob = blobs.join('\n');
+  const vocabHits = FORBIDDEN_VOCAB.filter((w) => blob.includes(w));
+  const claimHits = FORBIDDEN_CLAIMS.filter((w) => blob.includes(w));
+  check('B20', vocabHits.length === 0, vocabHits.join(','));
+  check('B21', claimHits.length === 0, claimHits.join(','));
+
+  // 22 · No critical horizontal overflow on any screen captured at 390x844.
+  check('B22', overflowSeen.length === 0, overflowSeen.map((o) => `${o.screen}:${o.bad.join('|')}`).join(' ; '));
+
+  // 23 · Route home works: leave home, tap the home nav, land back on home.
+  await c.clickExact('잠깐 멈춤'); await sleep(200);
+  const awayFromHome = !(await c.has('절제 시간'));
+  await c.clickExact('홈'); await sleep(200);
+  const backHome = await c.has('절제 시간');
+  check('B23', awayFromHome && backHome);
+}
+
+async function main() {
+  const root = repoRoot();
+  log(`NoF MVP flow QA — app=${APP_URL} cdp=${CDP_URL} out=${QA_OUT}`);
+  await ensureServer(root);
+  await ensureBrowser();
+  const c = await CDP.connect(CDP_URL);
+  try {
+    await c.viewport();
+    await runFlow(c);
+  } finally {
+    c.close();
+  }
+  const passed = results.filter((r) => r.ok).length;
+  console.log(`\n=== NoF MVP QA: ${passed}/${results.length} behaviors PASS ===`);
+  const fails = results.filter((r) => !r.ok);
+  if (fails.length) {
+    console.log('FAILED:\n' + fails.map((f) => ` - ${f.id} ${f.label}${f.extra ? ' :: ' + f.extra : ''}`).join('\n'));
+  }
+  console.log(`screenshots: ${QA_OUT}`);
+  cleanup();
+  process.exit(fails.length ? 1 : 0);
+}
+
+main().catch((e) => {
+  console.error('NoF MVP QA crashed:', e?.message || e);
+  cleanup();
+  process.exit(1);
+});
