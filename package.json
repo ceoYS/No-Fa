@@ -8,7 +8,8 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "check:nof": "node scripts/nof-regression-check.mjs"
+    "check:nof": "node scripts/nof-regression-check.mjs",
+    "qa:mvp": "node scripts/nof-mvp-flow-qa.mjs"
   },
   "dependencies": {
     "react": "^18.3.1",
