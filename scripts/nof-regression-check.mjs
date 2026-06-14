@@ -2095,6 +2095,68 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
   assert(protect.includes('계획 비우기') && /\{protectionPlan \? \(/.test(protect), 'protection clear / saved-state gating surface missing');
 });
 
+// 69 — C42 MVP browser-QA harness guard. The repeatable `npm run qa:mvp` is now the
+// repo's lock on the user's core recovery loop (it actually clicks the flow in a real
+// browser). This guards the TOOL so a future change can't quietly hollow it out: drop
+// a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
+// freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 23 behaviors, no harness traps)', () => {
+  const pkg = JSON.parse(read('package.json'));
+  assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
+  assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
+  // The harness is zero-dependency (raw CDP over Node 22 WebSocket) — keep it that way.
+  for (const name of ['puppeteer', 'puppeteer-core', 'playwright', '@playwright/test', 'playwright-core']) {
+    const inDeps = (pkg.dependencies && pkg.dependencies[name]) || (pkg.devDependencies && pkg.devDependencies[name]);
+    assert(!inDeps, `qa:mvp must stay dependency-free, but ${name} is declared`);
+  }
+
+  const helper = read('scripts/nof-cdp-client.mjs'); // throws if the CDP helper is missing
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');    // throws if the flow script is missing
+
+  // (a) All 23 required behavior labels B01..B23 are present (machine-checkable coverage).
+  for (let i = 1; i <= 23; i += 1) {
+    const id = 'B' + String(i).padStart(2, '0');
+    assert(qa.includes(id), `QA flow is missing required behavior label ${id}`);
+  }
+
+  // (b) Reset confirmation is scoped to the open .sheet — never a broad substring click
+  //     that would hit the trigger button behind the backdrop (freeze-audit mistake #2).
+  assert(
+    /clickInScope\(\s*['"]\.sheet['"]\s*,\s*['"]기록 지우기['"]/.test(qa),
+    'reset confirm must be scoped to the .sheet (clickInScope(".sheet", "기록 지우기"))',
+  );
+
+  // (c) Must NOT assert the brittle latin-boundary "NoF는 …" innerText (freeze-audit
+  //     mistake #1: text-transform:uppercase makes the substring never match). The
+  //     hangul-stable phrase 이렇게 써요 must be used instead.
+  assert(!qa.includes('NoF는'), 'QA flow must not assert the brittle "NoF는 …" innerText; assert 이렇게 써요');
+  assert(qa.includes('이렇게 써요'), 'QA flow must assert the hangul-stable first-run phrase 이렇게 써요');
+
+  // (d) Forbidden user-facing copy is actually checked (금욕 vocabulary + fake-claim sweep).
+  assert(qa.includes('FORBIDDEN_VOCAB') && qa.includes('금욕'), 'QA flow must sweep forbidden vocabulary (금욕)');
+  assert(
+    qa.includes('FORBIDDEN_CLAIMS') && qa.includes('AI 분석') && qa.includes('클라우드 동기화'),
+    'QA flow must sweep forbidden fake AI/medical/cloud claims',
+  );
+
+  // (e) Horizontal overflow is actually probed at 390x844.
+  assert(/async overflow\(/.test(helper), 'CDP helper lost its overflow probe');
+  assert(qa.includes('scanOverflow') && qa.includes('390x844'), 'QA flow must scan 390x844 horizontal overflow');
+
+  // (f) QA artifacts default OUTSIDE the repo (an ignored /tmp path) so nothing is committed.
+  assert(
+    /QA_OUT\s*=\s*process\.env\.NOF_QA_OUT\s*\|\|\s*'\/tmp\//.test(helper),
+    'QA output (NOF_QA_OUT) must default to an out-of-repo /tmp path',
+  );
+
+  // (g) Honest failure: with no drivable browser, the harness prints exact launch
+  //     instructions and exits non-zero — it must never silently report a pass.
+  assert(
+    qa.includes('printChromeInstructions') && qa.includes('--remote-debugging-port'),
+    'QA flow must print exact Chrome launch instructions when CDP is unreachable',
+  );
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

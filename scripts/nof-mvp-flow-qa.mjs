@@ -15,9 +15,10 @@
 //     outside the repo, so nothing QA-generated is ever committed.
 //
 // Two harness mistakes the freeze audit caught — deliberately avoided here:
-//   1. Never assert the brittle latin-boundary phrase "NoF는 …": a .card-label
-//      text-transform:uppercase renders innerText as "NOF는". We assert on the
-//      hangul-stable phrase "이렇게 써요" instead.
+//   1. Never assert on the first-run card's brand-prefixed phrase by its
+//      latin-boundary innerText: a .card-label text-transform:uppercase changes the
+//      brand casing, so a mixed-case substring never matches the rendered text. We
+//      assert on the hangul-stable phrase "이렇게 써요" instead.
 //   2. Never confirm the reset by a broad substring click on "기록 지우기": that
 //      substring also matches the trigger "이 기기의 기록 지우기" behind the backdrop.
 //      We scope the confirm click to the open `.sheet`.
@@ -276,7 +277,7 @@ async function runFlow(c) {
   await c.clearLS();
   await c.goto(APP_URL);
   check('B01', await c.has('절제 시간'));
-  // hangul-stable phrase — never the brittle latin-boundary "NoF는 …".
+  // hangul-stable phrase — never the brittle latin-boundary brand-prefixed innerText.
   check('B02', await c.has('이렇게 써요'));
   check('B03', (await c.has('오늘의 회복 루프')) && (await c.has('오늘 체크인하기')));
   await scanOverflow(c, 'home-fresh');
