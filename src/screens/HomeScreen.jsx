@@ -152,10 +152,6 @@ export default function HomeScreen({
             {nextGoal ? `다음 목표 ${nextGoal.day}일까지 ${goalRemaining}일` : '최장 기록을 새로 쓰는 중이에요'}
           </span>
         </div>
-
-        <p className="abstinence-timer-help">
-          작은 잔불은 아직 꺼지지 않았어요. 흔들려도 다시 이어갈 수 있어요.
-        </p>
       </section>
 
       {/* 1.4) 첫 사용 안내 (C23) — 아직 체크인 기록이 하나도 없을 때만 보인다. 핵심 회복
@@ -494,7 +490,7 @@ export default function HomeScreen({
           </div>
           <p className="hairline-note text-quiet">
             {relapsedToday
-              ? '잔불이 잠깐 약해졌어요. 다시 이어가면 곧 따뜻해져요.'
+              ? '다시 시작한 날이에요. 오늘 기록을 남기면 방에 그대로 이어져요.'
               : warmthBand(summary, relapsedToday) === '안정'
                 ? '방 온기 · 안정 — 오늘 지키는 규율이 방을 데우고 있어요.'
                 : '방 온기 · 잔잔함 — 오늘의 규율 기록이 그대로 방에 비쳐요.'}
