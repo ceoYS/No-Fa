@@ -835,6 +835,40 @@ check('global crisis pause (잠깐 멈춤) is in the persistent nav and routes t
   );
 });
 
+// 34b — RC-2A: the persistent bottom nav must stay visible on mobile. The fixed
+// 390×844 demo frame (plus its 32px margin) used to push its own bottom — and the nav
+// with it — below the viewport fold, so the tabs read as clipped. The fix is an
+// UNCONDITIONAL vertical fit on .device-frame: max-height 100dvh + a margin clamped to
+// 0 when the frame can't fit, so the nav always sits on the real bottom edge (no media
+// query, so it also holds under device emulation). The nav itself is safe-area-aware and
+// non-shrinking. This pins the fix plus the five tab labels (RC-2A 체크인 → 오늘 기록).
+check('bottom nav stays visible on mobile (device frame fits viewport + safe-area nav)', () => {
+  const css = read('src/styles/components.css');
+  const nav = read('src/components/BottomNav.jsx');
+
+  // (a) The base .device-frame fits the viewport unconditionally: capped to 100dvh with
+  //     a vertical margin that clamps to 0 when the 844px frame would otherwise overflow.
+  const frame = css.match(/\.device-frame \{[\s\S]*?\}/);
+  assert(frame, '.device-frame rule missing');
+  assert(/max-height:\s*100dvh/.test(frame[0]), '.device-frame is not capped to the viewport height (max-height: 100dvh)');
+  assert(
+    /margin:\s*clamp\(\s*0px[^;]*100dvh[^;]*\)\s*auto/.test(frame[0]),
+    '.device-frame margin does not clamp to 0 when the frame cannot fit — a fixed margin pushes the nav off-screen',
+  );
+
+  // (b) The nav footer is safe-area-aware and never shrinks under a tall viewport.
+  const navCss = css.match(/\.bottom-nav \{[\s\S]*?\}/);
+  assert(navCss, '.bottom-nav rule missing');
+  assert(navCss[0].includes('env(safe-area-inset-bottom'), '.bottom-nav does not pad for the home-indicator safe area');
+  assert(/flex-shrink:\s*0/.test(navCss[0]), '.bottom-nav can shrink (no flex-shrink:0) — labels could be squeezed/clipped');
+
+  // (c) All five tab labels are present, using the RC-2A 오늘 기록 wording (not 체크인).
+  for (const label of ['홈', '기록', '잠깐 멈춤', '오늘 기록', '복기']) {
+    assert(nav.includes(`label: '${label}'`), `BottomNav is missing the tab label: ${label}`);
+  }
+  assert(!nav.includes("label: '체크인'"), 'BottomNav still shows the old 체크인 tab label');
+});
+
 // 35 — the chrome-shield extension must keep LEAST PRIVILEGE. The manifest may request
 // ONLY the minimal permission it actually uses (declarativeNetRequest), must declare
 // none of the dangerous extension keys/permissions (content_scripts / webRequest /
@@ -2120,7 +2154,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 25 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 26 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2137,7 +2171,7 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 25 behaviors,
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
   //     still reporting 23/23 PASS.
-  for (let i = 1; i <= 25; i += 1) {
+  for (let i = 1; i <= 26; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);

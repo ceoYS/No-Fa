@@ -25,7 +25,13 @@
 .device-frame {
   width: var(--device-w);
   height: var(--device-h);
-  margin: var(--sp-7) auto;
+  /* Never taller than the viewport, and drop the demo margin the moment the frame
+   * can't fit — otherwise the fixed 844px frame + 32px margin pushes its own bottom
+   * (and the bottom nav) below the fold. This is unconditional (no media query) so it
+   * holds under device emulation too, where vh units track the emulated viewport even
+   * when media-query width matching does not. */
+  max-height: 100dvh;
+  margin: clamp(0px, calc((100dvh - var(--device-h)) / 2), var(--sp-7)) auto;
   background: var(--bg-canvas);
   border-radius: 44px;
   border: 1px solid var(--border-medium);
@@ -36,6 +42,19 @@
   position: relative;
   display: flex;
   flex-direction: column;
+}
+
+/* On a narrow phone the frame goes full-bleed: width 100% (so a sub-390px screen never
+ * overflows horizontally) and no rounded demo chrome. Placed AFTER the base rule so the
+ * override wins the cascade when it matches; the vertical fit above is unconditional, so
+ * the bottom nav stays on the real bottom edge regardless of media-query matching. */
+@media (max-width: 720px) {
+  .device-frame {
+    width: 100%;
+    border: 0;
+    border-radius: 0;
+    box-shadow: none;
+  }
 }
 
 .device-status-bar {
@@ -940,7 +959,11 @@
 .bottom-nav {
   display: grid;
   grid-template-columns: repeat(5, 1fr);
-  padding: var(--sp-3) var(--sp-3) var(--sp-5);
+  gap: var(--sp-1);
+  /* Never shrink under a tall scrolling viewport, and keep the labels clear of the
+   * home-indicator inset so the bottom row of tabs is never clipped on a real phone. */
+  flex-shrink: 0;
+  padding: var(--sp-3) var(--sp-2) calc(var(--sp-3) + env(safe-area-inset-bottom, 0px));
   background: linear-gradient(180deg, rgba(14, 10, 7, 0.6), rgba(14, 10, 7, 0.95));
   border-top: 1px solid var(--border-soft);
   backdrop-filter: blur(12px);
@@ -951,12 +974,19 @@
   flex-direction: column;
   align-items: center;
   gap: 4px;
+  min-width: 0;
   padding: var(--sp-2) 0;
   color: var(--text-quiet);
   font-size: var(--fs-micro);
   white-space: nowrap;
   border-radius: var(--r-md);
   transition: color var(--dur-fast) var(--ease-soft);
+}
+
+.bottom-nav button span {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .bottom-nav button[data-active='true'] {

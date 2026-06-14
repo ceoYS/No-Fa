@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 25 MVP behaviors this harness drives and asserts. Every check() references one
+// The 26 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -66,6 +66,7 @@ const BEHAVIORS = {
   B23: 'route home works',
   B24: 'discipline counter ticks live to the second',
   B25: 'cat room 쓰다듬기 interaction changes real state',
+  B26: 'bottom nav fully visible at 390x844 (all 5 labels, none clipped)',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -462,6 +463,31 @@ async function runFlow(c) {
   const petOk = toRoom && petClicked && !beforePet && afterPet;
   check('B25', petOk, petOk ? '' : `room:${toRoom} pet:${petClicked} before:${beforePet} after:${afterPet}`);
   await c.shot('room_pet_interaction');
+
+  // 26 · The persistent bottom nav must be fully visible at 390x844: the nav sits
+  //      inside the viewport (not pushed below the fold by the demo frame), all five
+  //      tab labels render, and NONE is clipped below the viewport bottom or overflows
+  //      horizontally. Asserts on real getBoundingClientRect() at the emulated viewport.
+  await c.clickExact('홈'); await sleep(250);
+  const nav = await c.eval(`(() => {
+    const el = document.querySelector('.bottom-nav');
+    if (!el) return { ok: false, why: 'no .bottom-nav' };
+    const vh = window.innerHeight;
+    const vw = document.documentElement.clientWidth;
+    const r = el.getBoundingClientRect();
+    const spans = [...el.querySelectorAll('button > span')].map((s) => {
+      const b = s.getBoundingClientRect();
+      return { t: s.textContent.replace(/\\s+/g, ' ').trim(), bottom: b.bottom, w: b.width, vis: s.offsetParent !== null };
+    });
+    const texts = spans.map((s) => s.t);
+    const wanted = ['홈', '기록', '잠깐 멈춤', '오늘 기록', '복기'];
+    const allPresent = wanted.every((w) => texts.includes(w));
+    const noneClipped = spans.length === 5 && spans.every((s) => s.vis && s.w > 0 && s.bottom <= vh + 1);
+    const navInView = r.bottom <= vh + 1 && r.top >= 0 && r.width <= vw + 1;
+    return { ok: allPresent && noneClipped && navInView, allPresent, noneClipped, navInView, navBottom: Math.round(r.bottom), vh, texts };
+  })()`);
+  check('B26', nav.ok, nav.ok ? '' : JSON.stringify(nav));
+  await c.shot('bottom_nav_visible');
 }
 
 async function main() {
