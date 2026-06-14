@@ -26,7 +26,7 @@ import { loadState, saveState } from './utils/storage.js';
 
 const SCREENS = [
   { id: 'home', label: '홈', Component: HomeScreen },
-  { id: 'checkin', label: '체크인', Component: CheckinScreen },
+  { id: 'checkin', label: '오늘 기록', Component: CheckinScreen },
   { id: 'urge', label: '잠깐 멈춤', Component: UrgeScreen },
   { id: 'discipline', label: '나의 규율', Component: DisciplineScreen },
   { id: 'calendar', label: '최근 기록', Component: CalendarScreen },
@@ -571,7 +571,7 @@ export default function App() {
     // duplicate, and never invents a day the user didn't check in on.
     setCheckinLedger((prev) => ({ ...prev, [todayKey]: savedCheckin }));
     if (!rewardAlreadyGivenToday) {
-      earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 체크인');
+      earn(EARN.checkin + s.held * EARN.disciplineHeld, '오늘의 기록');
       setCheckinRewardDay(todayKey);
     }
     // The reflection hand-off (if any) has now landed in savedCheckin.note → clear the

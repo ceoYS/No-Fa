@@ -133,7 +133,7 @@ export default function CheckinScreen({
         </p>
 
         <section className="card checkin-saved-confirm">
-          <span className="card-label">오늘 체크인이 저장됐어요</span>
+          <span className="card-label">오늘 기록이 저장됐어요</span>
           <p className="hairline-note">
             최근 기록에서 내가 쓴 글을 다시 볼 수 있어요. 오늘은 여기까지 해도 충분해요.
           </p>
@@ -244,7 +244,7 @@ export default function CheckinScreen({
           {fromRecord ? (
             <section className="card checkin-context-note">
               <span className="card-label">그날의 기록을 참고해 오늘 한 줄을 남겨볼까요?</span>
-              <p className="hairline-note">기록은 그대로 두고, 오늘 체크인으로 이어가요.</p>
+              <p className="hairline-note">기록은 그대로 두고, 오늘 기록으로 이어가요.</p>
             </section>
           ) : null}
 

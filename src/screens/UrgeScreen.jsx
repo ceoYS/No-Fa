@@ -224,7 +224,7 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
                   aria-label="오늘 나에게 남길 한마디"
                 />
                 <p className="hairline-note">
-                  ‘체크인으로 이어가기’를 누르면 이 한 줄을 가져가서, 체크인을 마치면 오늘 기록에 저장돼요. 저장 전에는 이 화면에만 남아요.
+                  ‘오늘 기록으로 이어가기’를 누르면 이 한 줄을 가져가서, 기록을 마치면 오늘 기록에 저장돼요. 저장 전에는 이 화면에만 남아요.
                 </p>
               </section>
 
@@ -245,7 +245,7 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
                     onNavigate('checkin');
                   }}
                 >
-                  체크인으로 이어가기
+                  오늘 기록으로 이어가기
                 </button>
                 <button
                   type="button"
@@ -404,14 +404,14 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
                     나란히 두어 위기 직후 곧장 한 줄을 남기게 한다. 여기서는 저장하지 않고
                     체크인 화면으로만 잇는다 — 저장은 체크인을 마쳐야 일어난다. */}
                 <p className="hairline-note" style={{ textAlign: 'center' }}>
-                  방금 넘긴 순간을 오늘 기록으로 남겨볼까요? 체크인을 마치면 오늘 기록에 저장돼요.
+                  방금 넘긴 순간을 오늘 기록으로 남겨볼까요? 기록을 마치면 오늘 기록에 저장돼요.
                 </p>
                 <button
                   type="button"
                   className="btn btn-ghost btn-block"
                   onClick={() => onNavigate('checkin')}
                 >
-                  오늘 체크인에 한 줄 남기기
+                  오늘 기록에 한 줄 남기기
                 </button>
               </>
             )}

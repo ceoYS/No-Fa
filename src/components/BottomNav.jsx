@@ -5,7 +5,7 @@ const TABS = [
   { id: 'home', label: '홈', icon: HomeIcon },
   { id: 'calendar', label: '기록', icon: CalendarIcon },
   { id: 'urge', label: '잠깐 멈춤', icon: PauseIcon },
-  { id: 'checkin', label: '체크인', icon: CheckIcon },
+  { id: 'checkin', label: '오늘 기록', icon: CheckIcon },
   { id: 'recovery', label: '복기', icon: SparkIcon },
 ];
 

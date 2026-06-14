@@ -166,7 +166,7 @@ export default function HomeScreen({
           <span className="card-label">NoF는 이렇게 써요</span>
           <ol className="onboarding-steps" aria-label="NoF 사용 3단계 안내">
             <li>흔들릴 땐 잠깐 멈춤</li>
-            <li>하루 끝에는 체크인</li>
+            <li>하루 끝에는 오늘 기록</li>
             <li>최근 기록에서 다시 확인</li>
           </ol>
           <p className="hairline-note text-quiet">모든 기록은 이 기기에만 저장돼요.</p>
@@ -181,7 +181,7 @@ export default function HomeScreen({
           <span className="card-label">오늘의 회복 루프</span>
           {todayCheckin ? (
             <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
-              오늘 체크인 완료
+              오늘 기록 완료
             </span>
           ) : null}
         </div>
@@ -208,7 +208,7 @@ export default function HomeScreen({
               className="btn btn-primary btn-block"
               onClick={() => onNavigate('checkin')}
             >
-              오늘 체크인하기
+              오늘 기록하기
             </button>
           )}
         </div>
@@ -221,7 +221,7 @@ export default function HomeScreen({
       {todayCheckin ? (
         <section className="card home-checkin-summary">
           <div className="card-row">
-            <span className="card-label">오늘 체크인이 저장됐어요</span>
+            <span className="card-label">오늘 기록이 저장됐어요</span>
             <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>
               완료
             </span>
@@ -445,7 +445,7 @@ export default function HomeScreen({
             {todayCheckin && crisisHeldToday
               ? '오늘은 이미 할 일을 해냈어요.'
               : todayCheckin
-                ? '오늘의 체크인이 방에 남았어요.'
+                ? '오늘의 기록이 방에 남았어요.'
                 : crisisHeldToday
                   ? '잠깐 멈춘 선택도 오늘의 기록이에요.'
                   : '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.'}
@@ -470,7 +470,7 @@ export default function HomeScreen({
                 className="btn btn-ghost btn-block"
                 onClick={() => onNavigate('checkin')}
               >
-                오늘 체크인하기
+                오늘 기록하기
               </button>
             )}
             <button
@@ -551,7 +551,7 @@ export default function HomeScreen({
         <section className="card home-reset">
           <span className="card-label">데이터 초기화</span>
           <p className="hairline-note text-quiet">
-            이 기기에 저장된 체크인·최근 기록·보호 설정을 지워요. 계정이나 클라우드는 없어서,
+            이 기기에 저장된 오늘 기록·최근 기록·보호 설정을 지워요. 계정이나 클라우드는 없어서,
             지우는 건 이 기기뿐이에요. 되돌릴 수 없어요.
           </p>
           <button
@@ -622,7 +622,7 @@ export default function HomeScreen({
             <div className="sheet-handle" aria-hidden="true" />
             <h2 className="sheet-title">정말 이 기기의 기록을 지울까요?</h2>
             <p className="sheet-help">
-              체크인, 최근 기록, 보호 설정이 모두 지워져요. 이 기기에 저장된 것만 지우고, 계정이나
+              오늘 기록, 최근 기록, 보호 설정이 모두 지워져요. 이 기기에 저장된 것만 지우고, 계정이나
               클라우드는 건드리지 않아요. 되돌릴 수 없어요.
             </p>
             <div className="sheet-actions">

@@ -63,7 +63,7 @@ const PET_MESSAGE = '고양이 곁에서 잠깐 따뜻한 시간을 보냈어요
 // level and NOT a live reaction: the cat stays a static composite and nothing here
 // animates or grows by itself. The card's disclosure line states this plainly.
 const ROOM_WARMTH = {
-  base: { label: '기본', tone: 'pill', note: '아직 오늘 기록 전이에요. 체크인을 남기면 방이 조금 더 따뜻해져요.' },
+  base: { label: '기본', tone: 'pill', note: '아직 오늘 기록 전이에요. 오늘 기록을 남기면 방이 조금 더 따뜻해져요.' },
   warmer: { label: '조금 따뜻해짐', tone: 'pill-ember', note: '오늘 기록을 남겨서 방이 조금 더 따뜻해졌어요.' },
   sustained: { label: '온기 유지 중', tone: 'pill-moss', note: '절제를 이어가고 오늘 기록도 남겨서 온기가 유지되고 있어요.' },
 };
@@ -295,7 +295,7 @@ export default function PetRewardScreen({
       {checkinDoneToday ? (
         <section className="card reward-checkin-confirm">
           <div className="card-row">
-            <span className="card-label">오늘 체크인이 저장됐어요</span>
+            <span className="card-label">오늘 기록이 저장됐어요</span>
             <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>완료</span>
           </div>
           <p className="hairline-note">최근 기록에서 다시 볼 수 있어요.</p>
@@ -406,8 +406,8 @@ export default function PetRewardScreen({
           <p className="hairline-note">
             ·{' '}
             {checkinDoneToday
-              ? `오늘 체크인을 남겨서 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모았어요.`
-              : `오늘 체크인을 남기면 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모을 수 있어요.`}
+              ? `오늘 기록을 남겨서 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모았어요.`
+              : `오늘 기록을 남기면 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모을 수 있어요.`}
           </p>
           <p className="hairline-note">
             · 지금까지 모은 {RESOURCE.name} {emberShards}{RESOURCE.unit}

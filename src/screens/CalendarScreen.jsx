@@ -102,14 +102,14 @@ export default function CalendarScreen({
         <section className="card calendar-empty">
           <span className="card-label">아직 남긴 기록이 없어요</span>
           <p className="hairline-note">
-            오늘 체크인부터 시작하면, 여기에 그날의 기분·규율·한 줄이 차곡차곡 쌓여요.
+            오늘 기록부터 시작하면, 여기에 그날의 기분·규율·한 줄이 차곡차곡 쌓여요.
           </p>
           <button
             type="button"
             className="btn btn-primary btn-block"
             onClick={() => onNavigate('checkin')}
           >
-            오늘 체크인하기
+            오늘 기록하기
           </button>
         </section>
       ) : null}
@@ -182,14 +182,14 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
 
         {day.checkin ? (
           <div className="day-detail-block">
-            <span className="card-label">{day.isToday ? '오늘의 체크인' : '그 날의 체크인'}</span>
+            <span className="card-label">{day.isToday ? '오늘의 기록' : '그날의 기록'}</span>
             <p className="discipline-summary">
               {[
                 day.checkin.moodLabel ? `기분 ${day.checkin.moodLabel}` : null,
                 day.checkin.urge != null ? `충동 ${day.checkin.urge}/5` : null,
               ]
                 .filter(Boolean)
-                .join(' · ') || '체크인을 남겼어요.'}
+                .join(' · ') || '기록을 남겼어요.'}
             </p>
             {day.checkin.triggers && day.checkin.triggers.length > 0 ? (
               <div className="sheet-chip-grid">
@@ -218,15 +218,15 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
             ) : null}
             <p className="hairline-note">
               {day.isToday
-                ? '오늘 남긴 기록이에요. 고치려면 오늘 체크인에서 바꿀 수 있어요.'
+                ? '오늘 남긴 기록이에요. 고치려면 오늘 기록에서 바꿀 수 있어요.'
                 : '지난 기록은 그대로 보관돼요. 여기서는 보기만 해요.'}
             </p>
           </div>
         ) : day.isToday ? (
           <div className="day-detail-block">
-            <span className="card-label">오늘의 체크인</span>
+            <span className="card-label">오늘의 기록</span>
             <p className="hairline-note">
-              아직 오늘 체크인을 남기지 않았어요. 아래 ‘오늘 체크인하기’로 이어서 1분이면 남길 수 있어요.
+              아직 오늘 기록을 남기지 않았어요. 아래 ‘오늘 기록하기’로 이어서 1분이면 남길 수 있어요.
             </p>
           </div>
         ) : null}
@@ -287,7 +287,7 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
               className="btn btn-ghost btn-block"
               onClick={() => (onCheckinFromRecord ? onCheckinFromRecord() : onNavigate('checkin'))}
             >
-              오늘 체크인하기
+              오늘 기록하기
             </button>
           </div>
         ) : null}

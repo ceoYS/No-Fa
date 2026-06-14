@@ -284,7 +284,7 @@ async function runFlow(c) {
   check('B01', await c.has('절제 시간'));
   // hangul-stable phrase — never the brittle latin-boundary brand-prefixed innerText.
   check('B02', await c.has('이렇게 써요'));
-  check('B03', (await c.has('오늘의 회복 루프')) && (await c.has('오늘 체크인하기')));
+  check('B03', (await c.has('오늘의 회복 루프')) && (await c.has('오늘 기록하기')));
   await scanOverflow(c, 'home-fresh');
   await c.shot('home_fresh');
 
@@ -321,7 +321,7 @@ async function runFlow(c) {
 
   // 9 · Urge → check-in continuation (start the 5-min hold so the CTA appears).
   const held = await c.click('5분 같이 버티기');
-  const toCheckin = await c.click('오늘 체크인에 한 줄 남기기');
+  const toCheckin = await c.click('오늘 기록에 한 줄 남기기');
   check('B09', held && toCheckin && (await c.has('1분 기록')));
 
   // 10 · Complete the WRITING-first check-in (RC-1): the user's own 회고 (the gate), plus
@@ -340,7 +340,7 @@ async function runFlow(c) {
   // 11–12 · Reward landing appears; its save confirmation is gated on the real save.
   const onReward = await c.waitForText('고양이 방', 4000);
   check('B11', onReward);
-  check('B12', onReward && (await c.has('오늘 체크인이 저장됐어요')));
+  check('B12', onReward && (await c.has('오늘 기록이 저장됐어요')));
   await scanOverflow(c, 'reward-confirm');
   await c.shot('reward_confirm');
 
@@ -366,7 +366,7 @@ async function runFlow(c) {
 
   // 15 · Home shows the saved check-in summary + the note (route home via bottom nav).
   await c.clickExact('홈');
-  check('B15', (await c.has('오늘 체크인이 저장됐어요')) && (await c.has(NOTE)));
+  check('B15', (await c.has('오늘 기록이 저장됐어요')) && (await c.has(NOTE)));
   await scanOverflow(c, 'home-saved');
   await c.shot('home_saved');
 
@@ -418,7 +418,7 @@ async function runFlow(c) {
     await sleep(200);
   };
   await sweep('urge', () => c.clickExact('잠깐 멈춤'));
-  await sweep('checkin', () => c.click('오늘 체크인하기'));
+  await sweep('checkin', () => c.click('오늘 기록하기'));
   await sweep('room', () => c.click('고양이 방 꾸미기'));
   await sweep('protection', () => c.click('보호 설정 적기'));
   const blob = blobs.join('\n');

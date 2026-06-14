@@ -1329,14 +1329,14 @@ check('records day-detail surfaces the check-in note + calm empty state, no fake
   assert(/day\.checkin\.resolve/.test(screen), 'CalendarScreen day-detail does not read back 오늘의 다짐 (day.checkin.resolve)');
 
   // (b) Mood / urge / trigger read-back stays present alongside the note.
-  assert(screen.includes('오늘의 체크인'), 'CalendarScreen is missing the 오늘의 체크인 detail block');
+  assert(screen.includes('오늘의 기록'), 'CalendarScreen is missing the 오늘의 기록 detail block');
   assert(/day\.checkin\.moodLabel/.test(screen), 'CalendarScreen day-detail dropped the mood read-back');
   assert(/day\.checkin\.urge/.test(screen), 'CalendarScreen day-detail dropped the urge read-back');
   assert(/day\.checkin\.triggers/.test(screen), 'CalendarScreen day-detail dropped the trigger read-back');
 
   // (c) A calm empty state exists for today when no check-in is saved yet.
   assert(
-    /day\.isToday/.test(screen) && screen.includes('아직 오늘 체크인을 남기지 않았어요'),
+    /day\.isToday/.test(screen) && screen.includes('아직 오늘 기록을 남기지 않았어요'),
     'CalendarScreen is missing the calm today empty state for an unsaved check-in',
   );
 
@@ -1492,8 +1492,8 @@ check('records reads historical check-ins from the ledger, no fabricated history
 
   // (c) A past day's check-in block is labelled day-aware, not hardcoded "오늘의 체크인".
   assert(
-    /day\.isToday \? '오늘의 체크인' : '그 날의 체크인'/.test(cal),
-    'CalendarScreen does not label a past-day check-in as 그 날의 체크인',
+    /day\.isToday \? '오늘의 기록' : '그날의 기록'/.test(cal),
+    'CalendarScreen does not label a past-day check-in as 그날의 기록',
   );
 
   // (d) No fake cloud/AI/medical/blocking + no shaming vocabulary on the read surface.
@@ -1568,7 +1568,7 @@ check('crisis routine read-back is honest (no saved-step claim, real next action
   assert(urge.includes('오늘 완료로 기록돼요'), 'read-back does not state that completion is what gets recorded');
 
   // (c) A real next action that routes to an existing screen (no dead end).
-  assert(urge.includes('체크인으로 이어가기'), 'read-back next action (체크인으로 이어가기) missing');
+  assert(urge.includes('오늘 기록으로 이어가기'), 'read-back next action (오늘 기록으로 이어가기) missing');
   assert(/onNavigate\('checkin'\)/.test(urge), 'read-back does not route to the real check-in screen');
 
   // (d) No fake analysis / AI / medical / religious / shaming claims on the read-back.
@@ -1595,7 +1595,7 @@ check('recovery reflection note is honest: transient until the check-in saves it
 
   // (b) Honest disclosure: the line persists only when the check-in is finished.
   assert(
-    urge.includes('체크인을 마치면 오늘 기록에 저장돼요'),
+    urge.includes('기록을 마치면 오늘 기록에 저장돼요'),
     'C3 reflection note is missing the honest "saved only when the check-in is finished" disclosure',
   );
 
@@ -1642,7 +1642,7 @@ check('record detail offers honest recovery CTAs routed to existing screens (no 
   // (b) Both CTAs exist with their exact copy AND route to the real existing screens.
   assert(cal.includes('잠깐 멈춤으로 가기'), 'record detail missing the 잠깐 멈춤으로 가기 CTA');
   assert(/onNavigate\('urge'\)/.test(cal), 'record detail 잠깐 멈춤 CTA does not route to the real urge screen');
-  assert(cal.includes('오늘 체크인하기'), 'record detail missing the 오늘 체크인하기 CTA');
+  assert(cal.includes('오늘 기록하기'), 'record detail missing the 오늘 기록하기 CTA');
   assert(/onNavigate\('checkin'\)/.test(cal), 'record detail 체크인 CTA does not route to the real check-in screen');
 
   // (c) Honest framing: records are left as-is, the CTA only continues to a live action.
@@ -1700,7 +1700,7 @@ check('check-in saved confirmation + next action appear only after the check-in 
   const checkin = read('src/screens/CheckinScreen.jsx');
 
   // (a) Explicit save confirmation copy + the 최근 기록 보기 next action, routed to records.
-  assert(checkin.includes('오늘 체크인이 저장됐어요'), 'check-in is missing the explicit save confirmation copy');
+  assert(checkin.includes('오늘 기록이 저장됐어요'), 'check-in is missing the explicit save confirmation copy');
   assert(checkin.includes('최근 기록 보기'), 'check-in saved state is missing the 최근 기록 보기 next action');
   assert(/onNavigate\('calendar'\)/.test(checkin), '최근 기록 보기 does not route to the records screen');
 
@@ -1709,7 +1709,7 @@ check('check-in saved confirmation + next action appear only after the check-in 
   //     so it cannot render before completion.
   assert(/const savedCheckin = todayRecord\?\.checkin/.test(checkin), 'saved state is not derived from the persisted todayRecord.checkin');
   const gateIdx = checkin.indexOf('if (!editing && savedCheckin)');
-  const confirmIdx = checkin.indexOf('오늘 체크인이 저장됐어요');
+  const confirmIdx = checkin.indexOf('오늘 기록이 저장됐어요');
   const formIdx = checkin.indexOf('다음 · 오늘의 규율 점검');
   assert(gateIdx !== -1, 'saved confirmation is not gated behind a real saved check-in (!editing && savedCheckin)');
   assert(confirmIdx > gateIdx && confirmIdx < formIdx, 'save confirmation is not inside the saved-state branch — it could show before completion');
@@ -1721,7 +1721,7 @@ check('check-in saved confirmation + next action appear only after the check-in 
 check('records day-detail keeps the check-in read-back read-only and 오늘/지난 explicit', () => {
   const cal = read('src/screens/CalendarScreen.jsx');
 
-  assert(cal.includes('오늘 남긴 기록이에요. 고치려면 오늘 체크인에서 바꿀 수 있어요.'), 'today read-back is missing the edit-in-check-in note');
+  assert(cal.includes('오늘 남긴 기록이에요. 고치려면 오늘 기록에서 바꿀 수 있어요.'), 'today read-back is missing the edit-in-check-in note');
   assert(cal.includes('지난 기록은 그대로 보관돼요. 여기서는 보기만 해요.'), 'past read-back is missing the read-only note');
   assert(
     /day\.isToday\s*\?\s*'오늘 남긴 기록이에요[\s\S]*?:\s*'지난 기록은 그대로 보관돼요/.test(cal),
@@ -1747,7 +1747,7 @@ check('home daily action hub routes the recovery loop and adapts to today state'
 
   // (b) The three loop actions route to the existing screens.
   assert(/onNavigate\('urge'\)/.test(home), 'Home hub 잠깐 멈춤 does not route to urge');
-  assert(home.includes('오늘 체크인하기') && /onNavigate\('checkin'\)/.test(home), 'Home hub 오늘 체크인하기 → checkin missing');
+  assert(home.includes('오늘 기록하기') && /onNavigate\('checkin'\)/.test(home), 'Home hub 오늘 기록하기 → checkin missing');
   assert(home.includes('최근 기록 보기') && /onNavigate\('calendar'\)/.test(home), 'Home hub 최근 기록 보기 → calendar missing');
 
   // (c) The emphasized action is state-aware off the live today check-in (no new state).
@@ -1770,7 +1770,7 @@ check('home check-in summary is gated by real saved state and reads back today o
   const home = read('src/screens/HomeScreen.jsx');
 
   // (a) The summary copy + next action.
-  assert(home.includes('오늘 체크인이 저장됐어요'), 'Home summary save-confirmation copy missing');
+  assert(home.includes('오늘 기록이 저장됐어요'), 'Home summary save-confirmation copy missing');
   assert(home.includes('오늘 남긴 한 줄'), 'Home summary 오늘 남긴 한 줄 label missing');
   assert(home.includes('최근 기록에서 다시 볼 수 있어요'), 'Home summary 최근 기록에서 다시 볼 수 있어요 copy missing');
 
@@ -1802,12 +1802,12 @@ check('urge completion offers an honest check-in continuation (no fake save clai
   const urge = read('src/screens/UrgeScreen.jsx');
 
   // (a) The continuation CTA exists and routes to the real check-in.
-  assert(urge.includes('오늘 체크인에 한 줄 남기기'), 'urge check-in continuation CTA (오늘 체크인에 한 줄 남기기) missing');
+  assert(urge.includes('오늘 기록에 한 줄 남기기'), 'urge check-in continuation CTA (오늘 기록에 한 줄 남기기) missing');
   assert(/onNavigate\('checkin'\)/.test(urge), 'urge continuation does not route to the real check-in screen');
   assert(urge.includes('방금 넘긴 순간을 오늘 기록으로 남겨볼까요?'), 'urge continuation invite copy missing');
 
   // (b) Honest persistence: only future-tense "저장돼요"; no present/past fake-save claim.
-  assert(urge.includes('체크인을 마치면 오늘 기록에 저장돼요'), 'urge continuation is missing the "saved only when the check-in is finished" disclosure');
+  assert(urge.includes('기록을 마치면 오늘 기록에 저장돼요'), 'urge continuation is missing the "saved only when the check-in is finished" disclosure');
   for (const fake of ['저장했어요', '저장되었어요', '저장 완료', '기록했어요', '기록되었어요']) {
     assert(!urge.includes(fake), `urge continuation falsely claims the line is already saved: ${fake}`);
   }
@@ -1843,7 +1843,7 @@ check('pet room state shell reflects real today state, routes the loop, no fake 
   const shell = home.slice(startIdx, endIdx);
   for (const line of [
     '오늘은 이미 할 일을 해냈어요.',
-    '오늘의 체크인이 방에 남았어요.',
+    '오늘의 기록이 방에 남았어요.',
     '잠깐 멈춘 선택도 오늘의 기록이에요.',
     '오늘은 아직 빈 방이에요. 한 줄만 남겨도 충분해요.',
   ]) {
@@ -1855,7 +1855,7 @@ check('pet room state shell reflects real today state, routes the loop, no fake 
   assert(/onNavigate\('checkin'\)/.test(shell), 'room-state shell does not route to the check-in screen');
   assert(/onNavigate\('calendar'\)/.test(shell), 'room-state shell does not route to the records screen');
   assert(/onNavigate\('urge'\)/.test(shell), 'room-state shell does not route to the urge screen');
-  assert(/todayCheckin \? \([\s\S]*?최근 기록 보기[\s\S]*?\) : \([\s\S]*?오늘 체크인하기/.test(shell), 'room-state primary action does not adapt 최근 기록 보기 vs 오늘 체크인하기 on today check-in');
+  assert(/todayCheckin \? \([\s\S]*?최근 기록 보기[\s\S]*?\) : \([\s\S]*?오늘 기록하기/.test(shell), 'room-state primary action does not adapt 최근 기록 보기 vs 오늘 기록하기 on today check-in');
 
   // (e) No fake growth / unlock / gacha / shop / premium / persistence claim, no 금욕.
   for (const fake of ['성장했', '진화', '레벨업', '해금', '잠금 해제', '뽑기', '가챠', '상점', '프리미엄', '결제', '저장됐어요', '저장했어요', '금욕']) {
@@ -1928,7 +1928,7 @@ check('onboarding, empty states, and reset are honest and clear the new local st
   // (a) First-run guidance: three steps, gated on derived history, local-only note.
   assert(home.includes('home-onboarding'), 'Home first-run guidance card (home-onboarding) missing');
   assert(home.includes('NoF는 이렇게 써요'), 'Home first-run guidance title missing');
-  for (const step of ['흔들릴 땐 잠깐 멈춤', '하루 끝에는 체크인', '최근 기록에서 다시 확인']) {
+  for (const step of ['흔들릴 땐 잠깐 멈춤', '하루 끝에는 오늘 기록', '최근 기록에서 다시 확인']) {
     assert(home.includes(step), `Home first-run guidance step missing: ${step}`);
   }
   assert(/const hasCheckinHistory =\s*!!todayCheckin \|\| \(checkinLedger/.test(home), 'first-run guidance is not gated on a derived check-in-history signal');
@@ -1944,7 +1944,7 @@ check('onboarding, empty states, and reset are honest and clear the new local st
   const ceEnd = cal.indexOf('이 기록을 보는 방법', ceStart);
   assert(ceStart !== -1 && ceEnd !== -1 && ceEnd > ceStart, 'could not isolate the calendar-empty section');
   const emptyCard = cal.slice(ceStart, ceEnd);
-  assert(emptyCard.includes('오늘 체크인하기') && /onNavigate\('checkin'\)/.test(emptyCard), '최근 기록 empty-state does not offer a 오늘 체크인하기 CTA to the check-in screen');
+  assert(emptyCard.includes('오늘 기록하기') && /onNavigate\('checkin'\)/.test(emptyCard), '최근 기록 empty-state does not offer a 오늘 기록하기 CTA to the check-in screen');
 
   // (c) Reset clears the logged data INCLUDING the new protectionPlan, and routes home.
   const m = app.match(/const resetLocalData = \(\) => \{[\s\S]*?\};/);
@@ -2013,7 +2013,7 @@ check('reward landing confirmation is gated by the saved today check-in (no fake
 
   // (a) The confirmation card exists with its save + read-back copy.
   assert(screen.includes('reward-checkin-confirm'), 'reward landing confirmation card (reward-checkin-confirm) missing');
-  assert(screen.includes('오늘 체크인이 저장됐어요'), 'reward landing is missing the save confirmation copy');
+  assert(screen.includes('오늘 기록이 저장됐어요'), 'reward landing is missing the save confirmation copy');
   assert(screen.includes('최근 기록에서 다시 볼 수 있어요'), 'reward landing is missing the records read-back copy');
 
   // (b) Gated behind a REAL saved today check-in (derived from persisted todayRecord.checkin).
