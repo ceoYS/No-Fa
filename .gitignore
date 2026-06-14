@@ -36,3 +36,4 @@ references/mobbin_visual/
 
 # Claude Design bundled review artifacts - local only
 design_outputs/claude_design_v3/*.html
+.vercel
