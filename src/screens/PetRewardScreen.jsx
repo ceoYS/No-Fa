@@ -125,7 +125,9 @@ export default function PetRewardScreen({
   }, []);
 
   // Fire the snack hand-off token, then clear it so it can replay on the next feed.
-  const triggerSnackToss = (ms = 900) => {
+  // Matches the snack-toss animation length so the token stays mounted as it travels
+  // up toward the cat (CSS .snack-toss-token[data-active] → snack-toss 1100ms).
+  const triggerSnackToss = (ms = 1100) => {
     setSnackToss(true);
     clearTimeout(snackTossTimer.current);
     snackTossTimer.current = setTimeout(() => setSnackToss(false), ms);
