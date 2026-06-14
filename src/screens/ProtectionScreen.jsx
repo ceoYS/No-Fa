@@ -167,20 +167,8 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
         ) : null}
       </div>
 
-      <section className="card">
-        <span className="card-label">위기 때는 이렇게</span>
-        <p className="hairline-note">
-          흔들릴 때는 먼저 잠깐 멈춤을 눌러요. 위에 적어둔 대체 행동을 거기서 같이 보여줘요.
-        </p>
-        <button
-          type="button"
-          className="btn btn-ghost btn-block"
-          onClick={() => onNavigate('urge')}
-        >
-          잠깐 멈춤으로 가기
-        </button>
-      </section>
-
+      {/* RC-1 copy diet: the separate "위기 때는 이렇게" card was redundant — the subtitle
+          already says the plan shows up in 잠깐 멈춤, and the saved card links there directly. */}
       <button
         type="button"
         className="btn btn-ghost btn-block"

@@ -95,18 +95,15 @@ export default function ShieldScreen({
         </div>
       </header>
 
+      {/* RC-1 copy diet (feedback #5): one short, clear status — does it work yet? what is
+          this screen for now? — instead of a wall of meta-explanation. */}
       <section className="card shield-status">
         <div className="card-row">
           <span className="card-label">차단 설정</span>
           <span className="pill shield-tag">준비 중</span>
         </div>
         <p className="hairline-note">
-          NoF 실드는 자극적인 사이트와 검색을 멀리 두도록 돕는 보호막이에요.
-          아직 실제 차단은 제공하지 않아요. 준비가 되면 이곳에서 켤 수 있게 할게요.
-        </p>
-        <p className="hairline-note text-quiet">
-          지금 켜고 끄는 스위치를 두지 않은 건, 동작하지 않는 기능을 켜진 것처럼 보이게
-          하고 싶지 않아서예요.
+          아직 실제 차단은 제공하지 않아요. 지금은 멀리 둘 신호를 미리 적어두는 단계예요.
         </p>
       </section>
 
@@ -280,45 +277,25 @@ export default function ShieldScreen({
         </button>
       </section>
 
-      <section className="card">
-        <span className="card-label">실드와 NoF가 이어지는 방식</span>
-        <p className="hairline-note">
-          실드는 따로 도는 기능이 아니라, 지금 쓰는 절제 도구와 연결돼요.
-        </p>
-        <ul className="shield-link-list">
-          <li className="hairline-note">· 절제 카운터({counters.length}개)별로 무엇을 멀리 둘지 정해둘 수 있어요.</li>
-          <li className="hairline-note">· 규율({rules.length}개)에 ‘이 종류는 멀리 두기’ 같은 약속을 이어붙이게 할 거예요.</li>
-          <li className="hairline-note">· 차단에 막힌 순간엔 ‘잠깐 멈춤’ 5분으로 바로 이어지게 할 거예요.</li>
-          <li className="hairline-note">· 멀리 둔 순간들을 기록에 남겨 흐름을 돌아보게 할 거예요.</li>
-        </ul>
-      </section>
-
+      {/* RC-1 copy diet: the long "how shield connects to NoF" 4-bullet future-explainer
+          was removed — it added reading load without telling the user what to do now. The
+          "still usable" reassurance is kept as a single 잠깐 멈춤 CTA. */}
       <section className="card">
         <span className="card-label">실드가 준비되는 동안</span>
         <p className="hairline-note">
-          차단이 아직 없어도, 충동을 흘려보내는 도구는 지금도 쓸 수 있어요.
+          차단이 아직 없어도, 충동을 흘려보내는 잠깐 멈춤은 지금도 쓸 수 있어요.
         </p>
-        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            onClick={() => onNavigate('urge')}
-          >
-            못 참을 것 같아요 · 잠깐 멈춤
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => onNavigate('discipline')}
-          >
-            규율로 기준 정하기
-          </button>
-        </div>
+        <button
+          type="button"
+          className="btn btn-primary btn-block"
+          onClick={() => onNavigate('urge')}
+        >
+          못 참을 것 같아요 · 잠깐 멈춤
+        </button>
       </section>
 
       <p className="hairline-note text-quiet shield-privacy">
-        실드는 기기 안에서만 동작하도록 설계할 거예요. 무엇을 봤는지 서버로 보내지 않는
-        것을 기본 원칙으로 준비하고 있어요.
+        실드는 기기 안에서만 동작하도록 설계해요. 무엇을 봤는지 서버로 보내지 않아요.
       </p>
 
       <button
