@@ -2062,6 +2062,39 @@ check('protection plan management is honest: explicit local-only clear + saved/e
   );
 });
 
+// 68 — C38 MVP closeout sweep: a single cross-cutting net over the surfaces this sprint
+// touched. (a) Home must stay timer-first → 회복 루프 허브 → secondary, so it does not get more
+// scattered. (b) The two new/changed surfaces (reward landing confirmation, protection
+// management) carry NO user-facing 금욕 and no fake AI / medical / cloud / blocker / growth /
+// unlock / edit / replay claim ANYWHERE in the file — a file-level net beyond the card-scoped
+// C31/C34 guards (PetRewardScreen had no such 금욕 sweep before). (c) Both surfaces stay present
+// and gated on real state.
+check('MVP closeout surfaces stay honest: reward confirm + protection clear, Home core order intact', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  const reward = read('src/screens/PetRewardScreen.jsx');
+  const protect = read('src/screens/ProtectionScreen.jsx');
+
+  // (a) Home core order: timer hero → 회복 루프 허브 → secondary block.
+  const tHero = home.indexOf('timer-hero');
+  const tHub = home.indexOf('home-loop-hub');
+  const tSecondary = home.indexOf('home-secondary');
+  assert(tHero !== -1 && tHub !== -1 && tSecondary !== -1, 'Home lost a core section marker (timer-hero / home-loop-hub / home-secondary)');
+  assert(tHero < tHub && tHub < tSecondary, 'Home core order regressed — must stay timer hero → 회복 루프 허브 → secondary');
+
+  // (b) No forbidden 금욕 / fake claim anywhere on the two closeout surfaces (file-level). 상점
+  //     is intentionally absent from this list — the cosmetic room shop is a real feature.
+  const FAKE = ['금욕', 'AI 분석', 'AI 추천', '회복 점수', '실패 복구', '치료', '진단', '처방', '자동 차단', '클라우드 동기화', '다시 재생', '기록 수정', '잠금 해제', '해금', '뽑기', '가챠', '프리미엄'];
+  for (const [name, src] of [['PetRewardScreen', reward], ['ProtectionScreen', protect]]) {
+    for (const bad of FAKE) {
+      assert(!src.includes(bad), `${name} carries a forbidden MVP-closeout claim/vocabulary: ${bad}`);
+    }
+  }
+
+  // (c) Both closeout surfaces present and gated on real state.
+  assert(reward.includes('reward-checkin-confirm') && /checkinDoneToday \? \(/.test(reward), 'reward confirmation surface missing or not state-gated');
+  assert(protect.includes('계획 비우기') && /\{protectionPlan \? \(/.test(protect), 'protection clear / saved-state gating surface missing');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
