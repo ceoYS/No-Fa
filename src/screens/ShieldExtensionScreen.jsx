@@ -13,10 +13,61 @@
  * test. Guard #37 pins these invariants.
  */
 
+import { useState } from 'react';
+import {
+  pingExtension,
+  sendTestSignal,
+  getSavedExtensionId,
+  saveExtensionId,
+} from '../lib/chromeExtensionBridge.js';
+
 const TEST_SIGNAL = 'nof-test-risk-signal';
 const TEST_EXAMPLE = 'https://example.com/?q=nof-test-risk-signal';
 
+// Map a bridge error code to an honest Korean next step. Never claims a connection.
+function reasonText(error) {
+  switch (error) {
+    case 'no_chrome_runtime':
+      return 'Chrome 확장을 쓸 수 있는 환경이 아니에요. Chrome에서 확장을 설치한 뒤 다시 시도해요.';
+    case 'no_extension_id':
+      return '확장 ID를 먼저 붙여넣어요.';
+    default:
+      return '확장이 응답하지 않아요. 확장을 설치하고 새로고침한 뒤 다시 시도해요.';
+  }
+}
+
 export default function ShieldExtensionScreen({ onNavigate }) {
+  const [extId, setExtId] = useState(() => getSavedExtensionId());
+  // conn.state: 'idle' | 'checking' | 'connected' | 'failed'. '연결됨' renders ONLY in the
+  // 'connected' branch, reachable only after a real PING actually answers — never faked.
+  const [conn, setConn] = useState({ state: 'idle', detail: '' });
+  const [testMsg, setTestMsg] = useState('');
+
+  const checkConnection = async () => {
+    const id = saveExtensionId(extId);
+    setExtId(id);
+    setTestMsg('');
+    setConn({ state: 'checking', detail: '' });
+    const res = await pingExtension(id);
+    if (res && res.ok) {
+      setConn({ state: 'connected', detail: [res.name, res.version].filter(Boolean).join(' ') });
+    } else {
+      setConn({ state: 'failed', detail: reasonText(res && res.error) });
+    }
+  };
+
+  const sendTest = async () => {
+    const id = saveExtensionId(extId);
+    setExtId(id);
+    setTestMsg('테스트 신호를 보내는 중이에요…');
+    const res = await sendTestSignal(id);
+    if (res && res.ok) {
+      setTestMsg('확장에 테스트 신호를 보냈어요. 설치한 Chrome에서 아래 테스트 예시를 열면 잠깐 멈춤으로 이어져요.');
+    } else {
+      setTestMsg('아직 연결되지 않아 테스트 신호를 보내지 못했어요. 먼저 연결 확인을 눌러요.');
+    }
+  };
+
   return (
     <div className="screen">
       <header className="screen-header">
@@ -54,6 +105,66 @@ export default function ShieldExtensionScreen({ onNavigate }) {
         </div>
         <p className="hairline-note text-quiet">
           이 폴더는 이 프로젝트 안에 들어 있어요. 따로 내려받을 필요는 없어요.
+        </p>
+      </section>
+
+      {/* RC-7 — REAL app↔extension connection. A normal web page cannot discover an
+          unpacked extension's id, so the user pastes it (saved locally on this device).
+          연결 확인 sends a real PING; the screen shows 연결됨 ONLY when that PING actually
+          answers. With no extension answering it stays honestly 아직 연결되지 않았어요 — it
+          never fakes a link. Browser-scoped: this Chrome only, never device-wide / other apps. */}
+      <section className="card shield-ext-connect">
+        <div className="card-row">
+          <span className="card-label">Chrome 확장 연결</span>
+          <span className="pill shield-tag">이 기기 Chrome 차단</span>
+        </div>
+        <p className="hairline-note">이 Chrome 브라우저에서 먼저 작동해요.</p>
+        <p className="hairline-note text-quiet">기기 전체나 다른 앱까지 막는 기능은 아니에요.</p>
+
+        <label className="field-label" htmlFor="ext-id">확장 ID</label>
+        <input
+          id="ext-id"
+          type="text"
+          className="sheet-input"
+          value={extId}
+          onChange={(e) => setExtId(e.target.value.trim())}
+          placeholder="개발자 모드에서 보이는 32자 ID"
+          maxLength={64}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <p className="hairline-note text-quiet">확장 ID를 붙여넣어 연결을 확인해요.</p>
+
+        {conn.state === 'connected' ? (
+          <p className="hairline-note" aria-live="polite">
+            이 Chrome 확장과 연결됨{conn.detail ? ` · ${conn.detail}` : ''}.
+          </p>
+        ) : conn.state === 'checking' ? (
+          <p className="hairline-note text-quiet" aria-live="polite">연결 확인 중이에요…</p>
+        ) : conn.state === 'failed' ? (
+          <p className="hairline-note text-quiet" aria-live="polite">
+            아직 연결되지 않았어요. {conn.detail}
+          </p>
+        ) : (
+          <p className="hairline-note text-quiet">
+            아직 연결되지 않았어요. 확장 ID를 붙여넣고 연결 확인을 눌러요.
+          </p>
+        )}
+
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <button type="button" className="btn btn-primary btn-block" onClick={checkConnection}>
+            연결 확인
+          </button>
+          <button type="button" className="btn btn-ghost btn-block" onClick={sendTest}>
+            테스트 신호 보내기
+          </button>
+        </div>
+        {testMsg ? (
+          <p className="hairline-note text-quiet" aria-live="polite">{testMsg}</p>
+        ) : null}
+        <p className="hairline-note shield-safety-note">
+          연결 상태는 실제 응답으로만 확인해요. 응답이 없으면 연결됐다고 표시하지 않아요.
         </p>
       </section>
 

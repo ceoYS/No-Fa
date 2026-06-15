@@ -62,25 +62,65 @@ NoF 실드의 "실제로 동작하는 첫 차단"을 가장 낮은 리스크로 
 | `manifest.json` | MV3 매니페스트. `declarativeNetRequest` 권한 + 정적 룰셋 등록, 모듈 서비스 워커. |
 | `rules.json` | 정적 룰: 테스트 토큰 → `blocked.html` 로 redirect (main_frame, 대소문자 무시). |
 | `signals.js` | 로컬 위험 신호 모델 + `buildDynamicRules()`(신호 → 동적 룰). 무해한 테스트 토큰만. |
-| `service_worker.js` | 동적 룰 동기화 경로(`updateDynamicRules`) + 앱 메시지 수신 훅. |
+| `service_worker.js` | 동적 룰 동기화(`updateDynamicRules`) + 같은-확장 `onMessage` + RC-7 앱 브리지(`onMessageExternal`). |
 | `blocked.html` / `blocked.js` | NoF 멈춤 페이지. 대상 비표시, 로컬 5분 타이머. |
 | `popup.html` / `popup.js` | 상태·테스트 신호 표시, 설정 열기. |
 | `options.html` / `options.js` | 신호 목록 보기 + 앱 동기화 설계 설명. |
 
 ---
 
-## 앱 신호 동기화 (다음 단계 설계)
+## 앱 ↔ 확장 연결 (RC-7)
 
 지금은 정적 룰(`rules.json`, id 1)이 테스트 토큰 하나를 막는 **항상 켜진 데모**다. 동적 룰은
-비어 있다(id ≥ 1000 예약). 향후 NoF 앱과 이렇게 잇는다:
+비어 있다(id ≥ 1000 예약). RC-7에서 NoF 앱과 확장을 **실제로** 잇는 첫 슬라이스를 추가했다.
 
-1. NoF 앱이 사용자의 **추상 위험 신호**(카테고리 · 검색 신호 · 앱·SNS · 상황)를 가진다.
-2. 앱이 그 신호를 **앱이 관리·갱신하는 큐레이션 토큰**으로 매핑한다. (사용자가 위험한
-   주소를 직접 찾지 않는다 — 그 검색 자체가 재발 트리거이기 때문이다.)
-3. 앱(또는 브리지)이 확장에 메시지를 보낸다:
-   `chrome.runtime.sendMessage(EXT_ID, { type: 'nof:set-signals', signals })`.
-4. `service_worker.js` 가 `buildDynamicRules()` 로 동적 룰을 만들어
-   `chrome.declarativeNetRequest.updateDynamicRules()` 로 적용한다. 모든 처리는 로컬이다.
+**매니페스트 `externally_connectable`** — 일반 웹 페이지는 아래 출처에서만 확장에 말을 걸 수 있다:
+
+```
+"externally_connectable": { "matches": [
+  "https://nof-mauve.vercel.app/*",
+  "http://localhost/*",
+  "http://127.0.0.1/*"
+] }
+```
+
+> Chrome 매치 패턴은 **포트를 지원하지 않는다.** `http://localhost:4173/*` 처럼 포트를 넣은
+> 패턴은 무효라 매니페스트 로드가 통째로 거부된다. 포트 없는 `http://localhost/*` 가 모든 개발
+> 포트(4173·5173 등)를 포함한다.
+
+**메시지 규약** — 외부 페이지는 `onMessageExternal` 로 닿는다(같은-확장 전용 `onMessage` 와 별개).
+모든 응답은 `{ ok, ... }` 구조다:
+
+| 타입 | 동작 | 응답 |
+|------|------|------|
+| `PING` | 살아있는지 확인 | `{ ok, name, version }` |
+| `GET_STATUS` | 현재 동적 룰 수 | `{ ok, dynamicRuleCount, testSignal, name, version }` |
+| `SET_TEST_SIGNAL` | 무해한 테스트 토큰 동적 룰 설치 | `{ ok, count, testSignal }` |
+| `SET_BLOCK_RULES` | 정규화한 신호 배열 → 동적 룰 | `{ ok, count }` |
+| `CLEAR_RULES` | 동적 룰 제거 | `{ ok, removed }` |
+
+신호 매핑 원칙은 그대로다: 앱이 **추상 위험 신호**를 **앱이 관리하는 큐레이션 토큰**으로 바꿔
+보낸다. 사용자가 위험한 주소를 직접 찾지 않는다(그 검색 자체가 재발 트리거다). 실제 사용자
+도메인 → 동적 룰 → 리다이렉트 증명은 **RC-8** 영역이다.
+
+**확장 ID** — 압축해제(언팩) 확장은 ID가 무작위라 페이지가 자동으로 알 수 없다. 그래서 앱
+화면(`실제 차단 테스트`)에서 사용자가 ID를 **붙여넣어** 로컬에 저장하고 `연결 확인`(PING)을
+누른다. PING 이 실제로 응답할 때만 `연결됨` 으로 표시한다 — 응답이 없으면 절대 연결됐다고
+표시하지 않는다.
+
+> **아직 검증 안 됨(정직):** 이 매니페스트·워커 변경은 코드 게이트(`check:nof`)는 통과하지만,
+> 이 작업 환경에서는 확장을 실제 Chrome 에 로드해 PING 왕복까지 자동 검증하지는 못했다.
+> 실제 연결·차단 증명은 아래 수동 절차로 확인한다.
+
+### 수동 연결 스모크 (Chrome 데스크톱)
+
+1. 위 **설치** 절차로 이 폴더를 압축해제 로드한다.
+2. `chrome://extensions` 에서 이 확장의 **ID**(32자)를 복사한다.
+3. NoF 앱 → `보호 설정` → `차단 테스트하기` 화면(실드 → Chrome 확장 테스트로도 도달)을 연다.
+4. **확장 ID** 칸에 붙여넣고 **연결 확인** 을 누른다 → 응답하면 `연결됨` 이 뜬다.
+5. **테스트 신호 보내기** 를 누른 뒤, 주소창에 `example.com/?q=nof-test-risk-signal` 을 연다
+   → 페이지 대신 NoF **잠깐 멈춤**(`blocked.html`)으로 이어지면 성공이다.
+6. 평범한 주소(`example.com`)는 차단 없이 그대로 열린다.
 
 ---
 

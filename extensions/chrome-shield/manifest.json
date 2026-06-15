@@ -28,5 +28,12 @@
       "resources": ["blocked.html"],
       "matches": ["<all_urls>"]
     }
-  ]
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://nof-mauve.vercel.app/*",
+      "http://localhost/*",
+      "http://127.0.0.1/*"
+    ]
+  }
 }

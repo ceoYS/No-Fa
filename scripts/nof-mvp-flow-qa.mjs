@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 33 MVP behaviors this harness drives and asserts. Every check() references one
+// The 34 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -74,6 +74,7 @@ const BEHAVIORS = {
   B31: 'first-run is honest: 예시 samples labelled, one-tap real start, no unearned 최장',
   B32: 'records are useful: saved day distinct + real count, detail reads writing + useful CTA, recordless day honest',
   B33: 'protection is clear: honest non-blocking scope, real 잠깐 멈춤/오늘 기록 actions, real NoF Chrome-extension path (no toy experiment copy)',
+  B34: 'chrome extension connection is real + honest: reachable connect screen, browser-scoped scope, local 확장 ID + 연결 확인 mechanism, no fake 연결됨 without a real extension reply, 테스트 신호 보내기 present, no 체크인/금욕/fake claim',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -642,6 +643,42 @@ async function runFlow(c) {
     noFakeProtect && pauseRoutes;
   check('B33', protectionClear,
     protectionClear ? '' : `reach:${toProtect}/${onProtectRc6} scope:${scopeHonest} noAuto:${noAutoBlockClaim} pause:${hasPauseCta}/${pauseRoutes} record:${hasRecordCta} chrome:${chromeBlockHonest} noExp:${noExperimentCopy} clean:${noForbiddenProtect}/${noFakeProtect}`);
+
+  // 34 · RC-7 app↔extension connection. The user can REACH the Chrome extension connection
+  //      screen (Home → 보호 설정 적기 → 차단 테스트하기), it states the honest browser-scoped
+  //      scope (this Chrome only, not device-wide / other apps), offers a REAL connection
+  //      mechanism (a local 확장 ID field + 연결 확인), and — with NO real extension answering in
+  //      this headless run — it must NOT claim 연결됨 (no fake link). It also offers 테스트 신호
+  //      보내기 and carries no 체크인/금욕 or fake AI/medical/auto-block claim. Rendered DOM only.
+  await c.clickExact('홈'); await sleep(250);
+  await c.click('보호 설정 적기'); await sleep(300);
+  const toExt = await c.click('차단 테스트하기'); await sleep(400);
+  const onExt = await c.has('실제 차단 테스트'); // ShieldExtensionScreen title (hangul-stable)
+  // Honest scope: a NoF Chrome extension, this browser only, not device-wide / other apps.
+  const extScopeHonest =
+    (await c.has('Chrome 확장')) &&
+    (await c.has('이 Chrome 브라우저에서 먼저 작동해요')) &&
+    (await c.has('기기 전체나 다른 앱까지 막는 기능은 아니에요'));
+  // Real connection mechanism: a local 확장 ID input + a 연결 확인 action + a 테스트 신호 보내기 action.
+  const hasIdField = await c.has('확장 ID를 붙여넣어 연결을 확인해요');
+  const hasConnectBtn = await c.has('연결 확인');
+  const hasSendTestBtn = await c.has('테스트 신호 보내기');
+  // Default state is honestly NOT connected, never a fake 연결됨.
+  const honestBeforeClick = (await c.has('아직 연결되지 않았어요')) && !(await c.has('연결됨'));
+  // Pressing 연결 확인 with no extension present must STAY not-connected (real PING fails) —
+  // it must never flip to 연결됨 on click. This is the core anti-fake assertion.
+  await c.click('연결 확인'); await sleep(500);
+  const stillNotConnected = (await c.has('아직 연결되지 않았어요')) && !(await c.has('연결됨'));
+  // No forbidden vocab / fake claims on this surface.
+  const extNoForbidden = !(await c.has('체크인')) && !(await c.has('금욕'));
+  const extNoFake =
+    !(await c.has('AI')) && !(await c.has('회복 점수')) && !(await c.has('치료')) && !(await c.has('자동 차단'));
+  await c.shot('shield_extension_connect');
+  const extConnectClear =
+    toExt && onExt && extScopeHonest && hasIdField && hasConnectBtn && hasSendTestBtn &&
+    honestBeforeClick && stillNotConnected && extNoForbidden && extNoFake;
+  check('B34', extConnectClear,
+    extConnectClear ? '' : `reach:${toExt}/${onExt} scope:${extScopeHonest} id:${hasIdField} connect:${hasConnectBtn} send:${hasSendTestBtn} honestBefore:${honestBeforeClick} stillNot:${stillNotConnected} clean:${extNoForbidden}/${extNoFake}`);
 }
 
 async function main() {

@@ -59,7 +59,8 @@
  *      routes to the real UrgeScreen — reachable in one tap from every screen.
  *  35. The chrome-shield extension keeps LEAST PRIVILEGE: the manifest requests only
  *      the minimal permission set (declarativeNetRequest), declares no dangerous keys
- *      (content_scripts / webRequest / tabs / cookies / scripting / externally_connectable),
+ *      (content_scripts / webRequest / tabs / cookies / scripting), keeps the RC-7
+ *      externally_connectable bridge NARROW (NoF app origins only, no wildcard host),
  *      and still carries no remote code / CDN / analytics, no adult terms, and no
  *      blocked-target leak — pinning the security audit so future scope-creep fails loud.
  *  36. Selectable status controls expose aria-pressed (not only the data-selected visual
@@ -888,10 +889,11 @@ check('bottom nav stays visible on mobile (device frame fits viewport + safe-are
 // 35 — the chrome-shield extension must keep LEAST PRIVILEGE. The manifest may request
 // ONLY the minimal permission it actually uses (declarativeNetRequest), must declare
 // none of the dangerous extension keys/permissions (content_scripts / webRequest /
-// tabs / cookies / scripting / externally_connectable) on any surface, and the code
-// must still carry no remote code / CDN / analytics, no explicit/adult terms, and no
-// blocked-target leak. This pins the security-audit hardening so a future change that
-// adds a risky permission or key fails the build instead of silently shipping.
+// tabs / cookies / scripting) on any surface, and the code must still carry no remote
+// code / CDN / analytics, no explicit/adult terms, and no blocked-target leak. RC-7 adds
+// externally_connectable for the app↔extension bridge — ALLOWED, but pinned NARROW here
+// (NoF app origins only; no wildcard host). This pins the security-audit hardening so a
+// future change that adds a risky permission/key — or widens the bridge — fails the build.
 check('chrome-shield manifest keeps least privilege (minimal perms, no dangerous keys)', () => {
   const dir = 'extensions/chrome-shield';
   const mf = JSON.parse(read(`${dir}/manifest.json`));
@@ -905,12 +907,23 @@ check('chrome-shield manifest keeps least privilege (minimal perms, no dangerous
 
   // Dangerous keys/permissions must be absent on EVERY manifest surface (top-level
   // key, permissions, and optional_permissions / optional_host_permissions).
-  const DANGEROUS = ['content_scripts', 'webRequest', 'tabs', 'cookies', 'scripting', 'externally_connectable'];
+  const DANGEROUS = ['content_scripts', 'webRequest', 'tabs', 'cookies', 'scripting'];
   const optional = [...(mf.optional_permissions || []), ...(mf.optional_host_permissions || [])];
   for (const k of DANGEROUS) {
     assert(!(k in mf), `manifest declares a dangerous top-level key: ${k}`);
     assert(!mf.permissions.includes(k), `manifest requests a dangerous permission: ${k}`);
     assert(!optional.includes(k), `manifest requests a dangerous optional permission: ${k}`);
+  }
+
+  // RC-7: externally_connectable is ALLOWED (the app↔extension bridge needs it) but must
+  // stay NARROW — scoped to the NoF app origins only. A broad/wildcard match would re-open
+  // the very scope this least-privilege guard protects, so any wildcard host fails here.
+  if ('externally_connectable' in mf) {
+    const ecm = (mf.externally_connectable && mf.externally_connectable.matches) || [];
+    assert(Array.isArray(ecm) && ecm.length > 0, 'externally_connectable present but has no matches allow-list');
+    for (const bad of ['<all_urls>', '*://*/*', 'https://*/*', 'http://*/*', '*']) {
+      assert(!ecm.includes(bad), `externally_connectable exposes a broad origin (${bad}) — keep it scoped to the NoF app`);
+    }
   }
 
   // No remote code / CDN / analytics / external API / fetch / XHR in the extension code
@@ -2640,6 +2653,86 @@ check('RC-6 protection clarity is verified by a real browser behavior (B33)', ()
   assert(qa.includes("c.has('실험 기능')"), 'B33 does not assert the absence of developer experiment/preview copy');
   assert(qa.includes('오늘 기록으로 남기기'), 'B33 does not assert the 오늘 기록 next action');
   assert(qa.includes('지금 충동을 멈춰요'), 'B33 does not assert the 잠깐 멈춤 route actually lands on urge');
+});
+
+// 84 — RC-7 app↔extension bridge (chrome-shield side). The web app can only reach the
+// extension through a NARROW externally_connectable allow-list + an onMessageExternal
+// handler that speaks the RC-7 protocol (PING / GET_STATUS / SET_TEST_SIGNAL /
+// SET_BLOCK_RULES / CLEAR_RULES) and REUSES the existing local declarativeNetRequest path
+// (applySignals). No broad origin, no port (invalid in match patterns), no second engine,
+// and the same-extension onMessage handler stays for popup/options.
+check('chrome-shield exposes a narrow RC-7 app↔extension bridge (externally_connectable + onMessageExternal + protocol)', () => {
+  const dir = 'extensions/chrome-shield';
+  const mf = JSON.parse(read(`${dir}/manifest.json`));
+  const ec = mf.externally_connectable;
+  assert(ec && Array.isArray(ec.matches) && ec.matches.length > 0, 'manifest has no externally_connectable.matches for the NoF app');
+  // Production + local-dev origins. NOTE: Chrome match patterns do NOT support ports, so the
+  // localhost/127.0.0.1 patterns are port-LESS — a port-less host matches ALL dev ports
+  // (4173/5173/…). A ported pattern is invalid and makes Chrome reject the whole manifest.
+  const REQUIRED_ORIGINS = [
+    'https://nof-mauve.vercel.app/*',
+    'http://localhost/*',
+    'http://127.0.0.1/*',
+  ];
+  for (const o of REQUIRED_ORIGINS) {
+    assert(ec.matches.includes(o), `externally_connectable is missing the allowed origin: ${o}`);
+  }
+  for (const bad of ['<all_urls>', '*://*/*', 'https://*/*', 'http://*/*', '*']) {
+    assert(!ec.matches.includes(bad), `externally_connectable exposes a broad origin: ${bad}`);
+  }
+  for (const m of ec.matches) {
+    assert(!/:\d+\//.test(m), `externally_connectable pattern has a port (invalid match pattern, breaks manifest load): ${m}`);
+  }
+  // service worker: handle EXTERNAL messages (a web page needs onMessageExternal), keep the
+  // same-extension onMessage, speak the full RC-7 protocol, and reuse the local engine.
+  const sw = read(`${dir}/service_worker.js`);
+  assert(sw.includes('onMessageExternal'), 'service_worker.js has no onMessageExternal listener (web app cannot reach it)');
+  assert(/onMessage\.addListener/.test(sw), 'service_worker.js dropped the same-extension onMessage handler');
+  for (const type of ['PING', 'GET_STATUS', 'SET_TEST_SIGNAL', 'SET_BLOCK_RULES', 'CLEAR_RULES']) {
+    assert(sw.includes(`'${type}'`), `service_worker.js does not handle the RC-7 message type: ${type}`);
+  }
+  assert(sw.includes('applySignals('), 'service_worker.js does not reuse the local dynamic-rule path (applySignals) for app-driven signals');
+});
+
+// 85 — RC-7 web-app side. ShieldExtensionScreen wires a REAL connection: it imports the
+// bridge, PINGs the extension, offers a local 확장 ID field + 연결 확인 + 테스트 신호 보내기,
+// and shows 연결됨 ONLY behind a connection-state branch (conn.state === 'connected'), never
+// a static label, with an honest 아직 연결되지 않았어요 fallback. The bridge never fabricates a
+// link (honors lastError, degrades to ok:false) and adds no network sink (runtime messaging
+// only). The screen also stays in the no-user-facing-체크인 sweep (RC-2A guard above).
+check('RC-7 app extension-connection UI is real and honest (PING-gated, no fake 연결됨)', () => {
+  const screen = read('src/screens/ShieldExtensionScreen.jsx');
+  assert(/from '\.\.\/lib\/chromeExtensionBridge\.js'/.test(screen), 'ShieldExtensionScreen does not import the chromeExtensionBridge');
+  assert(screen.includes('pingExtension('), 'ShieldExtensionScreen never PINGs the extension (no real connection check)');
+  assert(screen.includes('확장 ID'), 'ShieldExtensionScreen has no 확장 ID connection field');
+  assert(screen.includes('연결 확인'), 'ShieldExtensionScreen has no 연결 확인 action');
+  assert(screen.includes('테스트 신호 보내기'), 'ShieldExtensionScreen has no 테스트 신호 보내기 action');
+  assert(screen.includes('아직 연결되지 않았어요'), 'ShieldExtensionScreen lost the honest not-connected copy');
+  assert(screen.includes('연결됨'), 'ShieldExtensionScreen lost the connected-state copy');
+  assert(screen.includes("conn.state === 'connected'"), 'ShieldExtensionScreen renders 연결됨 without a real connection-state condition');
+
+  const bridge = read('src/lib/chromeExtensionBridge.js');
+  assert(bridge.includes('lastError'), 'bridge does not honor chrome.runtime.lastError (could fake a connection)');
+  assert(bridge.includes('no_chrome_runtime'), 'bridge does not degrade gracefully when chrome.runtime is absent');
+  assert(/sendMessage\(/.test(bridge), 'bridge does not actually send a runtime message');
+  for (const sink of ['fetch(', 'XMLHttpRequest', 'http://', 'https://']) {
+    assert(!bridge.includes(sink), `chromeExtensionBridge adds a network sink (${sink}) — it must use chrome.runtime messaging only`);
+  }
+});
+
+// 86 — RC-7 connection is verified by a REAL browser behavior (B34): the connection screen
+// is reachable, states browser-scoped scope, offers the local 확장 ID + 연결 확인 mechanism,
+// exercises 연결 확인, and asserts it never flips to 연결됨 without a real extension reply.
+// Pins the behavior so it can't be dropped or gutted to a constant tautology.
+check('RC-7 extension connection is verified by a real browser behavior (B34)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B34:/.test(qa), 'B34 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B34'\s*,/.test(qa), "QA flow has no real check('B34', …) call");
+  assert(!/check\(\s*'B34'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B34') is gutted to a constant");
+  assert(qa.includes('확장 ID를 붙여넣어 연결을 확인해요'), 'B34 does not assert the extension-ID connection mechanism');
+  assert(qa.includes("c.click('연결 확인')"), 'B34 does not actually exercise the 연결 확인 action');
+  assert(qa.includes("c.has('연결됨')"), 'B34 does not assert that no fake connected state appears without a real extension');
+  assert(qa.includes('테스트 신호 보내기'), 'B34 does not assert the 테스트 신호 보내기 action');
 });
 
 let failed = 0;

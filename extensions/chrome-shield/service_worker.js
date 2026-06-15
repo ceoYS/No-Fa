@@ -49,3 +49,81 @@ chrome.runtime.onMessage.addListener((msg, _sender, sendResponse) => {
   }
   return false;
 });
+
+// ── RC-7 앱 ↔ 확장 브리지 ────────────────────────────────────────────────────
+// NoF 웹 페이지(매니페스트 externally_connectable 에 등록된 출처)는 일반 onMessage 로는
+// 닿지 못한다 — 외부 페이지는 onMessageExternal 을 거쳐야 한다. 여기서 작고 명시적인
+// 메시지 규약을 처리하고, 인앱 흐름과 똑같은 *로컬* declarativeNetRequest 경로를 재사용한다.
+// 네트워크·원격 코드 없음. 모든 응답은 구조화된 { ok, ... } 형태다.
+
+function manifestInfo() {
+  try {
+    const m = chrome.runtime.getManifest();
+    return { name: m.name, version: m.version };
+  } catch (e) {
+    return { name: 'NoF Shield', version: '0.0.0' };
+  }
+}
+
+async function getStatus() {
+  const dynamic = await chrome.declarativeNetRequest.getDynamicRules();
+  return { dynamicRuleCount: dynamic.length, testSignal: TEST_SIGNAL, ...manifestInfo() };
+}
+
+async function clearDynamicRules() {
+  const existing = await chrome.declarativeNetRequest.getDynamicRules();
+  if (existing.length) {
+    await chrome.declarativeNetRequest.updateDynamicRules({ removeRuleIds: existing.map((r) => r.id) });
+  }
+  return existing.length;
+}
+
+// 느슨하게 들어온 사용자 입력 신호를 안전한 { token } 형태로 정규화한다. 문자열은 토큰으로,
+// 객체는 { token } 또는 { domain } 을 토큰으로 본다. 가져올 URL 은 절대 받지 않는다 —
+// declarativeNetRequest 가 쓸 매칭 토큰만 받는다. (실제 도메인→룰 매핑은 RC-8 영역이다.)
+function normalizeSignals(input) {
+  if (!Array.isArray(input)) return [];
+  return input
+    .map((s) => {
+      if (typeof s === 'string') return { token: s.trim() };
+      if (s && typeof s === 'object') {
+        const token = typeof s.token === 'string' ? s.token : typeof s.domain === 'string' ? s.domain : '';
+        return { ...s, token: String(token).trim() };
+      }
+      return null;
+    })
+    .filter((s) => s && s.token.length > 0);
+}
+
+// RC-7 메시지 규약: PING / GET_STATUS / SET_TEST_SIGNAL / SET_BLOCK_RULES / CLEAR_RULES.
+async function handleRc7Message(msg) {
+  const type = msg && msg.type;
+  switch (type) {
+    case 'PING':
+      return { ok: true, ...manifestInfo() };
+    case 'GET_STATUS':
+      return { ok: true, ...(await getStatus()) };
+    case 'SET_TEST_SIGNAL': {
+      const count = await applySignals([{ id: 'sig_test', token: TEST_SIGNAL }]);
+      return { ok: true, count, testSignal: TEST_SIGNAL };
+    }
+    case 'SET_BLOCK_RULES': {
+      const count = await applySignals(normalizeSignals(msg.signals));
+      return { ok: true, count };
+    }
+    case 'CLEAR_RULES': {
+      const removed = await clearDynamicRules();
+      return { ok: true, removed };
+    }
+    default:
+      return { ok: false, error: 'unknown_message_type' };
+  }
+}
+
+// 외부 페이지(NoF 앱)는 onMessageExternal 로 닿는다 — onMessage 는 같은 확장 전용이다.
+chrome.runtime.onMessageExternal.addListener((msg, _sender, sendResponse) => {
+  handleRc7Message(msg)
+    .then((res) => sendResponse(res))
+    .catch((e) => sendResponse({ ok: false, error: String((e && e.message) || e) }));
+  return true; // 비동기 응답을 위해 채널 유지
+});
