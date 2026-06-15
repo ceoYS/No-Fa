@@ -2065,7 +2065,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 30 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 31 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2078,11 +2078,11 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 30 behaviors,
   const helper = read('scripts/nof-cdp-client.mjs'); // throws if the CDP helper is missing
   const qa = read('scripts/nof-mvp-flow-qa.mjs');    // throws if the flow script is missing
 
-  // (a) All 30 behaviors are driven by a REAL check('B##', <expr>) call — not just a
+  // (a) All 31 behaviors are driven by a REAL check('B##', <expr>) call — not just a
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
-  //     still reporting 30/30 PASS.
-  for (let i = 1; i <= 30; i += 1) {
+  //     still reporting 31/31 PASS.
+  for (let i = 1; i <= 31; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2471,6 +2471,21 @@ check('RC-4 calendar shows no synthesised per-day abstinence streak (honest gree
     /ledger\[dateMs\] \?\? null/.test(cal) && cal.includes('month-grid'),
     'calendar is no longer a real ledger-backed month grid',
   );
+});
+
+// 79 — RC-4 first-run honesty is verified by a REAL browser behavior (B31): on a freshly
+// cleared install the harness asserts the 예시 sample label, a one-tap 내 기록으로 시작 path,
+// NO earned-looking 최장 record, and no 금욕/체크인 — on rendered DOM, not source strings.
+// Pins the behavior so it can't be silently dropped or gutted to a constant tautology.
+check('RC-4 first-run honesty is verified by a real browser behavior (B31)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B31:/.test(qa), 'B31 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B31'\s*,/.test(qa), "QA flow has no real check('B31', …) call");
+  assert(!/check\(\s*'B31'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B31') is gutted to a constant");
+  // The B31 assertion must actually probe the first-run honesty signals (not a stub).
+  assert(qa.includes("c.has('내 기록으로 시작')"), 'B31 does not assert the one-tap honest start path');
+  assert(/!\(await c\.has\('최장'\)\)/.test(qa), 'B31 does not assert the unearned 최장 record is hidden on first run');
+  assert(qa.includes("c.has('체크인')"), 'B31 does not assert the first run is free of 체크인');
 });
 
 let failed = 0;

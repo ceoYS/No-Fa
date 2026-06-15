@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 27 MVP behaviors this harness drives and asserts. Every check() references one
+// The 31 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -71,6 +71,7 @@ const BEHAVIORS = {
   B28: 'room item can be placed and persists after reload',
   B29: 'placed room item can be dragged to a new position',
   B30: 'snack hand-off visibly animates and updates real fed state',
+  B31: 'first-run is honest: 예시 samples labelled, one-tap real start, no unearned 최장',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -292,6 +293,20 @@ async function runFlow(c) {
   check('B03', (await c.has('오늘 기록하기')) && (await c.has('못 참을 것 같아요')));
   await scanOverflow(c, 'home-fresh');
   await c.shot('home_fresh');
+
+  // 3.5 · RC-4 first-run honesty. A CLEARED install (clearLS above) must not present unearned
+  //       abstinence progress as the user's own. On this fresh mount the seed counters are
+  //       SAMPLES: the 예시 label is visible, the hero shows NO earned-looking 최장 record, and a
+  //       one-tap honest start (내 기록으로 시작) is offered. The first screen carries no 금욕 / 체크인.
+  //       Asserted on the rendered DOM of the very first paint, before any data is planted.
+  const sampleLabeled = await c.has('예시');
+  const honestStartPath = await c.has('내 기록으로 시작');
+  const noEarnedLongest = !(await c.has('최장')); // samples hide the 최장 record on first run
+  const noForbiddenFirstRun = !(await c.has('금욕')) && !(await c.has('체크인'));
+  const firstRunHonest = sampleLabeled && honestStartPath && noEarnedLongest && noForbiddenFirstRun;
+  check('B31', firstRunHonest,
+    firstRunHonest ? '' : `sample:${sampleLabeled} start:${honestStartPath} noLongest:${noEarnedLongest} clean:${noForbiddenFirstRun}`);
+  await c.shot('home_first_run_honest');
 
   // 4 · Home → 잠깐 멈춤 (bottom-nav center) → urge empty-protection honesty.
   await c.clickExact('잠깐 멈춤');
