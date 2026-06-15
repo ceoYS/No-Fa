@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 32 MVP behaviors this harness drives and asserts. Every check() references one
+// The 33 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -73,6 +73,7 @@ const BEHAVIORS = {
   B30: 'snack hand-off visibly animates and updates real fed state',
   B31: 'first-run is honest: 예시 samples labelled, one-tap real start, no unearned 최장',
   B32: 'records are useful: saved day distinct + real count, detail reads writing + useful CTA, recordless day honest',
+  B33: 'protection is clear: honest non-blocking scope, real 잠깐 멈춤/오늘 기록 actions, safe-browser preview labelled',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -599,6 +600,37 @@ async function runFlow(c) {
   const feedOk = fed && !fedBefore && tossActive && fedAfter && fedTodayShown;
   check('B30', feedOk, feedOk ? '' : `fed:${fed} before:${fedBefore} toss:${tossActive} after:${fedAfter} today:${fedTodayShown}`);
   await c.shot('room_snack_handoff');
+
+  // 31 · RC-6 protection clarity. The 보호 설정 screen the user actually reaches (Home →
+  //      보호 설정 적기) must be HONEST about scope — it is a self-opened protection plan, NOT
+  //      an automatic or device-wide blocker — expose practical next actions to 잠깐 멈춤 and
+  //      오늘 기록 through EXISTING routes, label the in-app safe browser an experiment/preview,
+  //      and carry NO 금욕/체크인 or fake AI/detection/medical/recovery claim. Asserted on the
+  //      rendered DOM, and the 잠깐 멈춤 next action is actually clicked to prove it routes.
+  await c.clickExact('홈'); await sleep(250);
+  const toProtect = await c.click('보호 설정 적기'); await sleep(350);
+  const onProtectRc6 = await c.has('흔들리는 순간을 미리 적어둬요');
+  // Honest scope: a self-opened plan, no automatic / device-wide blocking claim.
+  const scopeHonest =
+    (await c.has('보호 계획')) && (await c.has('자동으로 막아주지')) && (await c.has('막지 않아요'));
+  const noAutoBlockClaim = !(await c.has('자동 차단'));
+  // Practical next actions through existing routes.
+  const hasPauseCta = await c.has('잠깐 멈춤 열기');
+  const hasRecordCta = await c.has('오늘 기록으로 남기기');
+  // Safe-browser PoC labelled as an in-app experiment/preview.
+  const safeBrowserLabeled = (await c.has('안전 브라우저 미리보기')) && (await c.has('실험'));
+  // No forbidden vocabulary / fake claims on this surface.
+  const noForbiddenProtect = !(await c.has('금욕')) && !(await c.has('체크인'));
+  const noFakeProtect =
+    !(await c.has('AI')) && !(await c.has('회복 점수')) && !(await c.has('치료')) && !(await c.has('감지'));
+  await c.shot('protection_clarity');
+  // The 잠깐 멈춤 next action actually routes to the real urge screen.
+  const pauseRoutes = (await c.click('잠깐 멈춤 열기')) && (await c.has('지금 충동을 멈춰요'));
+  const protectionClear =
+    toProtect && onProtectRc6 && scopeHonest && noAutoBlockClaim && hasPauseCta &&
+    hasRecordCta && safeBrowserLabeled && noForbiddenProtect && noFakeProtect && pauseRoutes;
+  check('B33', protectionClear,
+    protectionClear ? '' : `reach:${toProtect}/${onProtectRc6} scope:${scopeHonest} noAuto:${noAutoBlockClaim} pause:${hasPauseCta}/${pauseRoutes} record:${hasRecordCta} safeBrowser:${safeBrowserLabeled} clean:${noForbiddenProtect}/${noFakeProtect}`);
 }
 
 async function main() {
