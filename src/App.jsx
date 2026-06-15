@@ -49,23 +49,29 @@ function dayKey(ms) {
   return d.getTime();
 }
 
-// Seed the abstinence run ~12 days in so the timer hero reads a real elapsed
-// value on first paint. relapse() resets this to now (§0.6.3).
+// Sample elapsed offset (~12 days) for the first-run 예시 counter, so a new user can see
+// the shape of a populated timer hero. It is shown ONLY under a 예시 label and is replaced
+// by a real run (start = now) the moment the user taps 내 기록으로 시작 (startOwnRun) or edits
+// the counter. relapse() resets a real run's start to now (§0.6.3).
 const SEED_OFFSET_MS = 12 * DAY_MS + 3 * 3600 * 1000 + 24 * 60 * 1000 + 18 * 1000;
 const HOUR_MS = 3600 * 1000;
 const MIN_MS = 60 * 1000;
 
-// Multi abstinence-counter seed (counter-management benchmark). Each counter is an
-// independent abstinence run with its own start, target and longest record. Offsets
-// are relative to load time so every hero/card reads a real elapsed value on first
-// paint. relapse() restarts ONLY the selected counter — never all of them.
+// Multi abstinence-counter seed (counter-management benchmark). On a FIRST-EVER load (no
+// saved bundle) these populate Home so a new user can see the app's shape — but they are
+// honest SAMPLES, not the user's own progress: each is flagged isSample:true and carries
+// longestDays:0 (NO fabricated "최장" record). Home labels them 예시, hides the 최장 record
+// while a counter is a sample, and offers a one-tap 내 기록으로 시작 (startOwnRun) that
+// converts them into a real run from now. Offsets are relative to load time only so a
+// sample reads a plausible elapsed value under its 예시 label. relapse() restarts ONLY the
+// selected counter — never all of them.
 function makeDefaultCounters() {
   const now = Date.now();
   return [
-    { id: 'c_nofap', name: '콘텐츠 절제', startMs: now - SEED_OFFSET_MS, targetDays: 30, longestDays: 27, status: 'active', history: [] },
-    { id: 'c_sns', name: 'SNS 줄이기', startMs: now - (4 * DAY_MS + 6 * HOUR_MS + 12 * MIN_MS), targetDays: 14, longestDays: 9, status: 'active', history: [] },
-    { id: 'c_latenight', name: '야식 끊기', startMs: now - (2 * DAY_MS + 18 * HOUR_MS + 5 * MIN_MS), targetDays: 21, longestDays: 6, status: 'active', history: [] },
-    { id: 'c_alcohol', name: '음주 줄이기', startMs: now - (6 * DAY_MS + 1 * HOUR_MS + 40 * MIN_MS), targetDays: 30, longestDays: 12, status: 'active', history: [] },
+    { id: 'c_nofap', name: '콘텐츠 절제', startMs: now - SEED_OFFSET_MS, targetDays: 30, longestDays: 0, status: 'active', history: [], isSample: true },
+    { id: 'c_sns', name: 'SNS 줄이기', startMs: now - (4 * DAY_MS + 6 * HOUR_MS + 12 * MIN_MS), targetDays: 14, longestDays: 0, status: 'active', history: [], isSample: true },
+    { id: 'c_latenight', name: '야식 끊기', startMs: now - (2 * DAY_MS + 18 * HOUR_MS + 5 * MIN_MS), targetDays: 21, longestDays: 0, status: 'active', history: [], isSample: true },
+    { id: 'c_alcohol', name: '음주 줄이기', startMs: now - (6 * DAY_MS + 1 * HOUR_MS + 40 * MIN_MS), targetDays: 30, longestDays: 0, status: 'active', history: [], isSample: true },
   ];
 }
 
@@ -361,13 +367,31 @@ export default function App() {
         if (typeof name === 'string' && name.trim()) next.name = name.trim();
         if (Number.isFinite(startMs)) next.startMs = Math.min(startMs, Date.now());
         if (Number.isFinite(targetDays) && targetDays > 0) next.targetDays = targetDays;
-        return next;
+        // Editing a counter is the user taking ownership: a 예시 sample becomes a real
+        // counter (its user-set/confirmed start is no longer a sample). RC-4 first-run honesty.
+        return c.isSample ? { ...next, isSample: false } : next;
       }),
     );
   };
 
   const selectCounter = (id) => {
     if (counters.some((c) => c.id === id)) setSelectedCounterId(id);
+  };
+
+  // 내 기록으로 시작 (RC-4 first-run honesty): convert the 예시 sample counters into the
+  // user's OWN run. Each sample restarts from now (an honest 0일째), drops the 예시 flag, and
+  // zeroes the longest record + history — so no fabricated elapsed/최장 carries over. Real
+  // counters the user already owns are untouched. Afterward no samples remain, so Home stops
+  // showing the 예시 labels and the start banner.
+  const startOwnRun = () => {
+    const now = Date.now();
+    setCounters((prev) =>
+      prev.map((c) =>
+        c.isSample
+          ? { ...c, startMs: now, longestDays: 0, history: [], isSample: false }
+          : c,
+      ),
+    );
   };
 
   // Shield planner handlers (P0.5). Non-enforcing: add appends a planned entry,
@@ -722,6 +746,7 @@ export default function App() {
             onSelectCounter={selectCounter}
             onAddCounter={addCounter}
             onEditCounter={editCounter}
+            onStartOwnRun={startOwnRun}
             onRelapse={relapse}
             onStartSlipReflection={startSlipReflection}
             onCompleteReflection={completeReflection}

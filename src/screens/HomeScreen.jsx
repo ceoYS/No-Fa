@@ -29,6 +29,7 @@ export default function HomeScreen({
   onSelectCounter,
   onAddCounter,
   onEditCounter,
+  onStartOwnRun,
   onRelapse,
   onStartSlipReflection,
   onResetLocalData,
@@ -58,6 +59,13 @@ export default function HomeScreen({
 
   const { days, hh, mm, ss } = formatElapsed(now - abstinenceStartMs);
   const bestDays = Math.max(longestDays, days);
+
+  // RC-4 first-run honesty: a cleared install seeds 예시 SAMPLE counters so a new user can
+  // see the app's shape. They are clearly labelled and never counted as the user's own — the
+  // hero/card 최장 record is hidden while a counter is a sample, and a one-tap 내 기록으로 시작
+  // (onStartOwnRun) converts every sample into a real run from now.
+  const heroIsSample = !!selectedCounter?.isSample;
+  const hasSample = counters.some((c) => c.isSample);
 
   // Honest forward target — the next abstinence milestone day, framed as a goal
   // (never a "reward to chase"; rewards stay a by-product of the work). Past every
@@ -108,14 +116,45 @@ export default function HomeScreen({
         ) : null}
 
         <div className="timer-hero-meta">
-          <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>
-            최장 {bestDays}일
-          </span>
+          {!heroIsSample ? (
+            <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>
+              최장 {bestDays}일
+            </span>
+          ) : (
+            <span className="pill sample-pill" style={{ fontSize: 'var(--fs-small)' }}>
+              예시
+            </span>
+          )}
           <span className="hairline-note">
-            {nextGoal ? `다음 목표 ${nextGoal.day}일까지 ${goalRemaining}일` : '최장 기록을 새로 쓰는 중이에요'}
+            {heroIsSample
+              ? '예시 기록이에요. 아래에서 내 기록으로 시작할 수 있어요.'
+              : nextGoal
+                ? `다음 목표 ${nextGoal.day}일까지 ${goalRemaining}일`
+                : '최장 기록을 새로 쓰는 중이에요'}
           </span>
         </div>
       </section>
+
+      {/* RC-4 first-run honesty: when 예시 sample counters are present, a short honest notice
+          (not the removed RC-2A onboarding dashboard) explains they are samples and offers a
+          one-tap start of the user's own run. The per-counter 편집 sheet sets a real start
+          date/time. The notice disappears once no samples remain. */}
+      {hasSample ? (
+        <section className="card sample-banner" aria-label="예시 카운터 안내">
+          <span className="card-label">지금 보이는 기록은 예시예요</span>
+          <p className="hairline-note">
+            처음 둘러보기 쉽도록 예시 카운터를 넣어놨어요. ‘내 기록으로 시작’을 누르면 지금부터 0일째로
+            새로 시작하고, 예시 표시는 사라져요. 시작일을 직접 정하려면 카운터 편집에서 바꿀 수 있어요.
+          </p>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => onStartOwnRun?.()}
+          >
+            내 기록으로 시작
+          </button>
+        </section>
+      ) : null}
 
       {/* 2) 홈에서 바로 할 수 있는 두 행동만 — 위기엔 잠깐 멈춤(urge), 하루는 오늘 기록(checkin).
           데일리 허브·첫 사용 안내·저장 확인 카드는 RC-2A에서 제거했다(홈은 상태 화면). */}
@@ -190,7 +229,7 @@ export default function HomeScreen({
               >
                 <div className="counter-card-head">
                   <span className="counter-card-name">{c.name}</span>
-                  <span className="counter-card-status">절제 중 · 지금까지</span>
+                  <span className="counter-card-status">{c.isSample ? '예시 · 지금까지' : '절제 중 · 지금까지'}</span>
                 </div>
                 {/* RC-1: every counter ticks live to the second (not just the hero) — the
                     1초 now 틱이 카드를 다시 그려, 모든 절제 항목이 실시간으로 흐른다. */}
@@ -203,7 +242,11 @@ export default function HomeScreen({
                 <div className="counter-card-meta">
                   <span className="hairline-note">목표 {c.targetDays}일</span>
                   <span className="hairline-note">규율 {linkedCount}개</span>
-                  <span className="hairline-note">최장 {Math.max(c.longestDays ?? 0, el.days)}일</span>
+                  {!c.isSample ? (
+                    <span className="hairline-note">최장 {Math.max(c.longestDays ?? 0, el.days)}일</span>
+                  ) : (
+                    <span className="hairline-note text-quiet">예시 기록</span>
+                  )}
                 </div>
               </button>
             );
@@ -520,9 +563,12 @@ function AddCounterSheet({ onCancel, onSubmit }) {
 // R-12: 추가 시트와 같은 보정 예고 — 단, 편집의 빈/0 목표는 30일이 아니라
 // 기존 목표 유지(App.editCounter가 invalid 목표를 무시)라서 문구가 다르다.
 function EditCounterSheet({ counter, onCancel, onSubmit }) {
+  // RC-4: a 예시 sample has no real start yet, so default its pickers to NOW (an honest start)
+  // rather than the sample offset — editing a sample is the user setting their real start.
+  const base = counter?.isSample ? Date.now() : (counter?.startMs ?? Date.now());
   const [name, setName] = useState(counter?.name ?? '');
-  const [date, setDate] = useState(msToDateValue(counter?.startMs ?? Date.now()));
-  const [time, setTime] = useState(msToTimeValue(counter?.startMs ?? Date.now()));
+  const [date, setDate] = useState(msToDateValue(base));
+  const [time, setTime] = useState(msToTimeValue(base));
   const [target, setTarget] = useState(String(counter?.targetDays ?? 30));
   if (!counter) return null;
   const ready = name.trim().length > 0 && !!date;
@@ -544,7 +590,11 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
       >
         <div className="sheet-handle" aria-hidden="true" />
         <h2 className="sheet-title">카운터 편집</h2>
-        <p className="sheet-help">시작 시각을 바로잡거나 이름·목표를 바꿀 수 있어요.</p>
+        <p className="sheet-help">
+          {counter.isSample
+            ? '예시 카운터예요. 시작 시각을 정하면 내 기록이 돼요.'
+            : '시작 시각을 바로잡거나 이름·목표를 바꿀 수 있어요.'}
+        </p>
 
         <label className="field-label" htmlFor="edit-counter-name">이름</label>
         <input

@@ -306,6 +306,19 @@
   border-color: rgba(106, 122, 94, 0.3);
 }
 
+/* RC-4 first-run honesty: 예시 (sample) markers must read as clearly NOT the user's own
+   data — a quiet, dashed, low-emphasis treatment, never the ember/moss "earned" look. */
+.sample-pill {
+  background: transparent;
+  color: var(--text-quiet);
+  border: 1px dashed var(--border-medium);
+}
+
+.sample-banner {
+  border-style: dashed;
+  border-color: var(--border-medium);
+}
+
 /* streak ------------------------------------------------------------ */
 .streak {
   display: grid;
