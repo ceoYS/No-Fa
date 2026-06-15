@@ -352,7 +352,7 @@ async function runFlow(c) {
   // 13–14 · Reward → 기록 (monthly calendar); open TODAY's cell in the month grid and the
   //         day detail reads the typed writing (회고 + 약속 + 다짐) verbatim.
   const toRecords = await c.click('최근 기록 보기');
-  check('B13', toRecords && (await c.has('패턴이 보이기 시작했어요')));
+  check('B13', toRecords && (await c.has('하루하루 남긴 기록이에요')));
   const cellClicked = await c.clickSelector('.month-cell[data-today="true"]');
   await sleep(500);
   const recHasNote = await c.has(NOTE);
@@ -497,7 +497,7 @@ async function runFlow(c) {
   //      month and back. Asserts on the rendered DOM (month-nav label changes then returns).
   await c.clickExact('홈'); await sleep(150);
   await c.clickExact('기록'); await sleep(300);
-  const onCal = await c.has('패턴이 보이기 시작했어요');
+  const onCal = await c.has('하루하루 남긴 기록이에요');
   const readMonth = `(() => { const el = document.querySelector('.month-nav-label'); return el ? el.textContent.trim() : null; })()`;
   const monthNow = await c.eval(readMonth);
   const hasWeekday = await c.eval(`(() => !!document.querySelector('.month-weekday'))()`);

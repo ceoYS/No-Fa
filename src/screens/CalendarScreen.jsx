@@ -7,7 +7,6 @@ import { BADGE_LABEL, listBadges, summarizeRules } from '../constants/discipline
 // real localStorage ledger (today from the live record, past days from checkinLedger) —
 // empty days stay empty and no past record is ever fabricated. Week starts on Sunday.
 const WEEKDAYS = ['일', '월', '화', '수', '목', '금', '토'];
-const DAY_MS = 86400000;
 
 const ABSTINENCE_TEXT = {
   clean: '이어가는 중',
@@ -25,7 +24,6 @@ export default function CalendarScreen({
   onNavigate,
   onCheckinFromRecord,
   rules = [],
-  abstinenceStartMs = Date.now(),
   todayRecord = null,
   checkinLedger = null,
 }) {
@@ -84,19 +82,17 @@ export default function CalendarScreen({
     const wd = WEEKDAYS[date.getDay()];
     const isToday = dateMs === todayKey;
     const checkin = recordFor(dateMs);
-    const withinRun = dateMs >= startOfDay(abstinenceStartMs);
-    const abstinenceState = isToday
-      ? todayRecord?.abstinenceState ?? (withinRun ? 'clean' : 'unknown')
-      : withinRun
-        ? 'clean'
-        : 'unknown';
+    // RC-4 honesty: per-day abstinence state is only known for TODAY (the live todayRecord).
+    // Past days were never stored with an abstinence state, so we do NOT synthesise one from
+    // the current run start — an unrecorded past day reads 기록 전 (unknown), never a fabricated
+    // 이어가는 중 streak. The live running streak is shown on the Home timer, not invented here.
+    const abstinenceState = isToday ? todayRecord?.abstinenceState ?? 'unknown' : 'unknown';
     const s = isToday ? summarizeRules(rules) : { kept: 0, held: 0, missed: 0 };
     return {
       dateMs,
       dateLabel: `${date.getMonth() + 1}월 ${date.getDate()}일 (${wd})${isToday ? ' · 오늘' : ''}`,
       isToday,
       abstinenceState,
-      streakDay: withinRun ? Math.floor((dateMs - startOfDay(abstinenceStartMs)) / DAY_MS) + 1 : 0,
       keptCount: s.kept,
       heldCount: s.held,
       missedCount: s.missed,
@@ -119,7 +115,7 @@ export default function CalendarScreen({
     <div className="screen">
       <header className="screen-header">
         <div>
-          <p className="screen-greeting">패턴이 보이기 시작했어요</p>
+          <p className="screen-greeting">하루하루 남긴 기록이에요</p>
           <h1 className="screen-title">기록</h1>
         </div>
       </header>
@@ -240,9 +236,16 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
 
         <div className="day-detail-row">
           <span className="card-label">절제 상태</span>
-          <span className={`pill ${day.abstinenceState === 'relapse' ? 'pill-ember' : 'pill-moss'}`}>
+          <span
+            className={`pill ${
+              day.abstinenceState === 'relapse'
+                ? 'pill-ember'
+                : day.abstinenceState === 'clean'
+                  ? 'pill-moss'
+                  : ''
+            }`}
+          >
             {ABSTINENCE_TEXT[day.abstinenceState] ?? '기록 전'}
-            {day.streakDay > 0 ? ` · ${day.streakDay}일째` : ''}
           </span>
         </div>
 
