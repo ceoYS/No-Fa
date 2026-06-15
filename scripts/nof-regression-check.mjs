@@ -2068,7 +2068,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 32 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 33 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2081,11 +2081,11 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 32 behaviors,
   const helper = read('scripts/nof-cdp-client.mjs'); // throws if the CDP helper is missing
   const qa = read('scripts/nof-mvp-flow-qa.mjs');    // throws if the flow script is missing
 
-  // (a) All 32 behaviors are driven by a REAL check('B##', <expr>) call — not just a
+  // (a) All 33 behaviors are driven by a REAL check('B##', <expr>) call — not just a
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
-  //     still reporting 32/32 PASS.
-  for (let i = 1; i <= 32; i += 1) {
+  //     still reporting 33/33 PASS.
+  for (let i = 1; i <= 33; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2561,6 +2561,63 @@ check('RC-5 records usefulness is verified by a real browser behavior (B32)', ()
     qa.includes('기록 전') || qa.includes('남긴 기록이 없어요'),
     'B32 does not assert a recordless day stays honest (기록 전)',
   );
+});
+
+// 82 — RC-6 protection clarity. The 보호 설정 screen the user actually reaches must state its
+// honest scope up front (a self-opened protection plan, NOT an automatic or device-wide
+// blocker), give practical next actions through EXISTING routes only (잠깐 멈춤 + 오늘 기록), and
+// explain the in-app Safe Browser as an experiment/preview that routes to the real screen.
+// The same device-wide honesty + 오늘 기록 next action are reinforced on the Shield (차단 설정)
+// screen. This pins the gains so the protection area can't quietly regress into a fake/auto/
+// device-wide blocking claim. The disclaimer is phrased as a plain negation on purpose — the
+// bare "자동 차단" token stays forbidden (it reads as a claim to the static + B21 sweeps).
+check('RC-6 protection clarity stays honest (explicit non-blocking scope, real next actions, safe-browser preview)', () => {
+  const screen = read('src/screens/ProtectionScreen.jsx');
+  const shield = read('src/screens/ShieldScreen.jsx');
+
+  // (a) Explicit honest scope: it is a plan, it does not auto-block, and it does not lock the
+  //     whole device or other apps.
+  assert(screen.includes('보호 계획'), 'protection screen lost the honest 보호 계획 framing');
+  assert(/자동으로 막아주지/.test(screen), 'protection screen must state it does NOT automatically block');
+  assert(/기기 전체/.test(screen) && /막지/.test(screen), 'protection screen must state it does NOT lock the whole device/other apps');
+
+  // (b) Practical next actions through EXISTING routes (no new fake feature): 잠깐 멈춤 + 오늘 기록.
+  assert(screen.includes('지금 할 수 있는 행동'), 'protection screen lost the practical action card');
+  assert(/onNavigate\('urge'\)/.test(screen), 'protection screen lost the 잠깐 멈춤 next action');
+  assert(/onNavigate\('checkin'\)/.test(screen) && screen.includes('오늘 기록'), 'protection screen lost the 오늘 기록 next action');
+
+  // (c) Safe-browser PoC explained as an in-app experiment/preview that routes to the real screen.
+  assert(screen.includes('안전 브라우저 미리보기'), 'protection screen lost the safe-browser preview card');
+  assert(screen.includes('실험'), 'safe-browser preview is not labelled an experiment');
+  assert(/onNavigate\('shieldBrowser'\)/.test(screen), 'safe-browser preview does not route to the real Safe Browser screen');
+
+  // (d) No fake/auto/device-wide blocking, AI, cloud, or medical claim on the surface.
+  for (const fake of ['자동 차단', '차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '기기 전체 보호', '모든 앱 차단', 'AI가 감지', 'AI 분석', 'AI 추천', '클라우드', '동기화', '치료', '진단', '처방', '회복 점수', '금욕', '체크인']) {
+    assert(!screen.includes(fake), `protection clarity surface makes a forbidden claim/vocabulary: ${fake}`);
+  }
+
+  // (e) The Shield (차단 설정) screen reinforces the same device-wide honesty + 오늘 기록 action.
+  assert(/기기 전체/.test(shield) && /막지/.test(shield), 'Shield screen must state it does NOT lock the whole device/other apps');
+  assert(/onNavigate\('checkin'\)/.test(shield) && shield.includes('오늘 기록'), 'Shield screen lost the 오늘 기록 next action');
+});
+
+// 83 — RC-6 protection clarity is verified by a REAL browser behavior (B33): the 보호 설정 screen
+// the user reaches states its honest scope (a self-opened plan, not an automatic or device-wide
+// blocker), exposes practical 잠깐 멈춤 + 오늘 기록 next actions, labels the in-app safe browser an
+// experiment/preview, and carries no 금욕/체크인 or fake AI/medical/recovery claim — all on
+// rendered DOM, with the 잠깐 멈춤 route actually exercised. Pins the behavior so it can't be
+// dropped or gutted to a constant tautology.
+check('RC-6 protection clarity is verified by a real browser behavior (B33)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B33:/.test(qa), 'B33 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B33'\s*,/.test(qa), "QA flow has no real check('B33', …) call");
+  assert(!/check\(\s*'B33'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B33') is gutted to a constant");
+  // The B33 assertion must actually probe the protection clarity signals (not a stub).
+  assert(qa.includes("c.has('자동 차단')"), 'B33 does not assert the absence of an automatic-blocking claim');
+  assert(qa.includes('자동으로 막아주지'), 'B33 does not assert the honest non-blocking scope copy');
+  assert(qa.includes('안전 브라우저 미리보기'), 'B33 does not assert the safe-browser preview labelling');
+  assert(qa.includes('오늘 기록으로 남기기'), 'B33 does not assert the 오늘 기록 next action');
+  assert(qa.includes('지금 충동을 멈춰요'), 'B33 does not assert the 잠깐 멈춤 route actually lands on urge');
 });
 
 let failed = 0;
