@@ -22,7 +22,9 @@
  *  12. The urge 대체 활동 opens a real alternative-action panel, not a home route.
  *  13. The pet feed message is an honest hand-off (no cat-eating claim).
  *  14. Home relapse/restart requires a confirmation step (never an instant reset).
- *  15. Multiple default abstinence counters exist (multi-counter data model).
+ *  15. Multiple default abstinence counters exist (multi-counter data model); the
+ *      first-run seeds are honest 예시 samples (isSample:true, longestDays:0) so a
+ *      cleared install never shows an unearned streak/record as the user's own.
  *  16. Home exposes add + edit counter UI (name / start date / time / target).
  *  17. Home renders a selectable counter list (tap selects → hero updates).
  *  18. relapse() is scoped to the selected counter (never resets all counters).
@@ -323,7 +325,7 @@ check('home relapse restart requires confirmation (never instant reset)', () => 
 
 // 15 — the multi-counter data model must seed multiple default counters with the
 // required prototype shape ({ id, name, startMs, targetDays, longestDays, ... }).
-check('multiple default abstinence counters exist', () => {
+check('multiple default abstinence counters exist (first-run seeds are honest 예시 samples)', () => {
   const app = read('src/App.jsx');
   assert(/function makeDefaultCounters\(/.test(app), 'makeDefaultCounters() seed factory missing');
   for (const name of ['콘텐츠 절제', 'SNS 줄이기', '야식 끊기', '음주 줄이기']) {
@@ -333,6 +335,22 @@ check('multiple default abstinence counters exist', () => {
     assert(app.includes(field), `counter model field missing: ${field}`);
   }
   assert(app.includes('selectedCounterId'), 'no selectedCounterId state in App.jsx');
+  // RC-4 first-run honesty: the seeds are SAMPLES, not the user's own earned progress.
+  // Every default counter must be flagged isSample:true and carry NO fabricated longest
+  // record (longestDays:0). A nonzero seeded longestDays would claim a "최장" the user
+  // never earned on first paint — exactly the dishonesty RC-4 removes.
+  const mk = app.match(/function makeDefaultCounters\(\)\s*\{[\s\S]*?\n\}/);
+  assert(mk, 'makeDefaultCounters() body not found');
+  const seedCount = (mk[0].match(/id:\s*'c_/g) || []).length;
+  assert(seedCount >= 4, `expected at least four seed counters, found ${seedCount}`);
+  assert(
+    (mk[0].match(/isSample:\s*true/g) || []).length === seedCount,
+    'every seed counter must be flagged isSample:true (honest 예시 label, not the user\'s own run)',
+  );
+  assert(
+    !/longestDays:\s*[1-9]/.test(mk[0]),
+    'seed counters must not carry a fabricated nonzero longestDays (RC-4: no unearned 최장 record)',
+  );
 });
 
 // 16 — Home must expose add + edit counter UI covering all four fields.
@@ -2374,6 +2392,85 @@ check('RC-2B real cat room: drag placement persists, snack handoff animates, hon
     assert(!new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`).test(qa), `QA flow check('${id}') is gutted to a constant`);
   }
   assert(/pointerDrag\(/.test(qa), 'QA flow does not drive a real pointer drag (reposition) for B29');
+});
+
+// 77 — RC-4 first-run honesty (counters / Home). A cleared install must never present
+// unearned abstinence progress as the user's own. The seeds are explicit 예시 samples;
+// Home discloses that, hides the 최장 record while a counter is still a sample (the
+// longest was not earned), and offers a one-tap honest "내 기록으로 시작" that converts the
+// samples into a real run (start = now, isSample dropped, longest 0). Editing a sample
+// also takes ownership (clears isSample). The banner must NOT reuse a removed Home
+// dashboard/onboarding section (RC-2A Home diet stays intact).
+check('RC-4 first-run counters are honest 예시 samples with a one-tap real start (no unearned streak)', () => {
+  const app = read('src/App.jsx');
+  const home = read('src/screens/HomeScreen.jsx');
+
+  // (a) Samples are seeded ONLY on a first-ever load (no persisted bundle yet).
+  assert(
+    /persisted\?\.counters \?\? makeDefaultCounters\(\)/.test(app),
+    'counters are not seeded from makeDefaultCounters() only on first load',
+  );
+
+  // (b) A one-tap handler converts the samples to a REAL run: start = now, isSample false,
+  //     longest 0 — so no fabricated elapsed/longest carries into the user's own run.
+  const own = app.match(/const startOwnRun = \(\)[\s\S]*?\n  \};/);
+  assert(own, "no startOwnRun() handler to convert 예시 samples into the user's own run");
+  assert(
+    /startMs:\s*now/.test(own[0]) && /isSample:\s*false/.test(own[0]) && /longestDays:\s*0/.test(own[0]),
+    'startOwnRun() must reset start to now, drop isSample, and zero longest',
+  );
+  assert(/onStartOwnRun=\{startOwnRun\}/.test(app), 'App does not pass onStartOwnRun down to the screen');
+
+  // (c) Editing a sample counter also takes ownership (clears the 예시 flag).
+  const edit = app.match(/const editCounter = \([\s\S]*?\n  \};/);
+  assert(
+    edit && /isSample:\s*false/.test(edit[0]),
+    'editCounter() must clear isSample so a user-set start is no longer a sample',
+  );
+
+  // (d) Home discloses the sample state, offers the one-tap honest start, and gates the
+  //     최장 record on a non-sample counter (a sample never shows an earned-looking 최장).
+  assert(home.includes('예시'), 'Home does not label the sample counters (예시)');
+  assert(home.includes('내 기록으로 시작'), 'Home offers no one-tap honest start (내 기록으로 시작)');
+  assert(home.includes('onStartOwnRun'), 'Home does not wire the onStartOwnRun handler');
+  assert(home.includes('isSample'), 'Home does not branch on isSample (sample label + 최장 gating)');
+  assert(
+    /!heroIsSample \?[\s\S]{0,160}최장 \{bestDays\}일/.test(home),
+    'hero 최장 record is not gated behind a non-sample check (!heroIsSample)',
+  );
+  assert(
+    /!c\.isSample \?[\s\S]{0,200}최장 /.test(home),
+    'counter-card 최장 record is not gated behind a non-sample check (!c.isSample)',
+  );
+  for (const banned of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state']) {
+    assert(!home.includes(banned), `RC-4 sample banner must not reuse a removed Home section class: ${banned}`);
+  }
+});
+
+// 78 — RC-4 first-run honesty (calendar). The monthly record calendar must not synthesise
+// a per-day abstinence streak from the current run start: an unrecorded past day reads
+// 기록 전 (unknown), never a fabricated 이어가는 중 · N일째. Only TODAY uses the live recorded
+// abstinence state. The greeting no longer claims pattern insight the screen never computes.
+// The RC-2A real-ledger month grid (no fabricated history) stays intact.
+check('RC-4 calendar shows no synthesised per-day abstinence streak (honest greeting)', () => {
+  const cal = read('src/screens/CalendarScreen.jsx');
+
+  // (a) The old synthesis from abstinenceStartMs is gone (no fabricated clean days / streak).
+  assert(!/withinRun\s*\?\s*'clean'/.test(cal), "calendar still synthesises a past-day 'clean' state from the run start");
+  assert(!cal.includes('abstinenceStartMs'), 'calendar still reads abstinenceStartMs to fabricate per-day state');
+  assert(!/streakDay:\s*withinRun/.test(cal), 'calendar still derives a per-day streakDay from the run start');
+
+  // (b) Past, unrecorded days read 기록 전 (the honest neutral/unknown state).
+  assert(cal.includes("unknown: '기록 전'"), 'calendar lost the honest unknown (기록 전) state label');
+
+  // (c) The greeting no longer overclaims pattern insight it does not compute.
+  assert(!cal.includes('패턴이 보이기 시작했어요'), 'calendar greeting still overclaims pattern insight (패턴이 보이기 시작했어요)');
+
+  // (d) Still a real ledger-backed month grid (RC-2A invariant intact, no fabricated history).
+  assert(
+    /ledger\[dateMs\] \?\? null/.test(cal) && cal.includes('month-grid'),
+    'calendar is no longer a real ledger-backed month grid',
+  );
 });
 
 let failed = 0;
