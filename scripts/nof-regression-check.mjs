@@ -1680,11 +1680,14 @@ check('record detail offers honest recovery CTAs routed to existing screens (no 
   assert(/function DayDetailSheet\(\{[^}]*onNavigate[^}]*\}\)/.test(cal), 'DayDetailSheet does not receive onNavigate');
   assert(/<DayDetailSheet[\s\S]*onNavigate=\{onNavigate\}/.test(cal), 'CalendarScreen does not pass onNavigate into DayDetailSheet');
 
-  // (b) Both CTAs exist with their exact copy AND route to the real existing screens.
-  assert(cal.includes('잠깐 멈춤으로 가기'), 'record detail missing the 잠깐 멈춤으로 가기 CTA');
+  // (b) The RC-5 next-action CTAs exist with their exact copy AND route to real existing
+  //     screens only: 오늘 기록으로 이어가기 → check-in, 잠깐 멈춤 → urge, 보호 계획 확인 → protection.
+  assert(cal.includes('오늘 기록으로 이어가기'), 'record detail missing the 오늘 기록으로 이어가기 CTA');
+  assert(/onNavigate\('checkin'\)/.test(cal), 'record detail 오늘 기록 CTA does not route to the real check-in screen');
+  assert(cal.includes('잠깐 멈춤'), 'record detail missing the 잠깐 멈춤 CTA');
   assert(/onNavigate\('urge'\)/.test(cal), 'record detail 잠깐 멈춤 CTA does not route to the real urge screen');
-  assert(cal.includes('오늘 기록하기'), 'record detail missing the 오늘 기록하기 CTA');
-  assert(/onNavigate\('checkin'\)/.test(cal), 'record detail 체크인 CTA does not route to the real check-in screen');
+  assert(cal.includes('보호 계획 확인'), 'record detail missing the 보호 계획 확인 CTA');
+  assert(/onNavigate\('protection'\)/.test(cal), 'record detail 보호 계획 CTA does not route to the real protection screen');
 
   // (c) Honest framing: records are left as-is, the CTA only continues to a live action.
   assert(cal.includes('기록은 그대로 두고, 오늘 할 수 있는 행동으로 이어가요.'), 'record detail recovery CTA missing the records-stay-as-is honesty copy');
@@ -2065,7 +2068,7 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 // browser). This guards the TOOL so a future change can't quietly hollow it out: drop
 // a behavior, fake coverage, smuggle in a dependency, or reintroduce one of the two
 // freeze-audit harness mistakes (brittle "NoF는" innerText / unscoped reset click).
-check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 31 behaviors, no harness traps)', () => {
+check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 32 behaviors, no harness traps)', () => {
   const pkg = JSON.parse(read('package.json'));
   assert(pkg.scripts && typeof pkg.scripts['qa:mvp'] === 'string', 'package.json has no qa:mvp script');
   assert(pkg.scripts['qa:mvp'].includes('nof-mvp-flow-qa.mjs'), 'qa:mvp must run scripts/nof-mvp-flow-qa.mjs');
@@ -2078,11 +2081,11 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 31 behaviors,
   const helper = read('scripts/nof-cdp-client.mjs'); // throws if the CDP helper is missing
   const qa = read('scripts/nof-mvp-flow-qa.mjs');    // throws if the flow script is missing
 
-  // (a) All 31 behaviors are driven by a REAL check('B##', <expr>) call — not just a
+  // (a) All 32 behaviors are driven by a REAL check('B##', <expr>) call — not just a
   //     substring, and never a constant like check('B##', true). This stops the harness
   //     being silently gutted (labels kept, assertions swapped for a tautology) while
-  //     still reporting 31/31 PASS.
-  for (let i = 1; i <= 31; i += 1) {
+  //     still reporting 32/32 PASS.
+  for (let i = 1; i <= 32; i += 1) {
     const id = 'B' + String(i).padStart(2, '0');
     const called = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,`);
     const constant = new RegExp(`check\\(\\s*['"]${id}['"]\\s*,\\s*(?:true|false|1|0)\\b`);
@@ -2486,6 +2489,78 @@ check('RC-4 first-run honesty is verified by a real browser behavior (B31)', () 
   assert(qa.includes("c.has('내 기록으로 시작')"), 'B31 does not assert the one-tap honest start path');
   assert(/!\(await c\.has\('최장'\)\)/.test(qa), 'B31 does not assert the unearned 최장 record is hidden on first run');
   assert(qa.includes("c.has('체크인')"), 'B31 does not assert the first run is free of 체크인');
+});
+
+// 80 — RC-5 records/calendar usefulness must stay HONEST. The month calendar now gives REAL
+// recognition for days the user actually recorded — a pure COUNT of real entries, never a
+// streak/insight/success claim — and the day detail surfaces the saved writing plus useful
+// next actions through EXISTING routes only, without copying a past note into today. This
+// pins those gains so they can't quietly regress into a fabricated insight or a fake claim.
+check('RC-5 records usefulness stays honest (real recorded-day count, honest CTAs, no fake insight)', () => {
+  const cal = read('src/screens/CalendarScreen.jsx');
+
+  // (a) Recognition is a REAL count derived from actual data, not a hardcoded number.
+  assert(/monthRecordCount\s*=\s*cells/.test(cal), 'month record count is not derived from the real rendered cells');
+  assert(
+    /totalRecordCount\s*=/.test(cal) && /Object\.keys\(ledger\)/.test(cal),
+    'total record count is not derived from the real saved ledger',
+  );
+  assert(
+    /\{monthRecordCount\}/.test(cal) && /\{totalRecordCount\}/.test(cal),
+    'the recorded-day counts are not rendered from the computed values',
+  );
+  assert(
+    cal.includes('이 달 기록한 날') && cal.includes('지금까지 기록한 날'),
+    'records lost the honest recorded-day recognition labels',
+  );
+
+  // (b) The recognition only appears when there is REAL history — no "0일" recognition on a
+  //     fresh install (the honest empty state covers that case).
+  assert(/totalRecordCount > 0 \?/.test(cal), 'recorded-day recognition must be gated on real history (totalRecordCount > 0)');
+
+  // (c) The day detail offers useful next actions through EXISTING routes only.
+  assert(cal.includes('오늘 기록으로 이어가기'), 'day detail lost the 오늘 기록으로 이어가기 next action');
+  assert(cal.includes('잠깐 멈춤'), 'day detail lost the 잠깐 멈춤 next action');
+  assert(
+    cal.includes('보호 계획') && /onNavigate\('protection'\)/.test(cal),
+    'day detail lost the 보호 계획 확인 route',
+  );
+
+  // (d) A past note is NEVER auto-copied into today (criterion 5): the continue action goes
+  //     through onCheckinFromRecord (a neutral day-context flag, no note), and the copy says so.
+  assert(/onCheckinFromRecord/.test(cal), 'continue-to-today must go through onCheckinFromRecord (no note copy)');
+  assert(cal.includes('오늘로 옮겨지지 않아요'), 'day detail must state that a past note is not copied into today');
+
+  // (e) No fabricated analysis/pattern/streak/success claim leaks into the records surface.
+  for (const fake of ['패턴', '분석', '성공', '연속']) {
+    assert(!cal.includes(fake), `records surface makes a fake insight claim: ${fake}`);
+  }
+});
+
+// 81 — RC-5 records usefulness is verified by a REAL browser behavior (B32): with a real saved
+// record present, the month calendar shows the recorded day distinctly + a real recorded-day
+// count, the day detail reads back the saved writing and offers useful next actions, a
+// recordless day still reads 기록 전, and no fake insight / 금욕 / 체크인 appears — all on
+// rendered DOM, not source strings. Pins the behavior so it can't be dropped or gutted.
+check('RC-5 records usefulness is verified by a real browser behavior (B32)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B32:/.test(qa), 'B32 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B32'\s*,/.test(qa), "QA flow has no real check('B32', …) call");
+  assert(!/check\(\s*'B32'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B32') is gutted to a constant");
+  // The B32 assertion must actually probe the usefulness signals (not a stub).
+  assert(qa.includes('data-has-record="true"'), 'B32 does not assert the saved-record day is visually distinct');
+  assert(
+    qa.includes('이 달 기록한 날') || qa.includes('지금까지 기록한 날'),
+    'B32 does not assert the real recorded-day recognition',
+  );
+  assert(
+    qa.includes('오늘 기록으로 이어가기') || qa.includes('보호 계획'),
+    'B32 does not assert a useful next action through an existing route',
+  );
+  assert(
+    qa.includes('기록 전') || qa.includes('남긴 기록이 없어요'),
+    'B32 does not assert a recordless day stays honest (기록 전)',
+  );
 });
 
 let failed = 0;
