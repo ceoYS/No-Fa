@@ -105,6 +105,9 @@ export default function ShieldScreen({
         <p className="hairline-note">
           아직 실제 차단은 제공하지 않아요. 지금은 멀리 둘 신호를 미리 적어두는 단계예요.
         </p>
+        <p className="hairline-note text-quiet">
+          이 기기 전체나 다른 앱을 막지는 않아요. 내가 직접 여는 보호 계획이에요.
+        </p>
       </section>
 
       <section className="card">
@@ -285,13 +288,22 @@ export default function ShieldScreen({
         <p className="hairline-note">
           차단이 아직 없어도, 충동을 흘려보내는 잠깐 멈춤은 지금도 쓸 수 있어요.
         </p>
-        <button
-          type="button"
-          className="btn btn-primary btn-block"
-          onClick={() => onNavigate('urge')}
-        >
-          못 참을 것 같아요 · 잠깐 멈춤
-        </button>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => onNavigate('urge')}
+          >
+            못 참을 것 같아요 · 잠깐 멈춤
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('checkin')}
+          >
+            오늘 기록으로 남기기
+          </button>
+        </div>
       </section>
 
       <p className="hairline-note text-quiet shield-privacy">

@@ -1,17 +1,23 @@
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 
-// Honest protection setup (C19). NoF cannot perform OS/browser-level blocking from a
-// web app, so this is NOT a blocker — it is the user's OWN coping plan in their own
-// words: when they tend to wobble, the situation they want to avoid, and the
-// replacement action to reach for instead. The plan is surfaced in 잠깐 멈춤 (C21) so
-// it shows up exactly when it is needed. No automatic blocking, no AI suggestion, no
-// cloud — just what the user chose to write down.
+// Honest protection setup (C19, clarified in RC-6). NoF cannot perform OS/browser-level
+// blocking from a web app, so this is NOT a blocker — it is the user's OWN coping plan in
+// their own words: when they tend to wobble, the situation they want to avoid, and the
+// replacement action to reach for instead. RC-6 states that scope explicitly up front (it
+// does not automatically block anything, and it does not lock the whole device or other
+// apps), and adds a "지금 할 수 있는 행동" card that routes only to EXISTING flows — 잠깐 멈춤,
+// 오늘 기록, and an honest 안전 브라우저 미리보기 (in-app experiment only). The plan is surfaced
+// in 잠깐 멈춤 (C21) so it shows up exactly when it is needed. No automatic blocking, no AI
+// suggestion, no cloud — just what the user chose to write down. Guards #63/#67/#82 pin this.
 export default function ProtectionScreen({ onNavigate, protectionPlan = null, onSaveProtectionPlan }) {
   const [triggerTime, setTriggerTime] = useState(protectionPlan?.triggerTime ?? '');
   const [situation, setSituation] = useState(protectionPlan?.situation ?? '');
   const [altAction, setAltAction] = useState(protectionPlan?.altAction ?? '');
   const [justSaved, setJustSaved] = useState(false);
   const [justCleared, setJustCleared] = useState(false);
+  // "보호 문장 다시 보기" target — scrolls the plan area (the saved card if present, else the
+  // editor) into view. A real DOM scroll, never a fake navigation.
+  const planRef = useRef(null);
 
   const onEdit = (setter) => (e) => {
     setter(e.target.value.slice(0, 120));
@@ -44,6 +50,9 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
     setJustCleared(true);
   };
 
+  const scrollToPlan = () =>
+    planRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
   return (
     <div className="screen">
       <header className="screen-header">
@@ -59,96 +68,146 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
         잠깐 멈춤에서 다시 보여줘요.
       </p>
 
-      {/* C20 — durable local plan read-back. When a plan is already saved it is restored
-          into the fields above (on mount) and shown here, proving it survived a reload.
-          The disclosure stays explicit: this is local-only, this device only. */}
-      {protectionPlan ? (
-        <section className="card protection-saved">
-          <div className="card-row">
-            <span className="card-label">저장된 보호 설정</span>
-            <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>저장됨</span>
-          </div>
-          {protectionPlan.triggerTime ? (
-            <p className="hairline-note">트리거 시간대 · {protectionPlan.triggerTime}</p>
-          ) : null}
-          {protectionPlan.situation ? (
-            <p className="hairline-note">피하고 싶은 상황 · {protectionPlan.situation}</p>
-          ) : null}
-          {protectionPlan.altAction ? (
-            <p className="hairline-note">대체 행동 · {protectionPlan.altAction}</p>
-          ) : null}
-          <p className="hairline-note text-quiet">이 설정은 이 기기에만 저장돼요.</p>
-
-          {/* C35 — saved plan return path: jump straight to 잠깐 멈춤 where this plan is
-              surfaced, plus C34's explicit clear action right where the saved plan lives. */}
-          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-            <button
-              type="button"
-              className="btn btn-ghost btn-block"
-              onClick={() => onNavigate('urge')}
-            >
-              잠깐 멈춤에서 확인하기
-            </button>
-            <button
-              type="button"
-              className="btn btn-ghost btn-block protection-clear-btn"
-              onClick={clearPlan}
-            >
-              계획 비우기
-            </button>
-          </div>
-          <p className="hairline-note text-quiet">계획 비우기는 이 기기에 저장된 보호 설정만 지워요.</p>
-        </section>
-      ) : (
-        /* C35 — empty state. When no plan is saved yet, say plainly what to write and what it
-           unlocks downstream (잠깐 멈춤 read-back). Also acknowledges a just-completed clear. */
-        <section className="card protection-empty">
-          <span className="card-label">아직 보호 설정이 없어요</span>
-          <p className="hairline-note">
-            흔들리는 시간대와 대체 행동을 적어두면, 잠깐 멈춤에서 다시 볼 수 있어요.
-          </p>
-          {justCleared ? (
-            <p className="hairline-note text-quiet" aria-live="polite">
-              보호 설정을 비웠어요. 이 기기에 저장된 보호 설정만 지웠어요.
-            </p>
-          ) : null}
-        </section>
-      )}
-
-      <section className="card">
-        <label className="field-label" htmlFor="protect-time">트리거 시간대</label>
-        <input
-          id="protect-time"
-          type="text"
-          className="sheet-input"
-          value={triggerTime}
-          onChange={onEdit(setTriggerTime)}
-          placeholder="예: 밤 11시 이후, 주말 오후"
-          maxLength={120}
-        />
-
-        <label className="field-label" htmlFor="protect-situation">피하고 싶은 상황</label>
-        <textarea
-          id="protect-situation"
-          className="sheet-input reflect-input"
-          value={situation}
-          onChange={onEdit(setSituation)}
-          placeholder="예: 잠자리에서 휴대폰을 들 때"
-          maxLength={120}
-          rows={2}
-        />
-
-        <label className="field-label" htmlFor="protect-alt">위기 때 할 대체 행동</label>
-        <textarea
-          id="protect-alt"
-          className="sheet-input reflect-input"
-          value={altAction}
-          onChange={onEdit(setAltAction)}
-          placeholder="예: 물 한 잔 마시고 거실로 나가기"
-          maxLength={120}
-          rows={2}
-        />
+      {/* RC-6 — honest scope, stated before anything else. This is a self-opened protection
+          plan, not an automatic or device-wide blocker. The disclaimer is phrased as a plain
+          negation on purpose: the bare auto-block claim token stays forbidden (guards
+          #63/#67/#68 + the QA B21 sweep read it as a claim), so we say the same thing without it. */}
+      <section className="card protection-scope">
+        <div className="card-row">
+          <span className="card-label">이 화면이 하는 일</span>
+        </div>
+        <p className="hairline-note">
+          지금은 내가 정한 보호 문장을 위기 때 바로 열어보는 보호 계획이에요.
+        </p>
+        <p className="hairline-note text-quiet">
+          무언가를 자동으로 막아주지는 않아요. 이 기기 전체나 다른 앱도 막지 않아요.
+        </p>
+        <p className="hairline-note text-quiet">
+          내가 직접 여는 보호 화면이라, 흔들릴 때 스스로 펼쳐 봐요.
+        </p>
       </section>
+
+      {/* RC-6 — what you can actually do right now during an urge. Every action routes to an
+          EXISTING flow (no new fake feature): 잠깐 멈춤, 오늘 기록, and re-reading my plan. */}
+      <section className="card protection-actions">
+        <span className="card-label">지금 할 수 있는 행동</span>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => onNavigate('urge')}
+          >
+            잠깐 멈춤 열기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('checkin')}
+          >
+            오늘 기록으로 남기기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={scrollToPlan}
+          >
+            {protectionPlan ? '보호 문장 다시 보기' : '보호 문장 적으러 가기'}
+          </button>
+        </div>
+      </section>
+
+      <div ref={planRef}>
+        {/* C20 — durable local plan read-back. When a plan is already saved it is restored
+            into the fields below (on mount) and shown here, proving it survived a reload.
+            The disclosure stays explicit: this is local-only, this device only. */}
+        {protectionPlan ? (
+          <section className="card protection-saved">
+            <div className="card-row">
+              <span className="card-label">저장된 보호 설정</span>
+              <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>저장됨</span>
+            </div>
+            {protectionPlan.triggerTime ? (
+              <p className="hairline-note">트리거 시간대 · {protectionPlan.triggerTime}</p>
+            ) : null}
+            {protectionPlan.situation ? (
+              <p className="hairline-note">피하고 싶은 상황 · {protectionPlan.situation}</p>
+            ) : null}
+            {protectionPlan.altAction ? (
+              <p className="hairline-note">대체 행동 · {protectionPlan.altAction}</p>
+            ) : null}
+            <p className="hairline-note text-quiet">이 설정은 이 기기에만 저장돼요.</p>
+
+            {/* C35 — saved plan return path: jump straight to 잠깐 멈춤 where this plan is
+                surfaced, plus C34's explicit clear action right where the saved plan lives. */}
+            <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+              <button
+                type="button"
+                className="btn btn-ghost btn-block"
+                onClick={() => onNavigate('urge')}
+              >
+                잠깐 멈춤에서 확인하기
+              </button>
+              <button
+                type="button"
+                className="btn btn-ghost btn-block protection-clear-btn"
+                onClick={clearPlan}
+              >
+                계획 비우기
+              </button>
+            </div>
+            <p className="hairline-note text-quiet">계획 비우기는 이 기기에 저장된 보호 설정만 지워요.</p>
+          </section>
+        ) : (
+          /* C35 — empty state. When no plan is saved yet, say plainly what to write and what it
+             unlocks downstream (잠깐 멈춤 read-back). Also acknowledges a just-completed clear. */
+          <section className="card protection-empty">
+            <span className="card-label">아직 보호 설정이 없어요</span>
+            <p className="hairline-note">
+              흔들리는 시간대와 대체 행동을 적어두면, 잠깐 멈춤에서 다시 볼 수 있어요.
+            </p>
+            {justCleared ? (
+              <p className="hairline-note text-quiet" aria-live="polite">
+                보호 설정을 비웠어요. 이 기기에 저장된 보호 설정만 지웠어요.
+              </p>
+            ) : null}
+          </section>
+        )}
+
+        <section className="card">
+          <label className="field-label" htmlFor="protect-time">트리거 시간대</label>
+          <input
+            id="protect-time"
+            type="text"
+            className="sheet-input"
+            value={triggerTime}
+            onChange={onEdit(setTriggerTime)}
+            placeholder="예: 밤 11시 이후, 주말 오후"
+            maxLength={120}
+          />
+
+          <label className="field-label" htmlFor="protect-situation">피하고 싶은 상황</label>
+          <textarea
+            id="protect-situation"
+            className="sheet-input reflect-input"
+            value={situation}
+            onChange={onEdit(setSituation)}
+            placeholder="예: 잠자리에서 휴대폰을 들 때"
+            maxLength={120}
+            rows={2}
+          />
+
+          <label className="field-label" htmlFor="protect-alt">위기 때 할 대체 행동</label>
+          <textarea
+            id="protect-alt"
+            className="sheet-input reflect-input"
+            value={altAction}
+            onChange={onEdit(setAltAction)}
+            placeholder="예: 물 한 잔 마시고 거실로 나가기"
+            maxLength={120}
+            rows={2}
+          />
+        </section>
+      </div>
 
       <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
         <button
@@ -167,8 +226,29 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
         ) : null}
       </div>
 
-      {/* RC-1 copy diet: the separate "위기 때는 이렇게" card was redundant — the subtitle
-          already says the plan shows up in 잠깐 멈춤, and the saved card links there directly. */}
+      {/* RC-6 — the in-app Safe Browser PoC, explained honestly as a preview/experiment. It
+          opens no real web, and it does not lock the whole device or other apps. Routes to the
+          real SafeBrowserScreen so the user can try the in-app 멈춤 hand-off. */}
+      <section className="card protection-safe-browser">
+        <div className="card-row">
+          <span className="card-label">안전 브라우저 미리보기</span>
+          <span className="pill shield-tag">실험</span>
+        </div>
+        <p className="hairline-note">
+          앱 안에서만 확인하는 실험 기능이에요. 실제 웹은 열지 않고, 멈춤 흐름을 미리 확인해 봐요.
+        </p>
+        <p className="hairline-note text-quiet">
+          기기 전체나 다른 앱을 막지는 않아요.
+        </p>
+        <button
+          type="button"
+          className="btn btn-ghost btn-block"
+          onClick={() => onNavigate('shieldBrowser')}
+        >
+          안전 브라우저 미리보기 열기
+        </button>
+      </section>
+
       <button
         type="button"
         className="btn btn-ghost btn-block"
