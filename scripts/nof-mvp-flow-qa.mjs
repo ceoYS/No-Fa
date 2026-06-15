@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 31 MVP behaviors this harness drives and asserts. Every check() references one
+// The 32 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -72,6 +72,7 @@ const BEHAVIORS = {
   B29: 'placed room item can be dragged to a new position',
   B30: 'snack hand-off visibly animates and updates real fed state',
   B31: 'first-run is honest: 예시 samples labelled, one-tap real start, no unearned 최장',
+  B32: 'records are useful: saved day distinct + real count, detail reads writing + useful CTA, recordless day honest',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -377,6 +378,37 @@ async function runFlow(c) {
     cellClicked && recHasNote && recHasPromise && recHasResolve
       ? '' : `today writing not fully read back (cell:${cellClicked} note:${recHasNote} promise:${recHasPromise} resolve:${recHasResolve})`);
   await c.shot('records_today_note');
+
+  // 14.5 · RC-5 records usefulness. With today's REAL record saved (B14), the records area is
+  //        genuinely useful AND still honest: the month calendar shows an honest recognition
+  //        (a real count of recorded days), the saved-record day is visually distinct, the day
+  //        detail reads the saved writing + offers useful next actions through EXISTING routes,
+  //        a recordless day still reads 기록 전, and NO fake insight / 금욕 / 체크인 appears.
+  //        Asserted on rendered DOM with a real record present (not a source scan).
+  await c.click('닫기'); await sleep(250); // close today's detail opened in B14
+  const recogShown = (await c.has('이 달 기록한 날')) && (await c.has('지금까지 기록한 날'));
+  const distinctDay =
+    (await c.eval(`document.querySelectorAll('.month-cell[data-has-record="true"]').length`)) >= 1;
+  const reopened = await c.clickSelector('.month-cell[data-today="true"]'); await sleep(350);
+  const writingBack = await c.has(NOTE);
+  const usefulCta = (await c.has('오늘 기록으로 이어가기')) && (await c.has('보호 계획'));
+  const noFakeInsight =
+    !(await c.has('패턴')) && !(await c.has('연속')) && !(await c.has('성공')) && !(await c.has('분석'));
+  const noForbiddenRecords = !(await c.has('금욕')) && !(await c.has('체크인'));
+  await c.click('닫기'); await sleep(250);
+  // A recordless real day (exclude leading blanks, today, and the saved day) stays honest.
+  const recordlessOpened = await c.clickSelector(
+    '.month-cell:not(.month-cell-empty):not([data-today="true"]):not([data-has-record="true"])',
+  );
+  await sleep(350);
+  const recordlessHonest = (await c.has('기록 전')) || (await c.has('남긴 기록이 없어요'));
+  await c.click('닫기'); await sleep(200);
+  const recordsUseful =
+    recogShown && distinctDay && reopened && writingBack && usefulCta &&
+    noFakeInsight && noForbiddenRecords && recordlessOpened && recordlessHonest;
+  check('B32', recordsUseful,
+    recordsUseful ? '' : `recog:${recogShown} distinct:${distinctDay} reopen:${reopened} writing:${writingBack} cta:${usefulCta} noInsight:${noFakeInsight} clean:${noForbiddenRecords} recordless:${recordlessOpened}/${recordlessHonest}`);
+  await c.shot('records_usefulness');
 
   // 15 · RC-2A: Home no longer carries a saved-summary card (it is a status surface). The
   //      saved record reads back on the 오늘 기록 screen itself — open it via the bottom nav
