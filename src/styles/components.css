@@ -3202,6 +3202,8 @@ button.room-card:active {
 .month-cell[data-has-record='true'] {
   background: var(--accent-ember-soft);
   color: var(--text-primary);
+  border-color: var(--accent-ember);
+  font-weight: 600;
 }
 
 .month-cell-num {
@@ -3213,4 +3215,39 @@ button.room-card:active {
   height: 5px;
   border-radius: var(--r-pill);
   background: var(--accent-ember);
+}
+
+.month-cell[data-has-record='true'] .month-cell-dot {
+  width: 6px;
+  height: 6px;
+}
+
+/* RC-5 records recognition — a real count of days the user actually recorded.
+   Never a streak/insight claim; the count comes straight from the saved ledger. */
+.month-summary {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.month-summary-row {
+  display: flex;
+  gap: var(--sp-3);
+}
+
+.month-summary-stat {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: var(--sp-3) var(--sp-2);
+  border-radius: var(--r-md);
+  background: var(--bg-surface-raised);
+}
+
+.month-summary-num {
+  font-size: var(--fs-h1);
+  color: var(--text-ember);
+  line-height: 1;
 }

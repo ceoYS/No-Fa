@@ -68,6 +68,16 @@ export default function CalendarScreen({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [view.year, view.month, checkinLedger, todayRecord, todayKey]);
 
+  // RC-5 records usefulness: HONEST recognition of how many days the user actually recorded.
+  // monthRecordCount counts the saved-record days in the VIEWED month (read straight off the
+  // same cells the grid renders, so it can never disagree with the dots). totalRecordCount
+  // counts every saved day all-time (ledger keys, plus today if it is saved live but not yet
+  // mirrored into the ledger). Both are pure counts of REAL entries — an empty month/history
+  // reads 0, and nothing is fabricated. This is recognition, never a streak/insight claim.
+  const monthRecordCount = cells.filter((cell) => cell && cell.hasRecord).length;
+  const totalRecordCount =
+    Object.keys(ledger).length + (todayRecord?.checkin && !ledger[todayKey] ? 1 : 0);
+
   const goPrevMonth = () =>
     setView((v) => (v.month === 0 ? { year: v.year - 1, month: 11 } : { year: v.year, month: v.month - 1 }));
   const goNextMonth = () =>
@@ -180,6 +190,23 @@ export default function CalendarScreen({
         </div>
       </section>
 
+      {totalRecordCount > 0 ? (
+        <section className="card month-summary">
+          <span className="card-label">기록한 날</span>
+          <div className="month-summary-row">
+            <div className="month-summary-stat">
+              <span className="month-summary-num">{monthRecordCount}</span>
+              <span className="hairline-note">이 달 기록한 날</span>
+            </div>
+            <div className="month-summary-stat">
+              <span className="month-summary-num">{totalRecordCount}</span>
+              <span className="hairline-note">지금까지 기록한 날</span>
+            </div>
+          </div>
+          <p className="hairline-note">실제로 기록한 날만 세어요. 없는 기록은 만들지 않아요.</p>
+        </section>
+      ) : null}
+
       {!hasAnyCheckin ? (
         <section className="card calendar-empty">
           <span className="card-label">아직 남긴 기록이 없어요</span>
@@ -278,22 +305,27 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
                 ))}
               </div>
             ) : null}
-            {day.checkin.note ? (
-              <div className="day-detail-block">
-                <span className="card-label">오늘 회고</span>
-                <p className="day-detail-reflection">“{day.checkin.note}”</p>
-              </div>
-            ) : null}
-            {day.checkin.promise ? (
-              <div className="day-detail-block">
-                <span className="card-label">나와의 약속</span>
-                <p className="day-detail-reflection">“{day.checkin.promise}”</p>
-              </div>
-            ) : null}
-            {day.checkin.resolve ? (
-              <div className="day-detail-block">
-                <span className="card-label">오늘의 다짐</span>
-                <p className="day-detail-reflection">“{day.checkin.resolve}”</p>
+            {day.checkin.note || day.checkin.promise || day.checkin.resolve ? (
+              <div className="day-detail-block day-detail-written">
+                <span className="card-label">쓴 내용</span>
+                {day.checkin.note ? (
+                  <div className="day-detail-block">
+                    <span className="card-label">{day.isToday ? '오늘 회고' : '회고'}</span>
+                    <p className="day-detail-reflection">“{day.checkin.note}”</p>
+                  </div>
+                ) : null}
+                {day.checkin.promise ? (
+                  <div className="day-detail-block">
+                    <span className="card-label">{day.isToday ? '나와의 약속' : '약속'}</span>
+                    <p className="day-detail-reflection">“{day.checkin.promise}”</p>
+                  </div>
+                ) : null}
+                {day.checkin.resolve ? (
+                  <div className="day-detail-block">
+                    <span className="card-label">{day.isToday ? '오늘의 다짐' : '다짐'}</span>
+                    <p className="day-detail-reflection">“{day.checkin.resolve}”</p>
+                  </div>
+                ) : null}
               </div>
             ) : null}
             <p className="hairline-note">
@@ -358,21 +390,30 @@ function DayDetailSheet({ day, onClose, onNavigate, onCheckinFromRecord }) {
 
         {onNavigate ? (
           <div className="day-detail-block day-detail-recovery">
-            <span className="card-label">다시 해볼까요?</span>
-            <p className="hairline-note">기록은 그대로 두고, 오늘 할 수 있는 행동으로 이어가요.</p>
+            <span className="card-label">다음 행동</span>
+            <p className="hairline-note">
+              기록은 그대로 두고, 오늘 할 수 있는 행동으로 이어가요. 지난 글이 오늘로 옮겨지지 않아요.
+            </p>
             <button
               type="button"
               className="btn btn-primary btn-block"
-              onClick={() => onNavigate('urge')}
+              onClick={() => (onCheckinFromRecord ? onCheckinFromRecord() : onNavigate('checkin'))}
             >
-              잠깐 멈춤으로 가기
+              오늘 기록으로 이어가기
             </button>
             <button
               type="button"
               className="btn btn-ghost btn-block"
-              onClick={() => (onCheckinFromRecord ? onCheckinFromRecord() : onNavigate('checkin'))}
+              onClick={() => onNavigate('urge')}
             >
-              오늘 기록하기
+              잠깐 멈춤
+            </button>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => onNavigate('protection')}
+            >
+              보호 계획 확인
             </button>
           </div>
         ) : null}
