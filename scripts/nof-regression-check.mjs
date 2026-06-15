@@ -2316,6 +2316,18 @@ check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluf
     assert(!stripComments(read(f)).includes('체크인'), `${f} still shows user-facing "체크인" — RC-2A renamed it to 오늘 기록 / 오늘 회고`);
   }
 
+  // (1b) RC-6 — the protection / Shield / Chrome-extension / safe-browser surfaces must ALSO
+  //      never show user-facing 체크인. Internal route 'checkin' (latin) and comments are exempt
+  //      (stripComments removes comments; 'checkin' ≠ 체크인).
+  for (const f of [
+    'src/screens/ProtectionScreen.jsx',
+    'src/screens/ShieldScreen.jsx',
+    'src/screens/ShieldExtensionScreen.jsx',
+    'src/screens/SafeBrowserScreen.jsx',
+  ]) {
+    assert(!stripComments(read(f)).includes('체크인'), `${f} shows user-facing "체크인" — use 오늘 기록`);
+  }
+
   // (2) The RC-2A vocabulary is present where it matters.
   assert(read('src/components/BottomNav.jsx').includes("label: '오늘 기록'"), 'BottomNav lost the 오늘 기록 tab label');
   const checkin = read('src/screens/CheckinScreen.jsx');
@@ -2563,15 +2575,17 @@ check('RC-5 records usefulness is verified by a real browser behavior (B32)', ()
   );
 });
 
-// 82 — RC-6 protection clarity. The 보호 설정 screen the user actually reaches must state its
-// honest scope up front (a self-opened protection plan, NOT an automatic or device-wide
-// blocker), give practical next actions through EXISTING routes only (잠깐 멈춤 + 오늘 기록), and
-// explain the in-app Safe Browser as an experiment/preview that routes to the real screen.
-// The same device-wide honesty + 오늘 기록 next action are reinforced on the Shield (차단 설정)
-// screen. This pins the gains so the protection area can't quietly regress into a fake/auto/
-// device-wide blocking claim. The disclaimer is phrased as a plain negation on purpose — the
-// bare "자동 차단" token stays forbidden (it reads as a claim to the static + B21 sweeps).
-check('RC-6 protection clarity stays honest (explicit non-blocking scope, real next actions, safe-browser preview)', () => {
+// 82 — RC-6 protection clarity (corrected). The 보호 설정 screen the user actually reaches must
+// state its honest scope up front (a self-opened protection plan, NOT an automatic or
+// device-wide blocker), give practical next actions through EXISTING routes only (잠깐 멈춤 +
+// 오늘 기록), and present the REAL protection path as a NoF Chrome extension ("이 기기 Chrome 차단")
+// that is honest it is browser-scoped (not device-wide / other-app) and routes to the real
+// 차단 테스트 screen — NOT a toy "experiment/preview". Developer-facing experiment/preview/PoC
+// copy is banned on this product surface. The same device-wide honesty + 오늘 기록 next action are
+// reinforced on the Shield (차단 설정) screen. This pins the gains so the protection area can't
+// quietly regress into a fake/auto/device-wide blocking claim OR a toy-demo framing. The
+// disclaimer is a plain negation on purpose — the bare "자동 차단" token stays forbidden.
+check('RC-6 protection clarity stays honest (explicit non-blocking scope, real next actions, real Chrome-extension path)', () => {
   const screen = read('src/screens/ProtectionScreen.jsx');
   const shield = read('src/screens/ShieldScreen.jsx');
 
@@ -2586,10 +2600,17 @@ check('RC-6 protection clarity stays honest (explicit non-blocking scope, real n
   assert(/onNavigate\('urge'\)/.test(screen), 'protection screen lost the 잠깐 멈춤 next action');
   assert(/onNavigate\('checkin'\)/.test(screen) && screen.includes('오늘 기록'), 'protection screen lost the 오늘 기록 next action');
 
-  // (c) Safe-browser PoC explained as an in-app experiment/preview that routes to the real screen.
-  assert(screen.includes('안전 브라우저 미리보기'), 'protection screen lost the safe-browser preview card');
-  assert(screen.includes('실험'), 'safe-browser preview is not labelled an experiment');
-  assert(/onNavigate\('shieldBrowser'\)/.test(screen), 'safe-browser preview does not route to the real Safe Browser screen');
+  // (c) The REAL protection path is a NoF Chrome extension (browser-scoped blocking), honest
+  //     that it is not device-wide/other-app, routing to the real 차단 테스트 (shieldExtension) screen.
+  assert(screen.includes('이 기기 Chrome 차단'), 'protection screen lost the Chrome-extension blocking card');
+  assert(screen.includes('Chrome 확장'), 'protection Chrome card is not framed as a Chrome extension');
+  assert(screen.includes('아직 기기 전체나 다른 앱까지 막는 기능은 아니에요'), 'protection Chrome card must state it is browser-scoped, not device-wide/other-app');
+  assert(/onNavigate\('shieldExtension'\)/.test(screen), 'protection Chrome card does not route to the real 차단 테스트 (shieldExtension) screen');
+
+  // (c2) NO developer-facing experiment/preview/PoC copy on this product surface (RC-6 fix).
+  for (const dev of ['실험 기능', '앱 안에서만 확인하는 실험 기능', 'PoC', '실제 웹은 열지 않고', '멈춤 흐름을 미리 확인', '미리보기']) {
+    assert(!screen.includes(dev), `protection screen still carries developer-facing experiment/preview copy: ${dev}`);
+  }
 
   // (d) No fake/auto/device-wide blocking, AI, cloud, or medical claim on the surface.
   for (const fake of ['자동 차단', '차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '기기 전체 보호', '모든 앱 차단', 'AI가 감지', 'AI 분석', 'AI 추천', '클라우드', '동기화', '치료', '진단', '처방', '회복 점수', '금욕', '체크인']) {
@@ -2603,10 +2624,10 @@ check('RC-6 protection clarity stays honest (explicit non-blocking scope, real n
 
 // 83 — RC-6 protection clarity is verified by a REAL browser behavior (B33): the 보호 설정 screen
 // the user reaches states its honest scope (a self-opened plan, not an automatic or device-wide
-// blocker), exposes practical 잠깐 멈춤 + 오늘 기록 next actions, labels the in-app safe browser an
-// experiment/preview, and carries no 금욕/체크인 or fake AI/medical/recovery claim — all on
-// rendered DOM, with the 잠깐 멈춤 route actually exercised. Pins the behavior so it can't be
-// dropped or gutted to a constant tautology.
+// blocker), exposes practical 잠깐 멈춤 + 오늘 기록 next actions, frames the real protection path as
+// a NoF Chrome extension (no toy experiment/preview copy), and carries no 금욕/체크인 or fake
+// AI/medical/recovery claim — all on rendered DOM, with the 잠깐 멈춤 route actually exercised.
+// Pins the behavior so it can't be dropped or gutted to a constant tautology.
 check('RC-6 protection clarity is verified by a real browser behavior (B33)', () => {
   const qa = read('scripts/nof-mvp-flow-qa.mjs');
   assert(/B33:/.test(qa), 'B33 is not declared in the BEHAVIORS map');
@@ -2615,7 +2636,8 @@ check('RC-6 protection clarity is verified by a real browser behavior (B33)', ()
   // The B33 assertion must actually probe the protection clarity signals (not a stub).
   assert(qa.includes("c.has('자동 차단')"), 'B33 does not assert the absence of an automatic-blocking claim');
   assert(qa.includes('자동으로 막아주지'), 'B33 does not assert the honest non-blocking scope copy');
-  assert(qa.includes('안전 브라우저 미리보기'), 'B33 does not assert the safe-browser preview labelling');
+  assert(qa.includes('Chrome 확장을 연결하면'), 'B33 does not assert the real NoF Chrome-extension blocking card');
+  assert(qa.includes("c.has('실험 기능')"), 'B33 does not assert the absence of developer experiment/preview copy');
   assert(qa.includes('오늘 기록으로 남기기'), 'B33 does not assert the 오늘 기록 next action');
   assert(qa.includes('지금 충동을 멈춰요'), 'B33 does not assert the 잠깐 멈춤 route actually lands on urge');
 });

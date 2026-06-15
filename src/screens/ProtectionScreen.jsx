@@ -1,14 +1,17 @@
 import { useRef, useState } from 'react';
 
 // Honest protection setup (C19, clarified in RC-6). NoF cannot perform OS/browser-level
-// blocking from a web app, so this is NOT a blocker — it is the user's OWN coping plan in
-// their own words: when they tend to wobble, the situation they want to avoid, and the
-// replacement action to reach for instead. RC-6 states that scope explicitly up front (it
-// does not automatically block anything, and it does not lock the whole device or other
-// apps), and adds a "지금 할 수 있는 행동" card that routes only to EXISTING flows — 잠깐 멈춤,
-// 오늘 기록, and an honest 안전 브라우저 미리보기 (in-app experiment only). The plan is surfaced
-// in 잠깐 멈춤 (C21) so it shows up exactly when it is needed. No automatic blocking, no AI
-// suggestion, no cloud — just what the user chose to write down. Guards #63/#67/#82 pin this.
+// blocking from the web app itself, so this screen is NOT a blocker — it is the user's OWN
+// coping plan in their own words: when they tend to wobble, the situation they want to avoid,
+// and the replacement action to reach for instead. RC-6 states that scope explicitly up front
+// (it does not automatically block anything, and it does not lock the whole device or other
+// apps), and adds a "지금 할 수 있는 행동" card that routes only to EXISTING flows — 잠깐 멈춤 and
+// 오늘 기록 — plus a "이 기기 Chrome 차단" card that points to the REAL protection path: a
+// separately-installed NoF Chrome extension (extensions/chrome-shield) that can guide a saved
+// risky site to 잠깐 멈춤 in THIS Chrome browser. That card is honest that the app does not yet
+// auto-detect the extension and that the reach is browser-scoped, not device-wide. The plan is
+// surfaced in 잠깐 멈춤 (C21) so it shows up exactly when it is needed. No automatic blocking, no
+// AI, no cloud — just what the user chose to write down. Guards #63/#67/#82 pin this.
 export default function ProtectionScreen({ onNavigate, protectionPlan = null, onSaveProtectionPlan }) {
   const [triggerTime, setTriggerTime] = useState(protectionPlan?.triggerTime ?? '');
   const [situation, setSituation] = useState(protectionPlan?.situation ?? '');
@@ -226,27 +229,41 @@ export default function ProtectionScreen({ onNavigate, protectionPlan = null, on
         ) : null}
       </div>
 
-      {/* RC-6 — the in-app Safe Browser PoC, explained honestly as a preview/experiment. It
-          opens no real web, and it does not lock the whole device or other apps. Routes to the
-          real SafeBrowserScreen so the user can try the in-app 멈춤 hand-off. */}
-      <section className="card protection-safe-browser">
+      {/* RC-6 (corrected) — the REAL protection path: a separately-installed NoF Chrome
+          extension. Honest about the boundary — it can guide a saved risky site to 잠깐 멈춤 in
+          THIS Chrome browser, it is NOT device-wide / other-app blocking, and the app does not
+          yet auto-detect whether the extension is connected. Routes to the real 차단 테스트 screen
+          (shieldExtension), never a toy preview. */}
+      <section className="card protection-chrome-block">
         <div className="card-row">
-          <span className="card-label">안전 브라우저 미리보기</span>
-          <span className="pill shield-tag">실험</span>
+          <span className="card-label">이 기기 Chrome 차단</span>
+          <span className="pill shield-tag">Chrome 확장</span>
         </div>
         <p className="hairline-note">
-          앱 안에서만 확인하는 실험 기능이에요. 실제 웹은 열지 않고, 멈춤 흐름을 미리 확인해 봐요.
+          Chrome 확장을 연결하면 저장한 위험 사이트를 열 때 NoF 잠깐 멈춤으로 안내할 수 있어요.
         </p>
         <p className="hairline-note text-quiet">
-          기기 전체나 다른 앱을 막지는 않아요.
+          아직 기기 전체나 다른 앱까지 막는 기능은 아니에요. 이 Chrome 브라우저에서 먼저 작동해요.
         </p>
-        <button
-          type="button"
-          className="btn btn-ghost btn-block"
-          onClick={() => onNavigate('shieldBrowser')}
-        >
-          안전 브라우저 미리보기 열기
-        </button>
+        <p className="hairline-note text-quiet">
+          확장 연결 상태는 아직 자동 확인하지 않아요. 연결 후 차단 테스트로 확인해요.
+        </p>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => onNavigate('shieldExtension')}
+          >
+            차단 테스트하기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('shield')}
+          >
+            위험 신호 수정하기
+          </button>
+        </div>
       </section>
 
       <button

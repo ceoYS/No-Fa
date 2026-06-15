@@ -73,7 +73,7 @@ const BEHAVIORS = {
   B30: 'snack hand-off visibly animates and updates real fed state',
   B31: 'first-run is honest: 예시 samples labelled, one-tap real start, no unearned 최장',
   B32: 'records are useful: saved day distinct + real count, detail reads writing + useful CTA, recordless day honest',
-  B33: 'protection is clear: honest non-blocking scope, real 잠깐 멈춤/오늘 기록 actions, safe-browser preview labelled',
+  B33: 'protection is clear: honest non-blocking scope, real 잠깐 멈춤/오늘 기록 actions, real NoF Chrome-extension path (no toy experiment copy)',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -604,9 +604,10 @@ async function runFlow(c) {
   // 31 · RC-6 protection clarity. The 보호 설정 screen the user actually reaches (Home →
   //      보호 설정 적기) must be HONEST about scope — it is a self-opened protection plan, NOT
   //      an automatic or device-wide blocker — expose practical next actions to 잠깐 멈춤 and
-  //      오늘 기록 through EXISTING routes, label the in-app safe browser an experiment/preview,
-  //      and carry NO 금욕/체크인 or fake AI/detection/medical/recovery claim. Asserted on the
-  //      rendered DOM, and the 잠깐 멈춤 next action is actually clicked to prove it routes.
+  //      오늘 기록 through EXISTING routes, frame the real protection path as a NoF Chrome extension
+  //      (browser-scoped blocking, not a toy experiment/preview), and carry NO 금욕/체크인 or fake
+  //      AI/detection/medical/recovery claim. Asserted on the rendered DOM, and the 잠깐 멈춤 next
+  //      action is actually clicked to prove it routes.
   await c.clickExact('홈'); await sleep(250);
   const toProtect = await c.click('보호 설정 적기'); await sleep(350);
   const onProtectRc6 = await c.has('흔들리는 순간을 미리 적어둬요');
@@ -617,8 +618,17 @@ async function runFlow(c) {
   // Practical next actions through existing routes.
   const hasPauseCta = await c.has('잠깐 멈춤 열기');
   const hasRecordCta = await c.has('오늘 기록으로 남기기');
-  // Safe-browser PoC labelled as an in-app experiment/preview.
-  const safeBrowserLabeled = (await c.has('안전 브라우저 미리보기')) && (await c.has('실험'));
+  // The real protection path is framed as a NoF Chrome extension (browser-scoped blocking),
+  // not a toy experiment/preview, and routes to the real 차단 테스트 screen.
+  // (title "이 기기 Chrome 차단" renders uppercase via .card-label text-transform, so anchor on
+  //  the body promise + pill + the browser-scoped honesty line, which are not case-transformed.)
+  const chromeBlockHonest =
+    (await c.has('Chrome 확장을 연결하면')) && (await c.has('Chrome 확장')) &&
+    (await c.has('아직 기기 전체나 다른 앱까지 막는 기능은 아니에요'));
+  // No developer-facing experiment/preview/PoC copy on this product surface.
+  const noExperimentCopy =
+    !(await c.has('실험 기능')) && !(await c.has('앱 안에서만 확인하는 실험 기능')) &&
+    !(await c.has('PoC')) && !(await c.has('멈춤 흐름을 미리 확인'));
   // No forbidden vocabulary / fake claims on this surface.
   const noForbiddenProtect = !(await c.has('금욕')) && !(await c.has('체크인'));
   const noFakeProtect =
@@ -628,9 +638,10 @@ async function runFlow(c) {
   const pauseRoutes = (await c.click('잠깐 멈춤 열기')) && (await c.has('지금 충동을 멈춰요'));
   const protectionClear =
     toProtect && onProtectRc6 && scopeHonest && noAutoBlockClaim && hasPauseCta &&
-    hasRecordCta && safeBrowserLabeled && noForbiddenProtect && noFakeProtect && pauseRoutes;
+    hasRecordCta && chromeBlockHonest && noExperimentCopy && noForbiddenProtect &&
+    noFakeProtect && pauseRoutes;
   check('B33', protectionClear,
-    protectionClear ? '' : `reach:${toProtect}/${onProtectRc6} scope:${scopeHonest} noAuto:${noAutoBlockClaim} pause:${hasPauseCta}/${pauseRoutes} record:${hasRecordCta} safeBrowser:${safeBrowserLabeled} clean:${noForbiddenProtect}/${noFakeProtect}`);
+    protectionClear ? '' : `reach:${toProtect}/${onProtectRc6} scope:${scopeHonest} noAuto:${noAutoBlockClaim} pause:${hasPauseCta}/${pauseRoutes} record:${hasRecordCta} chrome:${chromeBlockHonest} noExp:${noExperimentCopy} clean:${noForbiddenProtect}/${noFakeProtect}`);
 }
 
 async function main() {
