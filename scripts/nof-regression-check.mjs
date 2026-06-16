@@ -2735,6 +2735,65 @@ check('RC-7 extension connection is verified by a real browser behavior (B34)', 
   assert(qa.includes('테스트 신호 보내기'), 'B34 does not assert the 테스트 신호 보내기 action');
 });
 
+// 87 — RC-8 saved-signal → REAL browser block rule. The web app can push a user-authored
+// concrete signal to THIS Chrome's declarativeNetRequest dynamic rules and prove a redirect,
+// closing the RC-7 gap (which only sent the harmless static TEST_SIGNAL). It must stay honest:
+// abstract saved 위험 신호 (category/situation) are surfaced as a COUNT only — never sent as if
+// a label were a browser rule — the bridge has a real SET_BLOCK_RULES sender (no network sink),
+// the screen shows success ONLY behind res.ok and keeps the not-connected fallback, and the
+// extension normalizes conservatively (caps the count, rejects dangerous schemes) before
+// reusing the local applySignals/buildDynamicRules path. README documents the slice + limits.
+check('RC-8 saved-signal → real browser block rule is honest (test-value send, ok-gated, conservative normalize)', () => {
+  // bridge: a real SET_BLOCK_RULES sender, runtime messaging only (no network sink).
+  const bridge = read('src/lib/chromeExtensionBridge.js');
+  assert(/export function sendBlockRules/.test(bridge), 'bridge has no sendBlockRules() sender for RC-8');
+  assert(bridge.includes("type: 'SET_BLOCK_RULES'"), 'sendBlockRules does not send the SET_BLOCK_RULES message');
+  for (const sink of ['fetch(', 'XMLHttpRequest', 'http://', 'https://']) {
+    assert(!bridge.includes(sink), `chromeExtensionBridge adds a network sink (${sink}) — runtime messaging only`);
+  }
+
+  // screen: a real send field wired to the bridge, ok-gated success, honest not-connected
+  // fallback, saved signals surfaced as a COUNT (blocklist.length) — not sent as abstract rules.
+  const screen = read('src/screens/ShieldExtensionScreen.jsx');
+  assert(screen.includes('sendBlockRules'), 'ShieldExtensionScreen does not import/use sendBlockRules');
+  assert(screen.includes('차단 테스트용 값'), 'ShieldExtensionScreen has no 차단 테스트용 값 send field');
+  assert(screen.includes('이 브라우저 차단 규칙에 반영'), 'ShieldExtensionScreen has no block-rule send action');
+  assert(screen.includes('blocklist.length'), 'ShieldExtensionScreen does not surface the saved-signal count');
+  assert(/blocklist\s*=\s*\[\]/.test(screen), 'ShieldExtensionScreen does not accept the blocklist prop (default [])');
+  assert(/res\s*&&\s*res\.ok/.test(screen), 'ShieldExtensionScreen claims a block result without gating on res.ok');
+  assert(screen.includes('아직 연결되지 않았어요'), 'ShieldExtensionScreen lost the honest not-connected fallback');
+  // It must NOT send the abstract saved signals as rules (that would fake blocking).
+  assert(!/sendBlockRules\([^)]*blocklist/.test(screen), 'ShieldExtensionScreen sends abstract saved signals as rules — that fakes blocking');
+
+  // extension: SET_BLOCK_RULES reuses the local engine AND normalizes conservatively.
+  const sw = read('extensions/chrome-shield/service_worker.js');
+  assert(sw.includes("case 'SET_BLOCK_RULES'"), 'service_worker.js dropped the SET_BLOCK_RULES handler');
+  assert(sw.includes('applySignals(normalizeSignals('), 'SET_BLOCK_RULES does not reuse applySignals on normalized signals');
+  assert(sw.includes('buildDynamicRules'), 'service_worker.js no longer builds dynamic rules via buildDynamicRules');
+  assert(/MAX_BLOCK_RULES\s*=\s*\d+/.test(sw), 'normalizeSignals has no rule-count cap (MAX_BLOCK_RULES)');
+  assert(sw.includes('BLOCKED_SCHEME') && /BLOCKED_SCHEME\.test\(/.test(sw), 'normalizeSignals does not reject dangerous URL schemes via BLOCKED_SCHEME');
+  assert(/javascript\|data/.test(sw), 'BLOCKED_SCHEME does not list javascript|data dangerous schemes');
+
+  // README documents the RC-8 slice + its honest limits, and points at the smoke script.
+  const readme = read('extensions/chrome-shield/README.md');
+  assert(/RC-8/.test(readme), 'README does not document the RC-8 saved-signal block-rule slice');
+  assert(readme.includes('nof-extension-smoke.mjs'), 'README does not reference the RC-8 extension smoke script');
+});
+
+// 88 — RC-8 block-rule path is verified by a REAL browser behavior (B35): the send field is
+// present, pressing 반영 with no extension answering stays honestly not-connected (no fake
+// install), and the saved-signal count is surfaced. Pins the behavior against constant-gutting.
+check('RC-8 block-rule send is verified by a real browser behavior (B35)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B35:/.test(qa), 'B35 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B35'\s*,/.test(qa), "QA flow has no real check('B35', …) call");
+  assert(!/check\(\s*'B35'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B35') is gutted to a constant");
+  assert(qa.includes('차단 테스트용 값'), 'B35 does not assert the block-rule send field');
+  assert(qa.includes("clickExact('이 브라우저 차단 규칙에 반영')"), 'B35 does not exercise the block-rule send action');
+  assert(qa.includes('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.'), 'B35 does not assert the honest not-connected result');
+  assert(qa.includes('저장한 위험 신호'), 'B35 does not assert the saved-signal count surfacing');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
