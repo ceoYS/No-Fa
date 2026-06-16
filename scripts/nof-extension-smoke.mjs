@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-// NoF 실드 — RC-8 extension smoke (run: `npm run qa:ext`).
+// NoF 실드 — RC-10 extension smoke (run: `npm run qa:ext`).
 //
 // Automates what RC-7 proved by hand, now for the RC-8 gap: a user-authored concrete signal
 // sent through SET_BLOCK_RULES becomes a REAL declarativeNetRequest *dynamic* rule, and a
@@ -36,6 +36,10 @@ const EXT_ID_KEY = 'nof.shieldExtensionId';
 // can ONLY come from a dynamic rule installed via SET_BLOCK_RULES — that is the RC-8 proof.
 const BLOCK_TOKEN = 'nof-rc8-blocked-signal';
 const ALLOW_TOKEN = 'nof-rc8-allowed-signal'; // never installed → negative control (must pass through)
+// RC-10 — blocked.html reads this localStorage key (on the extension origin) to repoint its app
+// handoff at a LOCAL preview for end-to-end testing. Production never sets it (defaults to the real
+// app). Mirrors APP_BASE_OVERRIDE_KEY in extensions/chrome-shield/blocked.js.
+const APP_BASE_OVERRIDE_KEY = 'nof.shieldAppBase';
 
 const log = (s) => console.log(`[ext-smoke] ${s}`);
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -112,7 +116,7 @@ async function extSend(c, id, message) {
 
 function instructions(reason) {
   console.error('\n──────────────────────────────────────────────────────────────');
-  console.error(`NoF RC-8 extension smoke: ${reason}`);
+  console.error(`NoF RC-10 extension smoke: ${reason}`);
   console.error('Start a Chrome/Chromium with the unpacked extension loaded + remote debugging:');
   console.error('  chromium --no-sandbox --headless=new --remote-debugging-port=9222 \\');
   console.error('    --remote-debugging-address=127.0.0.1 --no-first-run --disable-gpu \\');
@@ -126,7 +130,7 @@ function instructions(reason) {
 }
 
 async function main() {
-  log(`RC-8 extension smoke — app=${APP_URL} cdp=${CDP_URL} out=${QA_OUT}`);
+  log(`RC-10 extension smoke — app=${APP_URL} cdp=${CDP_URL} out=${QA_OUT}`);
 
   if (!(await cdpReachable(CDP_URL))) {
     instructions(`no CDP endpoint at ${CDP_URL}`);
@@ -203,6 +207,56 @@ async function main() {
     check('non-target URL passes through', passedThrough, allowHref);
     await c.shot('rc8_passthrough');
 
+    // RC-10 — the in-extension pause page offers an HONEST return path into the NoF web app.
+    // blocked.html is a web-accessible resource, so we open it directly, confirm it renders the
+    // two handoff actions, and verify their hrefs are NoF app deep links (from=shield&to=…),
+    // carrying NO blocked target. Then — pointing the page at THIS local app via the test-only
+    // localStorage override the app never sets in production — we click each action and confirm
+    // it lands on the right screen. A real end-to-end handoff, not an asserted string.
+    const blockedUrl = `chrome-extension://${extId}/blocked.html`;
+    await c.goto(blockedUrl, 800);
+    const onBlocked = await c.has('잠깐 멈춤');
+    const hasRecordAction = await c.has('오늘 기록으로 남기기');
+    const hasUrgeAction = await c.has('잠깐 멈춤 계속하기');
+    check('blocked.html shows the app handoff actions', onBlocked && hasRecordAction && hasUrgeAction,
+      `blocked=${onBlocked} record=${hasRecordAction} urge=${hasUrgeAction}`);
+
+    const hrefs = await c.eval(`(() => {
+      const r = document.getElementById('go-record');
+      const u = document.getElementById('go-urge');
+      return { record: r && r.getAttribute('href'), urge: u && u.getAttribute('href') };
+    })()`);
+    const recordDeep = !!hrefs.record && hrefs.record.includes('from=shield') && hrefs.record.includes('to=record')
+      && !/blocked\.html|nof-rc8/.test(hrefs.record);
+    const urgeDeep = !!hrefs.urge && hrefs.urge.includes('from=shield') && hrefs.urge.includes('to=urge');
+    check('blocked.html handoff hrefs are NoF app deep links (no target)', recordDeep && urgeDeep,
+      `record=${hrefs.record} urge=${hrefs.urge}`);
+    await c.shot('rc10_blocked_handoff');
+
+    // Point the pause page at THIS local app and click the real link through to each screen.
+    const appOrigin = APP_URL.replace(/\/+$/, '');
+    await c.setLS(APP_BASE_OVERRIDE_KEY, appOrigin);
+    await c.reload(600);
+    await c.eval(`document.getElementById('go-record').click()`);
+    await c.sleep(1300);
+    const recHref = await c.eval('location.href');
+    const recBody = await c.text();
+    const onRecord = recHref.includes('from=shield') && recHref.includes('to=record')
+      && (recBody.includes('1분 기록') || recBody.includes('오늘의 기록'));
+    check('blocked.html → 오늘 기록 opens the record screen', onRecord, recHref);
+
+    await c.goto(blockedUrl, 600);
+    await c.setLS(APP_BASE_OVERRIDE_KEY, appOrigin);
+    await c.reload(600);
+    await c.eval(`document.getElementById('go-urge').click()`);
+    await c.sleep(1300);
+    const urgeHref = await c.eval('location.href');
+    const urgeBody = await c.text();
+    const onUrge = urgeHref.includes('from=shield') && urgeHref.includes('to=urge')
+      && urgeBody.includes('지금 충동을 멈춰요');
+    check('blocked.html → 잠깐 멈춤 opens the urge screen', onUrge, urgeHref);
+    await c.shot('rc10_urge_handoff');
+
     // Cleanup: clear the dynamic rule we installed so the browser profile is left as found.
     const cleared = await extSend(c, extId, { type: 'CLEAR_RULES' });
     check('CLEAR_RULES (cleanup)', cleared && cleared.ok, `removed=${cleared && cleared.removed}`);
@@ -211,7 +265,7 @@ async function main() {
   }
 
   const passed = results.filter((r) => r.ok).length;
-  console.log(`\n=== NoF RC-8 extension smoke: ${passed}/${results.length} checks PASS ===`);
+  console.log(`\n=== NoF RC-10 extension smoke: ${passed}/${results.length} checks PASS ===`);
   const fails = results.filter((r) => !r.ok);
   if (fails.length) {
     console.log('FAILED:\n' + fails.map((f) => ` - ${f.id}${f.extra ? ' :: ' + f.extra : ''}`).join('\n'));
@@ -221,10 +275,10 @@ async function main() {
 }
 
 main().catch((e) => {
-  console.error('NoF RC-8 extension smoke crashed:', e?.message || e);
+  console.error('NoF RC-10 extension smoke crashed:', e?.message || e);
   if (results.length) {
     const passed = results.filter((r) => r.ok).length;
-    console.log(`\n=== NoF RC-8 extension smoke: ${passed}/${results.length} checked before crash ===`);
+    console.log(`\n=== NoF RC-10 extension smoke: ${passed}/${results.length} checked before crash ===`);
   }
   process.exit(1);
 });

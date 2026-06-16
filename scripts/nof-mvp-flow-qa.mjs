@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 35 MVP behaviors this harness drives and asserts. Every check() references one
+// The 37 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -77,6 +77,7 @@ const BEHAVIORS = {
   B34: 'chrome extension connection is real + honest: reachable connect screen, browser-scoped scope, local 확장 ID + 연결 확인 mechanism, no fake 연결됨 without a real extension reply, 테스트 신호 보내기 present, no 체크인/금욕/fake claim',
   B35: 'saved-signal / test-value → real browser block-rule send is honest: send field + saved-signal count present, no fake install without a connected extension, instructs connect-first, no 체크인/금욕/AI/auto-block/mobile claim',
   B36: 'RC-9 guided 3분 보호 설정 is reachable + honest: 4-step stepper (위험 신호 정리/Chrome 확장 연결/차단 규칙 반영/차단 테스트), browser-scoped scope, 잠깐 멈춤+오늘 기록 CTAs, no connected/complete state without a real extension, no 체크인/금욕/AI/device-wide/full-block claim',
+  B37: 'RC-10 shield→app deep link: ?from=shield&to=urge opens 잠깐 멈춤, &to=record opens 오늘 기록, invalid destination falls back home, blocked target never passed, no 체크인/금욕/fake AI/device-wide/full-block claim',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -736,6 +737,28 @@ async function runFlow(c) {
   check('B36', guidedOk,
     guidedOk ? '' : `title:${guidedTitle} steps:${guidedSteps} scope:${guidedScope} notDone:${notCompleted} cta:${guidedCtas} clean:${guidedNoForbidden}/${guidedNoFake}`);
   await c.shot('shield_guided_setup');
+
+  // 37 · RC-10 shield → web-app deep-link handoff. The Chrome 실드 blocked page returns the user
+  //      into the app via ?from=shield&to=urge|record. A FRESH load at that URL must land on the
+  //      right screen (잠깐 멈춤 / 오늘 기록), an unknown destination must fall back to home, and
+  //      neither landing may carry 체크인/금욕 or a fake AI/device-wide/medical/full-block claim.
+  //      The blocked target is NEVER passed in the link. Asserted on rendered DOM after a real load.
+  await c.goto(`${APP_URL}?from=shield&to=urge`); await sleep(500);
+  const dlUrge = await c.has('지금 충동을 멈춰요');
+  const dlUrgeText = await c.text();
+  await c.goto(`${APP_URL}?from=shield&to=record`); await sleep(500);
+  const dlRecord = (await c.has('1분 기록')) || (await c.has('오늘의 기록'));
+  const dlRecordText = await c.text();
+  await c.goto(`${APP_URL}?from=shield&to=bogus`); await sleep(500);
+  const dlFallback = (await c.has('절제 카운터')) && !(await c.has('지금 충동을 멈춰요'));
+  const dlBlob = `${dlUrgeText}\n${dlRecordText}`;
+  const dlNoForbidden = !dlBlob.includes('체크인') && !dlBlob.includes('금욕');
+  const dlNoFake = ['자동 차단', 'AI', '기기 전체 보호', '모든 앱 차단', '치료', '회복 점수', '성공 보장']
+    .every((w) => !dlBlob.includes(w));
+  const deepLinkOk = dlUrge && dlRecord && dlFallback && dlNoForbidden && dlNoFake;
+  check('B37', deepLinkOk,
+    deepLinkOk ? '' : `urge:${dlUrge} record:${dlRecord} fallback:${dlFallback} clean:${dlNoForbidden}/${dlNoFake}`);
+  await c.shot('shield_deeplink_handoff');
 }
 
 async function main() {
