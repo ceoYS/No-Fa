@@ -76,6 +76,7 @@ const BEHAVIORS = {
   B33: 'protection is clear: honest non-blocking scope, real 잠깐 멈춤/오늘 기록 actions, real NoF Chrome-extension path (no toy experiment copy)',
   B34: 'chrome extension connection is real + honest: reachable connect screen, browser-scoped scope, local 확장 ID + 연결 확인 mechanism, no fake 연결됨 without a real extension reply, 테스트 신호 보내기 present, no 체크인/금욕/fake claim',
   B35: 'saved-signal / test-value → real browser block-rule send is honest: send field + saved-signal count present, no fake install without a connected extension, instructs connect-first, no 체크인/금욕/AI/auto-block/mobile claim',
+  B36: 'RC-9 guided 3분 보호 설정 is reachable + honest: 4-step stepper (위험 신호 정리/Chrome 확장 연결/차단 규칙 반영/차단 테스트), browser-scoped scope, 잠깐 멈춤+오늘 기록 CTAs, no connected/complete state without a real extension, no 체크인/금욕/AI/device-wide/full-block claim',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -702,6 +703,39 @@ async function runFlow(c) {
   check('B35', blockRuleClear,
     blockRuleClear ? '' : `ui:${blkUi} count:${blkSavedCount} sent:${blkSent} notConn:${blkNotConnected} noInstall:${blkNoFakeInstall} clean:${blkNoForbidden}/${blkNoFake}`);
   await c.shot('shield_extension_block_rules');
+
+  // 36 · RC-9 guided 3분 보호 설정. On the SAME extension screen (already reached via Home → 보호
+  //      설정 적기 → 차단 테스트하기), a guided stepper walks the proven RC-7 + RC-8 chain: 위험 신호
+  //      정리 → Chrome 확장 연결 → 차단 규칙 반영 → 차단 테스트. It must show the guided structure,
+  //      keep the honest browser-scoped scope, expose 잠깐 멈춤 + 오늘 기록 CTAs, and — with NO real
+  //      extension answering in this headless run (연결 확인/반영 were both pressed above and failed)
+  //      — must NOT mark connected or complete. No 체크인/금욕 or fake AI/device-wide/full-block
+  //      claim. Rendered DOM only (this is the RC-9 onboarding over the proven RC-7+RC-8 pieces).
+  const guidedTitle = await c.has('3분 보호 설정');
+  const guidedSteps =
+    (await c.has('위험 신호 정리')) && (await c.has('Chrome 확장 연결')) &&
+    (await c.has('차단 규칙 반영')) && (await c.has('차단 테스트'));
+  const guidedScope =
+    (await c.has('이 Chrome 브라우저에서 먼저 작동해요')) &&
+    (await c.has('기기 전체나 다른 앱까지 막는 기능은 아니에요'));
+  // With no extension answering, the guided flow must NOT show a connected/complete state:
+  // no 연결됨 (real PING only), no 규칙 반영됨 (real SET_BLOCK_RULES ok only), no completion line.
+  const notCompleted =
+    !(await c.has('연결됨')) && !(await c.has('규칙 반영됨')) &&
+    !(await c.has('이제 이 Chrome 브라우저에서 작동해요'));
+  // The 잠깐 멈춤 / 오늘 기록 next actions are always available (not gated behind completion).
+  const guidedCtas = (await c.has('잠깐 멈춤')) && (await c.has('오늘 기록'));
+  const guidedNoForbidden = !(await c.has('체크인')) && !(await c.has('금욕'));
+  const guidedNoFake =
+    !(await c.has('AI')) && !(await c.has('자동 차단')) && !(await c.has('모바일')) &&
+    !(await c.has('치료')) && !(await c.has('기기 전체 보호')) && !(await c.has('모든 앱 차단')) &&
+    !(await c.has('성공 보장'));
+  const guidedOk =
+    guidedTitle && guidedSteps && guidedScope && notCompleted && guidedCtas &&
+    guidedNoForbidden && guidedNoFake;
+  check('B36', guidedOk,
+    guidedOk ? '' : `title:${guidedTitle} steps:${guidedSteps} scope:${guidedScope} notDone:${notCompleted} cta:${guidedCtas} clean:${guidedNoForbidden}/${guidedNoFake}`);
+  await c.shot('shield_guided_setup');
 }
 
 async function main() {

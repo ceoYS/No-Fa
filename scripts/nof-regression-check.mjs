@@ -2794,6 +2794,85 @@ check('RC-8 block-rule send is verified by a real browser behavior (B35)', () =>
   assert(qa.includes('저장한 위험 신호'), 'B35 does not assert the saved-signal count surfacing');
 });
 
+// 89 — RC-9: the extension smoke negative-control must be HOST-AGNOSTIC so qa:ext passes
+// against BOTH local preview and the production origin (nof-mauve). It must NOT require the
+// pass-through URL to contain a hardcoded 127.0.0.1 host; instead it proves "not blocked"
+// STRUCTURALLY — the non-target did NOT redirect to blocked.html and did NOT land on a
+// chrome-extension:// page — while still confirming it stayed in the app (the allowed token
+// or the app URL). This pins the RC-8 prod-smoke script limitation closed for good.
+check('RC-9 extension smoke negative-control is host-agnostic (no hardcoded 127.0.0.1)', () => {
+  const ext = read('scripts/nof-extension-smoke.mjs');
+  assert(
+    !/allowHref\.includes\(\s*['"]127\.0\.0\.1['"]\s*\)/.test(ext),
+    'extension smoke still hardcodes 127.0.0.1 in the negative-control pass-through check',
+  );
+  assert(
+    /!\s*allowHref\.includes\(\s*['"]blocked\.html['"]\s*\)/.test(ext),
+    'negative-control must assert the non-target did NOT redirect to blocked.html',
+  );
+  assert(
+    /chrome-extension:\/\//.test(ext) && /allowHref/.test(ext),
+    'negative-control must assert the non-target did NOT land on a chrome-extension:// page',
+  );
+  // It must still confirm the non-target stayed in the app context, not merely "not blocked".
+  assert(
+    /ALLOW_TOKEN/.test(ext) && /passedThrough/.test(ext),
+    'negative-control lost the in-app pass-through confirmation',
+  );
+});
+
+// 90 — RC-9 guided 3분 보호 설정 is honest. ShieldExtensionScreen carries a guided stepper that
+// ORCHESTRATES the proven RC-7 (PING) + RC-8 (SET_BLOCK_RULES) pieces into a 위험 신호 정리 →
+// Chrome 확장 연결 → 차단 규칙 반영 → 차단 테스트 flow. Completion state must be DERIVED from real
+// responses — connected only via conn.state === 'connected', rule-applied only behind res.ok —
+// never set optimistically; it keeps the honest browser-scoped scope + always-available 잠깐 멈춤
+// / 오늘 기록 CTAs; and it carries no 체크인/금욕 or fake AI/medical/device-wide/full-block claim.
+check('RC-9 guided protection setup is honest (guided copy, real-state completion, honest scope)', () => {
+  const screen = read('src/screens/ShieldExtensionScreen.jsx');
+
+  // (a) The guided stepper title + the four step labels are present.
+  assert(screen.includes('3분 보호 설정'), 'guided setup is missing the 3분 보호 설정 title');
+  for (const step of ['위험 신호 정리', 'Chrome 확장 연결', '차단 규칙 반영', '차단 테스트']) {
+    assert(screen.includes(step), `guided setup is missing the step label: ${step}`);
+  }
+
+  // (b) Completion is DERIVED from real state, never set optimistically: a ruleApplied flag
+  //     flips true ONLY inside the res.ok branch and resets to false on a failed/empty send,
+  //     and the connected step reads conn.state === 'connected'.
+  assert(/const \[ruleApplied, setRuleApplied\] = useState\(false\)/.test(screen), 'guided setup has no ruleApplied real-state flag');
+  assert(/res && res\.ok[\s\S]{0,120}setRuleApplied\(true\)/.test(screen), 'ruleApplied is not gated behind a real SET_BLOCK_RULES ok response');
+  assert(/setRuleApplied\(false\)/.test(screen), 'guided setup never resets ruleApplied on a failed/empty send (could fake completion)');
+  assert(screen.includes("conn.state === 'connected'"), 'guided connected step is not gated on a real connection state');
+
+  // (c) Honest browser-scoped scope + the always-available 잠깐 멈춤 / 오늘 기록 next actions.
+  assert(screen.includes('이 Chrome 브라우저에서 먼저 작동해요'), 'guided setup lost the browser-scoped honesty line');
+  assert(screen.includes('기기 전체나 다른 앱까지 막는 기능은 아니에요'), 'guided setup lost the not-device-wide honesty line');
+  assert(/onNavigate\('urge'\)/.test(screen) && screen.includes('잠깐 멈춤'), 'guided setup lost the 잠깐 멈춤 CTA');
+  assert(/onNavigate\('checkin'\)/.test(screen) && screen.includes('오늘 기록'), 'guided setup lost the 오늘 기록 CTA');
+
+  // (d) No forbidden vocabulary / fake claim anywhere on the surface.
+  for (const bad of ['체크인', '금욕', '자동 차단', '모든 앱 차단', '기기 전체 보호', '성공 보장', 'AI 감지', '치료', '회복 점수']) {
+    assert(!screen.includes(bad), `guided setup makes a forbidden claim/vocabulary: ${bad}`);
+  }
+});
+
+// 91 — RC-9 guided setup is verified by a REAL browser behavior (B36): the guided stepper is
+// reachable and shows the four-step structure, keeps honest scope, exposes 잠깐 멈춤 + 오늘 기록
+// CTAs, and — with no real extension answering — does NOT mark connected/complete. Pins the
+// behavior so it can't be dropped or gutted to a constant tautology.
+check('RC-9 guided setup is verified by a real browser behavior (B36)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B36:/.test(qa), 'B36 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B36'\s*,/.test(qa), "QA flow has no real check('B36', …) call");
+  assert(!/check\(\s*'B36'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B36') is gutted to a constant");
+  assert(qa.includes('3분 보호 설정'), 'B36 does not assert the guided 3분 보호 설정 structure');
+  assert(
+    qa.includes('위험 신호 정리') && qa.includes('Chrome 확장 연결') && qa.includes('차단 규칙 반영'),
+    'B36 does not assert the guided step labels',
+  );
+  assert(qa.includes('규칙 반영됨'), 'B36 does not assert the not-completed state token (규칙 반영됨 absent without a real extension)');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
