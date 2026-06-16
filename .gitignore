@@ -42,3 +42,7 @@ references/mobbin_visual/
 # Claude Design bundled review artifacts - local only
 design_outputs/claude_design_v3/*.html
 .vercel
+
+# Chrome-generated debris from loading the unpacked chrome-shield extension
+# (indexed rulesets etc.) — regenerated locally on each load, never commit
+extensions/chrome-shield/_metadata/
