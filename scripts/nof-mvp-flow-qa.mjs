@@ -78,6 +78,7 @@ const BEHAVIORS = {
   B35: 'saved-signal / test-value → real browser block-rule send is honest: send field + saved-signal count present, no fake install without a connected extension, instructs connect-first, no 체크인/금욕/AI/auto-block/mobile claim',
   B36: 'RC-9 guided 3분 보호 설정 is reachable + honest: 4-step stepper (위험 신호 정리/Chrome 확장 연결/차단 규칙 반영/차단 테스트), browser-scoped scope, 잠깐 멈춤+오늘 기록 CTAs, no connected/complete state without a real extension, no 체크인/금욕/AI/device-wide/full-block claim',
   B37: 'RC-10 shield→app deep link: ?from=shield&to=urge opens 잠깐 멈춤, &to=record opens 오늘 기록, invalid destination falls back home, blocked target never passed, no 체크인/금욕/fake AI/device-wide/full-block claim',
+  B38: 'RC-11 extension setup is compressed + honest: reachable setup flow (Chrome 확장 준비/압축해제 설치/확장 ID/연결 확인/이 브라우저 차단 규칙에 반영/차단 테스트), states Chrome 웹 스토어 not yet + this-Chrome-only + not device-wide/other-app, no connected/complete state without a real extension reply, 잠깐 멈춤+오늘 기록 exits, no 체크인/금욕/fake AI/device-wide/full-block claim',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -737,6 +738,39 @@ async function runFlow(c) {
   check('B36', guidedOk,
     guidedOk ? '' : `title:${guidedTitle} steps:${guidedSteps} scope:${guidedScope} notDone:${notCompleted} cta:${guidedCtas} clean:${guidedNoForbidden}/${guidedNoFake}`);
   await c.shot('shield_guided_setup');
+
+  // 38 · RC-11 compressed extension setup. On the SAME extension screen (already reached via Home →
+  //      보호 설정 적기 → 차단 테스트하기), the setup is compressed into one honest 준비 → 설치 → ID
+  //      복사 → 연결 → 규칙 → 테스트 flow. It must surface the compressed setup terms, state the
+  //      install KIND honestly (Chrome 웹 스토어 not yet, this Chrome only, not device-wide / other
+  //      apps), keep useful 잠깐 멈춤 + 오늘 기록 exits, and — with NO real extension answering in this
+  //      headless run (연결 확인/반영 pressed above both failed) — must NOT show the 설정 완료 / 연결됨
+  //      state. No 체크인/금욕 or fake AI/device-wide/full-block claim. Rendered DOM only.
+  //      ("Chrome 확장 준비" is a .card-label, uppercased by CSS for latin, so the 준비 concept is
+  //      asserted via the hangul-stable body line 확장을 준비해요 + the 압축해제 설치 pill.)
+  const setupOnExt = await c.has('실제 차단 테스트');
+  const setupCompressed =
+    (await c.has('확장을 준비해요')) && (await c.has('압축해제 설치')) &&
+    (await c.has('확장 ID')) && (await c.has('연결 확인')) &&
+    (await c.has('이 브라우저 차단 규칙에 반영')) && (await c.has('차단 테스트'));
+  const setupHonest =
+    (await c.has('웹 스토어 설치는 아직 아니에요')) &&
+    (await c.has('이 Chrome 브라우저에서 먼저 작동해요')) &&
+    (await c.has('기기 전체나 다른 앱까지 막는 기능은 아니에요'));
+  // No connected/complete state earned in this headless run (no extension answered).
+  const setupNotComplete = !(await c.has('설정 완료')) && !(await c.has('연결됨'));
+  const setupExits = (await c.has('잠깐 멈춤')) && (await c.has('오늘 기록'));
+  const setupNoForbidden = !(await c.has('체크인')) && !(await c.has('금욕'));
+  const setupNoFake =
+    !(await c.has('AI')) && !(await c.has('자동 차단')) && !(await c.has('기기 전체 보호')) &&
+    !(await c.has('모든 앱 차단')) && !(await c.has('치료')) && !(await c.has('회복 점수')) &&
+    !(await c.has('성공 보장'));
+  const setupOk =
+    setupOnExt && setupCompressed && setupHonest && setupNotComplete && setupExits &&
+    setupNoForbidden && setupNoFake;
+  check('B38', setupOk,
+    setupOk ? '' : `onExt:${setupOnExt} steps:${setupCompressed} honest:${setupHonest} notDone:${setupNotComplete} exits:${setupExits} clean:${setupNoForbidden}/${setupNoFake}`);
+  await c.shot('shield_extension_setup');
 
   // 37 · RC-10 shield → web-app deep-link handoff. The Chrome 실드 blocked page returns the user
   //      into the app via ?from=shield&to=urge|record. A FRESH load at that URL must land on the
