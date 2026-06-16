@@ -241,19 +241,26 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
             <p className="hairline-note text-quiet">
               NoF 잠깐 멈춤 화면으로 이동하면 성공이에요. 평범한 곳은 그대로 열려요.
             </p>
+            <p className="hairline-note text-quiet">
+              앱은 다른 탭에서 일어난 이동을 자동으로 확인하지 못해요. 직접 열어 확인해요.
+            </p>
             <p className="hairline-note shield-safety-note">
               위험한 사이트를 직접 찾지 마세요. 위 테스트 주소면 충분해요.
             </p>
           </div>
         ) : null}
 
-        {ruleApplied ? (
+        {/* RC-11 — single honest 완료 (F) state. Gated on BOTH a real connection
+            (conn.state === 'connected', a real PING) AND a real rule (ruleApplied, a real
+            SET_BLOCK_RULES ok:true). It never renders on first paint, so the screen can't
+            claim "설정 완료" it did not earn. */}
+        {conn.state === 'connected' && ruleApplied ? (
           <p className="hairline-note" aria-live="polite">
-            이제 이 Chrome 브라우저에서 작동해요. 정한 값이 든 주소가 잠깐 멈춤으로 이어져요.
+            설정 완료 — 이 Chrome 브라우저에서 차단 테스트를 할 수 있어요. 정한 값이 든 주소가 잠깐 멈춤으로 이어져요.
           </p>
         ) : (
           <p className="hairline-note text-quiet">
-            아직 끝나지 않았어요. 위 단계를 순서대로 마치면 이 브라우저에서 차단 테스트를 할 수 있어요.
+            아직 설정 전이에요. 연결 확인과 차단 규칙 반영을 모두 마치면 완료돼요.
           </p>
         )}
 
@@ -282,22 +289,41 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
         </div>
       </section>
 
-      <section className="card">
-        <span className="card-label">확장 설치하기 (개발자 모드)</span>
+      {/* RC-11 — compressed, honest extension setup. Replaces the bare install card with one
+          clear 준비 → 설치 → ID 복사 orientation, so the highest-friction step (pasting the 32-자
+          ID) is continuous with where the ID is produced. It states the install KIND honestly: this
+          is the developer 압축해제(언팩) load, NOT a Chrome 웹 스토어 install, and the unpacked ID is
+          NOT a fixed production id. Text only — no network, no scheme literal other than chrome://,
+          no fake completion. The real connect/rule/test mechanics stay in the cards below. */}
+      <section className="card shield-ext-setup">
+        <div className="card-row">
+          <span className="card-label">Chrome 확장 준비</span>
+          <span className="pill shield-tag">압축해제 설치</span>
+        </div>
+        <p className="hairline-note">Chrome 확장을 준비해요.</p>
+        <p className="hairline-note text-quiet">지금은 개발자용 압축해제 설치 방식이에요.</p>
+        <p className="hairline-note text-quiet">Chrome 웹 스토어 설치는 아직 아니에요.</p>
+
         <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
           <p className="hairline-note">
-            1. Chrome에서 <code>chrome://extensions</code> 를 열어요.
+            1. Chrome 주소창에 <code>chrome://extensions</code> 를 열어요.
           </p>
           <p className="hairline-note">
             2. 오른쪽 위 <strong>개발자 모드</strong>를 켜요.
           </p>
           <p className="hairline-note">
-            3. <strong>압축해제된 확장 프로그램 로드</strong>를 눌러
-            <code>extensions/chrome-shield</code> 폴더를 골라요.
+            3. <strong>압축해제된 확장 프로그램 로드</strong>로
+            <code>extensions/chrome-shield</code> 폴더를 선택해요.
+          </p>
+          <p className="hairline-note">
+            4. 확장 카드에 보이는 확장 ID를 복사해요. 아래 연결 칸에 붙여넣어요.
           </p>
         </div>
         <p className="hairline-note text-quiet">
           이 폴더는 이 프로젝트 안에 들어 있어요. 따로 내려받을 필요는 없어요.
+        </p>
+        <p className="hairline-note text-quiet">
+          압축해제 확장은 ID가 고정되지 않아요. 다시 로드하면 바뀔 수 있어, 그때는 다시 붙여넣어요.
         </p>
       </section>
 
