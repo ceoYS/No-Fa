@@ -50,7 +50,7 @@ const REFLECT_MAX = 140;
 
 // Urge는 "지금 선택한 카운터"의 충동을 함께 넘기는 도구다 (counter-management). 어떤
 // 절제를 붙잡고 있는지 selectedCounterName으로 보여줘 맥락을 잃지 않게 한다.
-export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNote, selectedCounterName = '', protectionPlan = null }) {
+export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNote, selectedCounterName = '', protectionPlan = null, fromShield = false }) {
   const [remaining, setRemaining] = useState(TARGET_SECONDS);
   const [running, setRunning] = useState(false);
   const [started, setStarted] = useState(false);
@@ -140,6 +140,15 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
           </p>
         </div>
       </header>
+
+      {/* RC-10 — honest continuation note when the user arrived from the Chrome 실드 멈춤
+          page (?from=shield&to=urge). It states the handoff plainly; it never claims the app
+          knows what site was blocked. One-shot: App clears it on the next navigation. */}
+      {fromShield ? (
+        <p className="hairline-note" style={{ textAlign: 'center' }} aria-live="polite">
+          Chrome 확장에서 이어졌어요. 지금은 잠깐 멈추는 시간이에요.
+        </p>
+      ) : null}
 
       {view === 'routine' ? (
         <>

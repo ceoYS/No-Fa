@@ -126,6 +126,23 @@ function demoFrameEnabled() {
 
 const DEMO_FRAME = demoFrameEnabled();
 
+// RC-10 — safe deep-link entry from the Chrome 실드 blocked page. The extension's blocked.html
+// offers an honest return path into the app and passes ONLY from=shield + a coarse destination
+// (to=urge | to=record). The blocked target URL is NEVER passed here, and we never read one.
+// An unknown/missing destination falls back to home. This is a one-shot initial-screen choice
+// (consumed on the first navigation), not a router — no path rewriting, no history routing.
+function shieldDeepLink() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('from') !== 'shield') return null;
+    const to = params.get('to');
+    return to === 'urge' || to === 'record' ? to : 'invalid';
+  } catch {
+    return null;
+  }
+}
+
 // Discipline rules — P0.1 in-memory state lifted to App so Home / 최근 기록 /
 // 체크인 stay in sync. `status` holds the v2 internal enum (§0.6.2:
 // kept/missed/held/unrecorded); the UI renders the selectable label only, never
@@ -148,7 +165,18 @@ const INITIAL_RULES = [
 ];
 
 export default function App() {
-  const [screenId, setScreenId] = useState('home');
+  // RC-10 — open the deep-linked screen on first paint (잠깐 멈춤 / 오늘 기록), else home.
+  const [screenId, setScreenId] = useState(() => {
+    const dest = shieldDeepLink();
+    return dest === 'urge' ? 'urge' : dest === 'record' ? 'checkin' : 'home';
+  });
+  // RC-10 — one-shot continuation note for a 실드 → 앱 deep-link landing. True only on the
+  // initial deep-link paint; cleared on the first navigation so it never becomes a persistent
+  // banner. Read by 잠깐 멈춤 / 오늘 기록 to show an honest "you came from the 실드" line.
+  const [fromShield, setFromShield] = useState(() => {
+    const dest = shieldDeepLink();
+    return dest === 'urge' || dest === 'record';
+  });
 
   // Local persistence (P0). The saved bundle is read ONCE on first paint; every
   // slice below falls back to its seed/default when there is no bundle yet (first
@@ -279,6 +307,14 @@ export default function App() {
     crisisRewardDay,
     slipReflectionDay,
   ]);
+
+  // RC-10 — navigate + consume the one-shot 실드 continuation note. Any user navigation
+  // (a screen CTA or the bottom nav) clears the note, so it shows only on the deep-link
+  // landing, never as a sticky banner.
+  const navigate = (id) => {
+    if (fromShield) setFromShield(false);
+    setScreenId(id);
+  };
 
   const current = SCREENS.find((s) => s.id === screenId) ?? SCREENS[0];
   const Screen = current.Component;
@@ -731,7 +767,8 @@ export default function App() {
         ) : null}
         <main className="device-viewport" key={screenId}>
           <Screen
-            onNavigate={setScreenId}
+            onNavigate={navigate}
+            fromShield={fromShield}
             rules={rules}
             onAddRule={addRule}
             onSetRuleStatus={setRuleStatus}
@@ -787,7 +824,7 @@ export default function App() {
             onResetLocalData={resetLocalData}
           />
         </main>
-        <BottomNav value={screenId} onChange={setScreenId} />
+        <BottomNav value={screenId} onChange={navigate} />
       </div>
     </div>
   );

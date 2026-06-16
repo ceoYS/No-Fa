@@ -60,6 +60,19 @@
         font-weight: 600;
         cursor: pointer;
       }
+      .actionlink {
+        width: 100%;
+        border: 0;
+        border-radius: 12px;
+        padding: 13px 16px;
+        font-size: 15px;
+        font-weight: 600;
+        cursor: pointer;
+        display: block;
+        text-align: center;
+        text-decoration: none;
+        box-sizing: border-box;
+      }
       .primary { background: var(--ember); color: #2a1606; margin-top: 6px; }
       .ghost {
         background: transparent;
@@ -87,14 +100,20 @@
     <main class="card">
       <span class="tag">NoF 실드 · 로컬 Chrome 전용 프로토타입</span>
       <h1>잠깐 멈춤</h1>
-      <p>멀리 두기로 정한 신호에 닿았어요. 지금은 열지 않고 5분만 늦춰볼까요?</p>
-      <p class="quiet">어디로 가려 했는지는 일부러 보여주지 않아요.</p>
+      <p>멀리 두기로 정한 신호에 닿았어요. 지금은 한 번 멈추는 시간이에요.</p>
+      <p class="quiet">이 주소는 표시하지 않아요. 어디로 가려 했는지는 일부러 보여주지 않아요.</p>
 
       <button id="pause" class="primary" type="button">잠깐 멈춤으로 가기</button>
 
       <div id="timer-wrap" class="timer-wrap" hidden>
         <div id="timer" class="timer" aria-live="polite">05:00</div>
         <p id="done" class="quiet" hidden>5분을 지나왔어요. 잘했어요.</p>
+      </div>
+
+      <div class="footer handoff">
+        <p class="quiet">NoF 잠깐 멈춤 — 앱에서 이어갈 수 있어요.</p>
+        <a id="go-record" class="actionlink primary" rel="noopener">오늘 기록으로 남기기</a>
+        <a id="go-urge" class="actionlink ghost" rel="noopener">잠깐 멈춤 계속하기</a>
       </div>
 
       <button id="close" class="ghost" type="button">이 탭 닫기</button>

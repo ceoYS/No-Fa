@@ -45,6 +45,7 @@ export default function CheckinScreen({
   checkinNoteDraft = null,
   checkinContext = null,
   onConsumeCheckinContext,
+  fromShield = false,
 }) {
   // C7: a one-shot day-context flag, set when the user continued here from a record
   // detail. Captured at mount so the prompt stays stable, then cleared in App so a
@@ -131,6 +132,10 @@ export default function CheckinScreen({
         <p className="screen-subtitle">
           오늘 내가 쓴 글이에요. 이 기기에만 저장돼요. 언제든 다시 고칠 수 있어요.
         </p>
+
+        {fromShield ? (
+          <p className="hairline-note">방금 멈춘 시간을 오늘 기록으로 남길 수 있어요.</p>
+        ) : null}
 
         <section className="card checkin-saved-confirm">
           <span className="card-label">오늘 기록이 저장됐어요</span>
@@ -240,6 +245,13 @@ export default function CheckinScreen({
             내가 쓴 글이 가장 큰 힘이 돼요. 한 가지만 적어도 충분해요. 이 기기에만 저장되고 밖으로
             공유되지 않아요.
           </p>
+
+          {/* RC-10 — honest continuation note when arrived from the Chrome 실드 멈춤 page
+              (?from=shield&to=record). An invitation only; it never claims the app knows the
+              blocked site. One-shot: App clears it on the next navigation. */}
+          {fromShield ? (
+            <p className="hairline-note">방금 멈춘 시간을 오늘 기록으로 남길 수 있어요.</p>
+          ) : null}
 
           {fromRecord ? (
             <section className="card checkin-context-note">
