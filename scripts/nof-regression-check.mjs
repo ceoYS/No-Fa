@@ -3062,6 +3062,29 @@ check('RC-11 extension README setup steps match the in-app UI terms + honest lim
   assert(/Chrome 데스크톱/.test(readme), 'README does not state Chrome-desktop-only scope');
 });
 
+// 99 — RC-12 distribution decision packet. The Chrome Web Store / fixed-ID question is a
+// DECISION, not code: this guard pins that the decision document exists and stays complete
+// (records the sealed state, weighs Option A vs Option B, states an explicit DECISION, lists
+// the next-RC recommendation, and keeps the non-goals) so the packet can't silently rot into
+// a stub. Docs-only — it asserts nothing about product behavior.
+check('RC-12 extension distribution decision packet exists and is complete', () => {
+  const doc = read('docs/NOF_RC12_EXTENSION_DISTRIBUTION_DECISION.md');
+  for (const section of [
+    'Current sealed state',
+    'Option A',
+    'Option B',
+    'Non-goals',
+    'Next RC recommendation',
+  ]) {
+    assert(doc.includes(section), `RC-12 decision doc is missing the "${section}" section`);
+  }
+  // An explicit, machine-greppable decision line — not just prose.
+  assert(/DECISION:\s*\S/.test(doc), 'RC-12 decision doc has no explicit "DECISION:" line');
+  // The packet must name the two paths it decides between (Web Store vs danger-signal UX).
+  assert(/Web Store/.test(doc), 'RC-12 decision doc never names the Chrome Web Store path');
+  assert(/danger-signal/i.test(doc), 'RC-12 decision doc never names the danger-signal UX path');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
