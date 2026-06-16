@@ -768,9 +768,14 @@ check('chrome-shield extension is a local MV3 declarativeNetRequest PoC (honest,
     'popup.html', 'popup.js', 'options.html', 'options.js',
   ];
   const remoteTokens = ['http://', 'https://', 'cdn.', 'googleapis', 'unpkg', 'jsdelivr', 'fetch(', 'XMLHttpRequest', 'import("http'];
+  // RC-10: blocked.html/js legitimately carry the NoF app deep-link (a user-navigated return
+  // target, NOT remote code or a fetch). Exempt ONLY that exact origin for those two files;
+  // every other http(s)/CDN/fetch token still trips, including there.
+  const APP_DEEPLINK = 'https://nof-mauve.vercel.app';
   for (const f of codeFiles) {
+    const scan = (f === 'blocked.html' || f === 'blocked.js') ? src[f].split(APP_DEEPLINK).join('') : src[f];
     for (const t of remoteTokens) {
-      assert(!src[f].includes(t), `${dir}/${f} pulls in remote code / network (${t}) — the PoC must stay local`);
+      assert(!scan.includes(t), `${dir}/${f} pulls in remote code / network (${t}) — the PoC must stay local`);
     }
   }
   // No fake present-tense blocking claim in the user-facing pages.
@@ -845,7 +850,17 @@ check('global crisis pause (잠깐 멈춤) is in the persistent nav and routes t
   assert(/onChange\(t\.id\)/.test(nav), 'BottomNav tabs do not route via onChange(tab id) — could be a dead entry');
 
   const app = read('src/App.jsx');
-  assert(/<BottomNav[\s\S]*?onChange=\{setScreenId\}/.test(app), 'App does not wire BottomNav onChange to the screen router');
+  // The nav must route to the screen router. RC-10 routes it through navigate() — a thin wrapper
+  // that consumes the one-shot 실드 deep-link note and then calls the real router — so accept
+  // either a direct setScreenId or a handler whose body actually calls setScreenId (never a dead
+  // entry). We extract the bound handler name and verify it routes.
+  const bottomNavRouter = app.match(/<BottomNav[\s\S]*?onChange=\{(\w+)\}/);
+  assert(bottomNavRouter, 'App does not wire BottomNav onChange to the screen router');
+  const navHandler = bottomNavRouter[1];
+  assert(
+    navHandler === 'setScreenId' || new RegExp(`const ${navHandler} = \\([\\s\\S]*?setScreenId\\(`).test(app),
+    `App BottomNav onChange handler (${navHandler}) is not the real screen router (does not call setScreenId)`,
+  );
   assert(
     /id:\s*'urge',\s*label:\s*'잠깐 멈춤',\s*Component:\s*UrgeScreen/.test(app),
     "App does not route 'urge' to the real UrgeScreen",
@@ -933,10 +948,15 @@ check('chrome-shield manifest keeps least privilege (minimal perms, no dangerous
     'popup.html', 'popup.js', 'options.html', 'options.js',
   ];
   const remoteTokens = ['http://', 'https://', 'cdn.', 'googleapis', 'unpkg', 'jsdelivr', 'fetch(', 'XMLHttpRequest', 'import("http', 'analytics'];
+  // RC-10: blocked.html/js legitimately carry the NoF app deep-link (a user-navigated return
+  // target, NOT remote code). Exempt ONLY that exact origin for those two files; the adult-token
+  // scan below still runs on the full source, and every other remote token still trips.
+  const APP_DEEPLINK = 'https://nof-mauve.vercel.app';
   for (const f of codeFiles) {
     const s = read(`${dir}/${f}`);
+    const scan = (f === 'blocked.html' || f === 'blocked.js') ? s.split(APP_DEEPLINK).join('') : s;
     for (const t of remoteTokens) {
-      assert(!s.includes(t), `${dir}/${f} pulls in remote code / network (${t}) — the PoC must stay local`);
+      assert(!scan.includes(t), `${dir}/${f} pulls in remote code / network (${t}) — the PoC must stay local`);
     }
     for (const bad of ['porn', 'xxx', 'sex', 'adult', 'xvideos', 'nsfw']) {
       assert(!s.toLowerCase().includes(bad), `${dir}/${f} contains an explicit/adult token: ${bad}`);
@@ -2871,6 +2891,78 @@ check('RC-9 guided setup is verified by a real browser behavior (B36)', () => {
     'B36 does not assert the guided step labels',
   );
   assert(qa.includes('규칙 반영됨'), 'B36 does not assert the not-completed state token (규칙 반영됨 absent without a real extension)');
+});
+
+// 92 — RC-10 blocked-page handoff contract. The in-extension pause page (blocked.html/js) must
+// offer an HONEST return path into the NoF web app: the two handoff actions (오늘 기록으로 남기기 /
+// 잠깐 멈춤 계속하기) built as NoF app deep links (from=shield&to=record / to=urge). It must keep the
+// required honest copy, still never read or reveal the blocked target, and carry no fake
+// auto-block/detection claim or 체크인/금욕. Default target is the production app; only a
+// localStorage override (a test hook) may repoint it. The link passes from=shield + a coarse
+// destination ONLY — never the blocked URL.
+check('RC-10 blocked page returns to the app honestly (deep-link handoff, no target leak)', () => {
+  const dir = 'extensions/chrome-shield';
+  const html = read(`${dir}/blocked.html`);
+  const js = read(`${dir}/blocked.js`);
+
+  // (a) Both handoff actions + the required honest copy are present.
+  for (const s of ['오늘 기록으로 남기기', '잠깐 멈춤 계속하기', 'NoF 잠깐 멈춤', '지금은 한 번 멈추는 시간이에요', '이 주소는 표시하지 않아요']) {
+    assert(html.includes(s), `blocked.html is missing required handoff copy: ${s}`);
+  }
+  // The original local 5-min pause entry stays (RC-10 adds a return path; it does not remove the pause).
+  assert(html.includes('잠깐 멈춤으로 가기'), 'blocked.html lost the local pause entry (잠깐 멈춤으로 가기)');
+  // Stable anchor hooks blocked.js targets.
+  assert(html.includes('id="go-record"') && html.includes('id="go-urge"'), 'blocked.html is missing the handoff anchors (go-record/go-urge)');
+
+  // (b) blocked.js builds NoF app deep links (from=shield + to=record/urge) with a default app
+  //     base, wires both anchors, and passes NO blocked target.
+  assert(js.includes('from=shield'), 'blocked.js does not build a from=shield deep link');
+  assert(/to=\$\{to\}/.test(js) || (js.includes('to=record') && js.includes('to=urge')), 'blocked.js does not target the record/urge destinations');
+  assert(js.includes("getElementById('go-record')") && js.includes("getElementById('go-urge')"), 'blocked.js does not wire the handoff anchors');
+  assert(js.includes('nof-mauve.vercel.app'), 'blocked.js has no default NoF app deep-link target');
+
+  // (c) Still no target leak: the pause page must not read the blocked URL / referrer / query.
+  for (const leak of ['referrer', 'URLSearchParams', 'document.URL', 'location.search', 'location.href']) {
+    assert(!js.includes(leak), `blocked.js may reveal the blocked target (${leak}) — the pause page must not read it`);
+  }
+  // (d) No fake-blocking / detection / forbidden vocabulary on the pause page.
+  for (const bad of ['차단 성공', '자동 차단됨', '자동 차단', '위험 사이트 감지', 'AI가 막았어요', 'AI 감지', '회복 성공', '금욕', '체크인']) {
+    assert(!html.includes(bad), `blocked.html makes a forbidden claim/vocabulary: ${bad}`);
+    assert(!js.includes(bad), `blocked.js makes a forbidden claim/vocabulary: ${bad}`);
+  }
+});
+
+// 93 — RC-10 safe deep-link routing in the web app. App.jsx must accept the Chrome 실드 return link
+// (from=shield) and open ONLY a coarse destination — to=urge → the 잠깐 멈춤 screen, to=record → the
+// 오늘 기록 (checkin) screen — with any unknown/missing destination falling back to home. It must
+// NOT read or route on a blocked target URL. The continuation note is one-shot (cleared on the
+// first navigation), so it can't grow into a persistent banner.
+check('RC-10 web app deep-link routing is safe (from=shield → urge/record, invalid → home)', () => {
+  const app = read('src/App.jsx');
+  // Gated on from=shield, reads a to= destination.
+  assert(/get\('from'\)/.test(app) && app.includes("'shield'"), 'App.jsx does not gate the deep link on from=shield');
+  assert(/get\('to'\)/.test(app), 'App.jsx does not read the to= destination');
+  // Maps to the two real screens and falls back to home.
+  assert(app.includes("'urge'") && app.includes("'checkin'"), 'App.jsx deep link does not map to the urge/checkin screens');
+  assert(/\? 'home'|: 'home'|\?\? 'home'|return 'home'/.test(app), 'App.jsx deep link has no safe home fallback');
+  // It must NOT read a blocked target from the deep link — only the coarse destination.
+  assert(!/get\('target'\)|get\('url'\)|get\('site'\)|get\('q'\)/.test(app), 'App.jsx must not read a blocked target from the deep link');
+  // One-shot continuation flag (cleared on navigate), never a persistent banner.
+  assert(/fromShield/.test(app), 'App.jsx has no fromShield continuation flag');
+  assert(/setFromShield\(false\)/.test(app), 'App.jsx never clears the fromShield flag (the note would persist)');
+});
+
+// 94 — RC-10 shield→app deep-link handoff is verified by a REAL browser behavior (B37): a fresh
+// load at ?from=shield&to=urge|record lands on the right screen, an invalid destination falls back
+// home, and neither landing carries forbidden copy. Pins it against being dropped/gutted.
+check('RC-10 shield→app deep-link is verified by a real browser behavior (B37)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B37:/.test(qa), 'B37 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B37'\s*,/.test(qa), "QA flow has no real check('B37', …) call");
+  assert(!/check\(\s*'B37'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B37') is gutted to a constant");
+  assert(qa.includes('from=shield&to=urge') && qa.includes('from=shield&to=record'), 'B37 does not drive the shield deep-link URLs');
+  assert(qa.includes('from=shield&to=bogus'), 'B37 does not assert the invalid-destination fallback');
+  assert(qa.includes('지금 충동을 멈춰요'), 'B37 does not assert the 잠깐 멈춤 landing');
 });
 
 let failed = 0;
