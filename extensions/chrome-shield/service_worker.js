@@ -78,21 +78,39 @@ async function clearDynamicRules() {
   return existing.length;
 }
 
-// 느슨하게 들어온 사용자 입력 신호를 안전한 { token } 형태로 정규화한다. 문자열은 토큰으로,
-// 객체는 { token } 또는 { domain } 을 토큰으로 본다. 가져올 URL 은 절대 받지 않는다 —
-// declarativeNetRequest 가 쓸 매칭 토큰만 받는다. (실제 도메인→룰 매핑은 RC-8 영역이다.)
+// declarativeNetRequest 동적 룰 안전 상한 (RC-8). 이 경로는 사용자가 적은 신호를 실제
+// redirect 룰로 바꾸므로 보수적으로 다룬다: 평범한 매칭 토큰이 아닌 건 버리고, 중복을
+// 없애고, 개수를 제한한다.
+const MAX_BLOCK_RULES = 20;
+const MAX_TOKEN_LEN = 200;
+// redirect 매칭 토큰이 되면 안 되는 위험 스킴 (javascript:/data: 등). 받자마자 버린다.
+const BLOCKED_SCHEME = /^(javascript|data|vbscript|file|blob|chrome|chrome-extension):/i;
+
+// 느슨하게 들어온 사용자 입력 신호를 안전한 { token } 형태로 정규화한다 (RC-8). 문자열은
+// 토큰으로, 객체는 { token } 또는 { domain } 을 토큰으로 본다. 위험 스킴은 버리고, 평범한
+// 스킴(http/https)은 벗겨 호스트만 남긴다. 가져올 URL 은 절대 받지 않는다 — declarativeNetRequest
+// 가 쓸 매칭 토큰만 받는다. 소문자화·중복 제거하고, 안전을 위해 개수를 MAX_BLOCK_RULES 로 막는다.
 function normalizeSignals(input) {
   if (!Array.isArray(input)) return [];
-  return input
-    .map((s) => {
-      if (typeof s === 'string') return { token: s.trim() };
-      if (s && typeof s === 'object') {
-        const token = typeof s.token === 'string' ? s.token : typeof s.domain === 'string' ? s.domain : '';
-        return { ...s, token: String(token).trim() };
-      }
-      return null;
-    })
-    .filter((s) => s && s.token.length > 0);
+  const seen = new Set();
+  const out = [];
+  for (const s of input) {
+    let raw = '';
+    if (typeof s === 'string') raw = s;
+    else if (s && typeof s === 'object') {
+      raw = typeof s.token === 'string' ? s.token : typeof s.domain === 'string' ? s.domain : '';
+    }
+    let token = String(raw).trim().toLowerCase();
+    if (!token || BLOCKED_SCHEME.test(token)) continue; // 빈 값·위험 스킴 거부
+    token = token.replace(/^https?:\/\//, '').replace(/^\/+/, ''); // 평범한 스킴·앞 슬래시 제거
+    if (!token || token.length > MAX_TOKEN_LEN) continue;
+    if (seen.has(token)) continue; // 중복 제거
+    seen.add(token);
+    const base = s && typeof s === 'object' ? s : {};
+    out.push({ ...base, token });
+    if (out.length >= MAX_BLOCK_RULES) break; // 개수 상한
+  }
+  return out;
 }
 
 // RC-7 메시지 규약: PING / GET_STATUS / SET_TEST_SIGNAL / SET_BLOCK_RULES / CLEAR_RULES.

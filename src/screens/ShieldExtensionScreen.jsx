@@ -17,12 +17,16 @@ import { useState } from 'react';
 import {
   pingExtension,
   sendTestSignal,
+  sendBlockRules,
   getSavedExtensionId,
   saveExtensionId,
 } from '../lib/chromeExtensionBridge.js';
 
 const TEST_SIGNAL = 'nof-test-risk-signal';
 const TEST_EXAMPLE = 'https://example.com/?q=nof-test-risk-signal';
+// IANA-reserved harmless test domain, written scheme-less on purpose: guard #37 allows the
+// scheme literal ONLY inside TEST_EXAMPLE above, so the RC-8 send field uses a bare host.
+const TEST_DOMAIN = 'example.com';
 
 // Map a bridge error code to an honest Korean next step. Never claims a connection.
 function reasonText(error) {
@@ -36,12 +40,16 @@ function reasonText(error) {
   }
 }
 
-export default function ShieldExtensionScreen({ onNavigate }) {
+export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
   const [extId, setExtId] = useState(() => getSavedExtensionId());
   // conn.state: 'idle' | 'checking' | 'connected' | 'failed'. '연결됨' renders ONLY in the
   // 'connected' branch, reachable only after a real PING actually answers — never faked.
   const [conn, setConn] = useState({ state: 'idle', detail: '' });
   const [testMsg, setTestMsg] = useState('');
+  // RC-8 — the user's concrete test value sent to this browser's real block rules. Defaults
+  // to the harmless reserved domain; the result message renders success ONLY behind res.ok.
+  const [blockValue, setBlockValue] = useState(TEST_DOMAIN);
+  const [blockMsg, setBlockMsg] = useState('');
 
   const checkConnection = async () => {
     const id = saveExtensionId(extId);
@@ -65,6 +73,29 @@ export default function ShieldExtensionScreen({ onNavigate }) {
       setTestMsg('확장에 테스트 신호를 보냈어요. 설치한 Chrome에서 아래 테스트 예시를 열면 잠깐 멈춤으로 이어져요.');
     } else {
       setTestMsg('아직 연결되지 않아 테스트 신호를 보내지 못했어요. 먼저 연결 확인을 눌러요.');
+    }
+  };
+
+  // RC-8 — push the user's concrete test value to THIS Chrome's real declarativeNetRequest
+  // dynamic rules. Saved 위험 신호 stay abstract reminders (category/situation), so they are
+  // surfaced as a COUNT only and never sent here as if a label were a browser rule — that
+  // would fake blocking. Success copy renders ONLY when the extension answers ok:true.
+  const sendBlock = async () => {
+    const id = saveExtensionId(extId);
+    setExtId(id);
+    const value = blockValue.trim();
+    if (!value) {
+      setBlockMsg('차단 테스트용 값을 먼저 적어요. 예: example.com');
+      return;
+    }
+    setBlockMsg('이 브라우저 차단 규칙으로 보내는 중이에요…');
+    const res = await sendBlockRules(id, [value]);
+    if (res && res.ok) {
+      setBlockMsg(
+        `이 Chrome 브라우저에 차단 규칙 ${res.count}개를 반영했어요. 주소창에 "${value}" 가 든 주소를 열면 잠깐 멈춤으로 이어져요.`,
+      );
+    } else {
+      setBlockMsg('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.');
     }
   };
 
@@ -165,6 +196,55 @@ export default function ShieldExtensionScreen({ onNavigate }) {
         ) : null}
         <p className="hairline-note shield-safety-note">
           연결 상태는 실제 응답으로만 확인해요. 응답이 없으면 연결됐다고 표시하지 않아요.
+        </p>
+      </section>
+
+      {/* RC-8 — saved-signal / test-value → REAL dynamic block rule. A connected user sends a
+          concrete value (default the reserved harmless example.com) through SET_BLOCK_RULES; the
+          extension installs a declarativeNetRequest dynamic rule and a matching top-level
+          navigation redirects to the in-app 잠깐 멈춤. Saved 위험 신호 are abstract reminders
+          (category/situation), so they are surfaced as a COUNT only — never sent as if an
+          abstract label were a browser rule (that would fake blocking). The success line renders
+          ONLY when the extension answers ok:true; otherwise it stays honestly not-connected. */}
+      <section className="card shield-ext-block">
+        <div className="card-row">
+          <span className="card-label">브라우저 차단 규칙 반영</span>
+          <span className="pill shield-tag">이 기기 Chrome 차단</span>
+        </div>
+        <p className="hairline-note">
+          연결된 확장에 차단 테스트용 값을 보내면, 이 Chrome 브라우저에서 그 값이 든 주소가
+          잠깐 멈춤으로 이어져요.
+        </p>
+        <p className="hairline-note text-quiet">
+          저장한 위험 신호 {blocklist.length}개는 기억용이에요. 카테고리·상황 같은 신호는
+          그대로 브라우저 규칙이 되지 않아, 아래 차단 테스트용 값으로 실제로 막히는지 확인해요.
+        </p>
+
+        <label className="field-label" htmlFor="block-test-value">차단 테스트용 값</label>
+        <input
+          id="block-test-value"
+          type="text"
+          className="sheet-input"
+          value={blockValue}
+          onChange={(e) => setBlockValue(e.target.value.trim())}
+          placeholder="example.com"
+          maxLength={120}
+          autoCapitalize="none"
+          autoCorrect="off"
+          spellCheck={false}
+        />
+        <p className="hairline-note text-quiet">
+          이 값은 내가 직접 적는 테스트용 신호예요. 미리 만들어 둔 차단 목록이 아니에요.
+        </p>
+
+        <button type="button" className="btn btn-primary btn-block" onClick={sendBlock}>
+          이 브라우저 차단 규칙에 반영
+        </button>
+        {blockMsg ? (
+          <p className="hairline-note text-quiet" aria-live="polite">{blockMsg}</p>
+        ) : null}
+        <p className="hairline-note shield-safety-note">
+          연결된 확장이 실제로 응답할 때만 규칙을 반영해요. 응답이 없으면 반영했다고 표시하지 않아요.
         </p>
       </section>
 

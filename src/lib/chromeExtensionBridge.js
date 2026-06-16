@@ -105,6 +105,16 @@ export function sendTestSignal(extId) {
   return sendMessage(extId, { type: 'SET_TEST_SIGNAL' });
 }
 
+// RC-8 — send the user's concrete test signal(s) so the extension installs REAL dynamic
+// block rules (declarativeNetRequest), closing the RC-7 gap (which only sent the harmless
+// static test token). These are app-passed matching tokens, never a URL we fetch; the
+// extension normalizes + caps them locally. Same fail-safe contract as the rest: resolves
+// { ok:false, error } on every failure path, never a fabricated success.
+export function sendBlockRules(extId, signals) {
+  const list = Array.isArray(signals) ? signals : [signals];
+  return sendMessage(extId, { type: 'SET_BLOCK_RULES', signals: list });
+}
+
 export function clearExtensionRules(extId) {
   return sendMessage(extId, { type: 'CLEAR_RULES' });
 }
