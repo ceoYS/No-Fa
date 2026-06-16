@@ -190,10 +190,16 @@ async function main() {
     check('token URL → blocked.html (dynamic rule)', redirected, blockedHref);
     await c.shot('rc8_dynamic_block');
 
-    // Negative: a local URL with a NON-installed token must load the app (no false block).
+    // Negative: a NON-installed token must load the app (no false block). HOST-AGNOSTIC (RC-9):
+    // prove "not blocked" STRUCTURALLY — the non-target did NOT redirect to the in-extension
+    // pause page and did NOT land on a chrome-extension:// page — and confirm it stayed in the
+    // app context (still carrying the allowed token, or on the app URL). NEVER hardcode the host,
+    // so this same check passes against local preview AND the real production origin (nof-mauve).
     await c.goto(`${APP_URL}?q=${ALLOW_TOKEN}`, 1100);
     const allowHref = await c.eval('location.href');
-    const passedThrough = allowHref.includes('127.0.0.1') && !allowHref.includes('blocked.html');
+    const notBlocked = !allowHref.includes('blocked.html') && !/^chrome-extension:\/\//.test(allowHref);
+    const stayedInApp = allowHref.includes(ALLOW_TOKEN) || allowHref.startsWith(APP_URL.replace(/\/+$/, ''));
+    const passedThrough = notBlocked && stayedInApp;
     check('non-target URL passes through', passedThrough, allowHref);
     await c.shot('rc8_passthrough');
 
