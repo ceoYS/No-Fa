@@ -1,5 +1,5 @@
 /*
- * ShieldExtensionScreen — "실제 차단 테스트" 안내 (Chrome 확장 PoC).
+ * ShieldExtensionScreen — "실제 차단 테스트" 안내 + RC-9 "3분 보호 설정" (Chrome 확장 PoC).
  *
  * HONESTY NOTE: this screen renders text only. It performs NO blocking itself and
  * makes NO network / remote-code / external-API call. Its whole job is to be honest
@@ -11,9 +11,18 @@
  * any device-wide, social-app, or whole-web blocking. The one address shown is the
  * IANA-reserved example.com carrying the harmless test token, clearly labelled as a
  * test. Guard #37 pins these invariants.
+ *
+ * RC-9 adds a guided "3분 보호 설정" stepper that ORCHESTRATES the already-proven RC-7
+ * (real PING connection) + RC-8 (real SET_BLOCK_RULES dynamic rule) pieces into one
+ * short flow: 위험 신호 정리 → Chrome 확장 연결 → 차단 규칙 반영 → 차단 테스트. It adds NO new
+ * engine — it only links the existing cards below. Every step state is DERIVED from real
+ * state (a concrete value typed, a real PING answer, a real ok:true from SET_BLOCK_RULES),
+ * so it can never mark connected / rule-applied / complete without the real response. The
+ * test step never claims the redirect happened — the app cannot observe a navigation in
+ * another tab — it shows what to open and what success looks like. RC-9 guards pin this.
  */
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import {
   pingExtension,
   sendTestSignal,
@@ -50,6 +59,18 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
   // to the harmless reserved domain; the result message renders success ONLY behind res.ok.
   const [blockValue, setBlockValue] = useState(TEST_DOMAIN);
   const [blockMsg, setBlockMsg] = useState('');
+  // RC-9 — real-state flags the guided stepper reads. ruleApplied flips true ONLY inside the
+  // real SET_BLOCK_RULES ok:true branch (and resets to false on every failed/empty send), and
+  // testGuided flips true only after the user opens the test guidance. Neither is ever set
+  // optimistically, so the stepper can never show connected / applied / complete it did not earn.
+  const [ruleApplied, setRuleApplied] = useState(false);
+  const [testGuided, setTestGuided] = useState(false);
+
+  // Real DOM anchors so the guided stepper's "바로 가기" buttons can scroll the user to the
+  // matching card below (a real scrollIntoView, never a fake navigation).
+  const connectRef = useRef(null);
+  const blockRef = useRef(null);
+  const testRef = useRef(null);
 
   const checkConnection = async () => {
     const id = saveExtensionId(extId);
@@ -79,25 +100,82 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
   // RC-8 — push the user's concrete test value to THIS Chrome's real declarativeNetRequest
   // dynamic rules. Saved 위험 신호 stay abstract reminders (category/situation), so they are
   // surfaced as a COUNT only and never sent here as if a label were a browser rule — that
-  // would fake blocking. Success copy renders ONLY when the extension answers ok:true.
+  // would fake blocking. Success copy renders ONLY when the extension answers ok:true; the
+  // ruleApplied flag (read by the guided stepper) is gated on that same real ok response.
   const sendBlock = async () => {
     const id = saveExtensionId(extId);
     setExtId(id);
     const value = blockValue.trim();
     if (!value) {
       setBlockMsg('차단 테스트용 값을 먼저 적어요. 예: example.com');
+      setRuleApplied(false);
       return;
     }
     setBlockMsg('이 브라우저 차단 규칙으로 보내는 중이에요…');
     const res = await sendBlockRules(id, [value]);
     if (res && res.ok) {
+      setRuleApplied(true);
       setBlockMsg(
         `이 Chrome 브라우저에 차단 규칙 ${res.count}개를 반영했어요. 주소창에 "${value}" 가 든 주소를 열면 잠깐 멈춤으로 이어져요.`,
       );
     } else {
+      setRuleApplied(false);
       setBlockMsg('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.');
     }
   };
+
+  // RC-9 — reveal the test guidance built around the user's OWN value. We never claim the
+  // redirect happened (the app cannot observe a navigation in another tab); we show what to
+  // open and what success looks like. Enabled only once a concrete value exists.
+  const showTestGuide = () => {
+    setTestGuided(blockValue.trim().length > 0);
+  };
+
+  const scrollTo = (ref, focusSel) => {
+    ref.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    if (focusSel) {
+      const el = ref.current?.querySelector(focusSel);
+      if (el) setTimeout(() => el.focus(), 320);
+    }
+  };
+
+  // RC-9 guided steps — each `done` is DERIVED from real state, never set optimistically:
+  // a concrete value typed, a real PING (conn.state === 'connected'), a real ok:true
+  // (ruleApplied), and the user opening the test guidance (testGuided).
+  const steps = [
+    {
+      key: 'signal',
+      name: '위험 신호 정리',
+      desc: '차단 테스트용 값을 하나 정해요.',
+      done: blockValue.trim().length > 0,
+      doneLabel: '입력됨',
+      go: () => scrollTo(blockRef, '#block-test-value'),
+    },
+    {
+      key: 'connect',
+      name: 'Chrome 확장 연결',
+      desc: '확장 ID를 넣고 연결을 확인해요.',
+      done: conn.state === 'connected',
+      doneLabel: '연결됨',
+      go: () => scrollTo(connectRef, '#ext-id'),
+    },
+    {
+      key: 'rule',
+      name: '차단 규칙 반영',
+      desc: '연결된 확장에 차단 규칙을 보내요.',
+      done: ruleApplied,
+      doneLabel: '규칙 반영됨',
+      go: () => scrollTo(blockRef),
+    },
+    {
+      key: 'test',
+      name: '차단 테스트',
+      desc: '정한 값이 든 주소를 열어 잠깐 멈춤으로 가는지 확인해요.',
+      done: testGuided,
+      doneLabel: '테스트 안내됨',
+      go: showTestGuide,
+    },
+  ];
 
   return (
     <div className="screen">
@@ -118,6 +196,90 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
           테스트용 Chrome 확장이 맡아요. 둘은 아직 자동으로 이어져 있지 않아요.
         </p>
         <p className="hairline-note shield-safety-note">해롭지 않은 테스트 신호만 사용해요.</p>
+      </section>
+
+      {/* RC-9 — "3분 보호 설정" guided stepper. Orchestrates the proven RC-7 + RC-8 cards below
+          into one short flow. Each step state is DERIVED from real state (value typed / real
+          PING / real ok:true / test guidance opened), so it never marks connected, rule-applied,
+          or complete without the real response. Honest scope is stated up front, and 잠깐 멈춤 /
+          오늘 기록 next actions are always available — not gated behind completion. */}
+      <section className="card shield-guided">
+        <div className="card-row">
+          <span className="card-label">3분 보호 설정</span>
+          <span className="pill shield-tag">이 기기 Chrome 차단</span>
+        </div>
+        <p className="hairline-note">저장한 위험 신호부터 차단 테스트까지 순서대로 한 번 해봐요.</p>
+        <p className="hairline-note">이 Chrome 브라우저에서 먼저 작동해요.</p>
+        <p className="hairline-note text-quiet">기기 전체나 다른 앱까지 막는 기능은 아니에요.</p>
+
+        <ol className="shield-steps">
+          {steps.map((s, i) => (
+            <li className="shield-step" key={s.key} data-done={s.done}>
+              <span className="shield-step-index" aria-hidden="true">{s.done ? '✓' : i + 1}</span>
+              <span className="shield-step-body">
+                <span className="shield-step-name">{s.name}</span>
+                <span className="shield-step-desc">{s.desc}</span>
+                <span className="shield-step-status" aria-live="polite">
+                  {s.done ? s.doneLabel : '준비 전'}
+                </span>
+              </span>
+              <button type="button" className="btn btn-ghost shield-step-go" onClick={s.go}>
+                {s.key === 'test' ? '테스트 방법 보기' : '바로 가기'}
+              </button>
+            </li>
+          ))}
+        </ol>
+
+        {testGuided ? (
+          <div className="shield-test-guide" aria-live="polite">
+            <p className="hairline-note">
+              주소창에 <code>{blockValue.trim()}</code> 가 들어간 주소를 열어요.
+            </p>
+            <p className="hairline-note text-quiet">
+              예시(해롭지 않은 테스트 주소): <code>{TEST_EXAMPLE}</code>
+            </p>
+            <p className="hairline-note text-quiet">
+              NoF 잠깐 멈춤 화면으로 이동하면 성공이에요. 평범한 곳은 그대로 열려요.
+            </p>
+            <p className="hairline-note shield-safety-note">
+              위험한 사이트를 직접 찾지 마세요. 위 테스트 주소면 충분해요.
+            </p>
+          </div>
+        ) : null}
+
+        {ruleApplied ? (
+          <p className="hairline-note" aria-live="polite">
+            이제 이 Chrome 브라우저에서 작동해요. 정한 값이 든 주소가 잠깐 멈춤으로 이어져요.
+          </p>
+        ) : (
+          <p className="hairline-note text-quiet">
+            아직 끝나지 않았어요. 위 단계를 순서대로 마치면 이 브라우저에서 차단 테스트를 할 수 있어요.
+          </p>
+        )}
+
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <button
+            type="button"
+            className="btn btn-primary btn-block"
+            onClick={() => onNavigate('urge')}
+          >
+            잠깐 멈춤 열기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('checkin')}
+          >
+            오늘 기록으로 남기기
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('shield')}
+          >
+            위험 신호 수정하기
+          </button>
+        </div>
       </section>
 
       <section className="card">
@@ -144,7 +306,7 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
           연결 확인 sends a real PING; the screen shows 연결됨 ONLY when that PING actually
           answers. With no extension answering it stays honestly 아직 연결되지 않았어요 — it
           never fakes a link. Browser-scoped: this Chrome only, never device-wide / other apps. */}
-      <section className="card shield-ext-connect">
+      <section className="card shield-ext-connect" ref={connectRef}>
         <div className="card-row">
           <span className="card-label">Chrome 확장 연결</span>
           <span className="pill shield-tag">이 기기 Chrome 차단</span>
@@ -206,7 +368,7 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
           (category/situation), so they are surfaced as a COUNT only — never sent as if an
           abstract label were a browser rule (that would fake blocking). The success line renders
           ONLY when the extension answers ok:true; otherwise it stays honestly not-connected. */}
-      <section className="card shield-ext-block">
+      <section className="card shield-ext-block" ref={blockRef}>
         <div className="card-row">
           <span className="card-label">브라우저 차단 규칙 반영</span>
           <span className="pill shield-tag">이 기기 Chrome 차단</span>
@@ -264,7 +426,7 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
         </p>
       </section>
 
-      <section className="card">
+      <section className="card" ref={testRef}>
         <span className="card-label">테스트해 보기</span>
         <p className="hairline-note">
           확장을 켠 뒤, 막히는 흐름은 아래 <strong>해롭지 않은 테스트 신호</strong>로만

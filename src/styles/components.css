@@ -3251,3 +3251,82 @@ button.room-card:active {
   color: var(--text-ember);
   line-height: 1;
 }
+
+/* RC-9 guided "3분 보호 설정" stepper ------------------------------------ */
+.shield-steps {
+  list-style: none;
+  margin: var(--sp-2) 0 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+
+.shield-step {
+  display: flex;
+  align-items: flex-start;
+  gap: var(--sp-3);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--r-lg);
+  background: var(--bg-surface-raised);
+}
+
+.shield-step[data-done='true'] {
+  border-color: var(--accent-ember);
+  background: var(--accent-ember-soft);
+}
+
+.shield-step-index {
+  flex: 0 0 auto;
+  width: 1.5rem;
+  height: 1.5rem;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--bg-surface-strong);
+  color: var(--text-quiet);
+  font-size: var(--fs-small);
+}
+
+.shield-step[data-done='true'] .shield-step-index {
+  background: var(--accent-ember);
+  color: var(--ink-900);
+}
+
+.shield-step-body {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.shield-step-name {
+  font-weight: 600;
+}
+
+.shield-step-status {
+  font-size: var(--fs-small);
+  color: var(--text-quiet);
+}
+
+.shield-step[data-done='true'] .shield-step-status {
+  color: var(--accent-ember);
+}
+
+.shield-step-go {
+  flex: 0 0 auto;
+  align-self: center;
+  padding: var(--sp-1) var(--sp-3);
+  font-size: var(--fs-small);
+}
+
+.shield-test-guide {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+  padding: var(--sp-3);
+  border: 1px solid var(--border-medium);
+  border-radius: var(--r-lg);
+}
