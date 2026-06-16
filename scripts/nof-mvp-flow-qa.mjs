@@ -38,7 +38,7 @@ import { CDP, CDP_URL, QA_OUT, cdpReachable } from './nof-cdp-client.mjs';
 
 const APP_URL = process.env.NOF_APP_URL || 'http://localhost:4173/';
 
-// The 34 MVP behaviors this harness drives and asserts. Every check() references one
+// The 35 MVP behaviors this harness drives and asserts. Every check() references one
 // of these labels, so coverage is machine-checkable (the regression guard counts them).
 const BEHAVIORS = {
   B01: 'fresh app mounts',
@@ -75,6 +75,7 @@ const BEHAVIORS = {
   B32: 'records are useful: saved day distinct + real count, detail reads writing + useful CTA, recordless day honest',
   B33: 'protection is clear: honest non-blocking scope, real 잠깐 멈춤/오늘 기록 actions, real NoF Chrome-extension path (no toy experiment copy)',
   B34: 'chrome extension connection is real + honest: reachable connect screen, browser-scoped scope, local 확장 ID + 연결 확인 mechanism, no fake 연결됨 without a real extension reply, 테스트 신호 보내기 present, no 체크인/금욕/fake claim',
+  B35: 'saved-signal / test-value → real browser block-rule send is honest: send field + saved-signal count present, no fake install without a connected extension, instructs connect-first, no 체크인/금욕/AI/auto-block/mobile claim',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -679,6 +680,28 @@ async function runFlow(c) {
     honestBeforeClick && stillNotConnected && extNoForbidden && extNoFake;
   check('B34', extConnectClear,
     extConnectClear ? '' : `reach:${toExt}/${onExt} scope:${extScopeHonest} id:${hasIdField} connect:${hasConnectBtn} send:${hasSendTestBtn} honestBefore:${honestBeforeClick} stillNot:${stillNotConnected} clean:${extNoForbidden}/${extNoFake}`);
+
+  // 35 · RC-8 saved-signal / test-value → REAL browser block rule. On the SAME extension screen,
+  //      a connected user sends a concrete 차단 테스트용 값 (default the reserved harmless
+  //      example.com) to THIS Chrome's declarativeNetRequest rules via SET_BLOCK_RULES. With NO
+  //      extension answering in this headless run, pressing 반영 must NOT claim a rule was
+  //      installed — it must tell the user to connect first. Asserts: the send field + the
+  //      saved-signal count are present, the honest not-connected result, no fake install, and no
+  //      체크인/금욕 or fake AI/auto-block/mobile claim. Rendered DOM only (this is the RC-8 gap
+  //      closer over RC-7, which only sent the harmless static test token).
+  const blkUi = (await c.has('차단 테스트용 값')) && (await c.has('브라우저 차단 규칙 반영'));
+  const blkSavedCount = await c.has('저장한 위험 신호');
+  const blkSent = await c.clickExact('이 브라우저 차단 규칙에 반영'); await sleep(500);
+  const blkNotConnected = await c.has('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.');
+  const blkNoFakeInstall = !(await c.has('반영했어요'));
+  const blkNoForbidden = !(await c.has('체크인')) && !(await c.has('금욕'));
+  const blkNoFake =
+    !(await c.has('AI')) && !(await c.has('자동 차단')) && !(await c.has('모바일')) && !(await c.has('치료'));
+  const blockRuleClear =
+    blkUi && blkSavedCount && blkSent && blkNotConnected && blkNoFakeInstall && blkNoForbidden && blkNoFake;
+  check('B35', blockRuleClear,
+    blockRuleClear ? '' : `ui:${blkUi} count:${blkSavedCount} sent:${blkSent} notConn:${blkNotConnected} noInstall:${blkNoFakeInstall} clean:${blkNoForbidden}/${blkNoFake}`);
+  await c.shot('shield_extension_block_rules');
 }
 
 async function main() {
