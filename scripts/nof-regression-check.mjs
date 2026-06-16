@@ -2965,6 +2965,103 @@ check('RC-10 shield→app deep-link is verified by a real browser behavior (B37)
   assert(qa.includes('지금 충동을 멈춰요'), 'B37 does not assert the 잠깐 멈춤 landing');
 });
 
+// 95 — RC-11 compressed extension setup. ShieldExtensionScreen must present setup as one honest
+// 준비 → 설치 → ID 복사 flow: the compressed step terms are present, the install KIND is stated
+// honestly (Chrome 웹 스토어 not yet; the unpacked ID is not fixed), connection stays PING-gated, and
+// the single 완료 (F) state is DERIVED from BOTH a real connection AND a real rule — never a
+// static/rendered-only "완료" the screen did not earn.
+check('RC-11 chrome extension setup is compressed + honest (install kind, ID copy, real-state 완료)', () => {
+  const screen = read('src/screens/ShieldExtensionScreen.jsx');
+  // (a) The compressed setup terms (preferred RC-11 copy) are present.
+  for (const term of [
+    'Chrome 확장 준비', '압축해제 설치', 'Chrome 확장을 준비해요',
+    '지금은 개발자용 압축해제 설치 방식이에요', 'chrome://extensions', 'extensions/chrome-shield',
+    '확장 ID를 복사해요', '확장 ID', '연결 확인', '이 브라우저 차단 규칙에 반영', '차단 테스트',
+  ]) {
+    assert(screen.includes(term), `ShieldExtensionScreen is missing the compressed setup term: ${term}`);
+  }
+  // (b) Web Store is NOT claimed — the honest "not yet" line is present, and no positive
+  //     store-install claim is made (this stays an unpacked dev load).
+  assert(screen.includes('Chrome 웹 스토어 설치는 아직 아니에요'), 'setup does not state the Chrome 웹 스토어 install is not available yet');
+  for (const claim of ['웹 스토어에서 설치', '웹 스토어 설치 완료', '스토어에 등록', '스토어에서 받', '스토어 설치했']) {
+    assert(!screen.includes(claim), `setup falsely claims a Chrome 웹 스토어 install: ${claim}`);
+  }
+  // (c) A fixed/permanent extension ID is NOT claimed (the unpacked id is path-derived / can change),
+  //     and the paste mechanism stays (a real input the user fills — connection is user-driven).
+  assert(screen.includes('ID가 고정되지 않아요'), 'setup does not state the unpacked extension ID is not fixed');
+  for (const claim of ['고정 ID', '고정된 ID', '항상 같은 ID', '영구 ID']) {
+    assert(!screen.includes(claim), `setup falsely claims a fixed extension ID: ${claim}`);
+  }
+  assert(/id="ext-id"/.test(screen), 'setup lost the 확장 ID paste input (#ext-id) — connection must stay user-driven');
+  // (d) Connected state stays PING-gated (real reply only), reused from the proven RC-7 bridge.
+  assert(screen.includes('pingExtension('), 'setup connection is not PING-gated (no real reply check)');
+  assert(screen.includes("conn.state === 'connected'"), 'setup renders connected without a real connection state');
+  // (e) The 완료 (F) state is DERIVED from real state — BOTH a real connection AND a real rule —
+  //     never a static/rendered-only completion. The 설정 완료 copy must sit behind both flags.
+  assert(
+    /conn\.state === 'connected' && ruleApplied[\s\S]{0,160}설정 완료/.test(screen),
+    'the 설정 완료 state is not gated on BOTH conn.state === connected AND ruleApplied (could fake completion)',
+  );
+  // (f) The honest auto-confirm limit (the app cannot observe a navigation in another tab) is stated.
+  assert(screen.includes('자동으로 확인하지 못해요'), 'setup does not state the app cannot auto-confirm a navigation in another tab');
+});
+
+// 96 — RC-11 setup surface stays honest: NO user-facing 체크인 / 금욕 and NO fake AI-detection /
+// device-wide / medical / full-blocking claim on ShieldExtensionScreen. Comments are exempt (the
+// header comment legitimately discusses internal stage history); only rendered copy is scanned.
+check('RC-11 extension setup surface carries no forbidden vocabulary or fake claim', () => {
+  const stripComments = (src) =>
+    src
+      .replace(/\/\*[\s\S]*?\*\//g, (m) => m.replace(/[^\n]/g, ' '))
+      .split('\n')
+      .map((line) => line.replace(/(^|\s)\/\/.*$/, '$1'))
+      .join('\n');
+  const screen = stripComments(read('src/screens/ShieldExtensionScreen.jsx'));
+  for (const bad of [
+    '체크인', '금욕', '실험 기능', 'PoC', '자동 차단', '완전 차단', '모든 앱 차단',
+    '기기 전체 보호', 'AI 감지', '치료', '회복 점수', '성공 보장',
+  ]) {
+    assert(!screen.includes(bad), `ShieldExtensionScreen (RC-11) shows forbidden user-facing copy: ${bad}`);
+  }
+});
+
+// 97 — RC-11 compressed setup is verified by a REAL browser behavior (B38): the setup flow is
+// reachable, surfaces the compressed terms + honest install-kind copy, and shows no connected/
+// complete state without a real extension reply. Pins it against being dropped/gutted to a constant.
+check('RC-11 compressed extension setup is verified by a real browser behavior (B38)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B38:/.test(qa), 'B38 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B38'\s*,/.test(qa), "QA flow has no real check('B38', …) call");
+  assert(!/check\(\s*'B38'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B38') is gutted to a constant");
+  assert(
+    qa.includes('압축해제 설치') && qa.includes('웹 스토어 설치는 아직 아니에요'),
+    'B38 does not assert the compressed setup + Chrome 웹 스토어 honesty',
+  );
+  assert(qa.includes("!(await c.has('설정 완료'))"), 'B38 does not assert the no-fake-completion state');
+});
+
+// 98 — RC-11 README alignment: the extension README's manual setup steps match the in-app setup
+// terms (chrome://extensions, 개발자 모드, 압축해제, extensions/chrome-shield, 확장 ID copy → paste →
+// 연결 확인 → 차단 규칙에 반영 → 차단 테스트), and the limits are honest (unpacked dev load, no Web
+// Store / fixed production id yet, Chrome desktop only).
+check('RC-11 extension README setup steps match the in-app UI terms + honest limits', () => {
+  const readme = read('extensions/chrome-shield/README.md');
+  for (const term of [
+    'chrome://extensions', '개발자 모드', '압축해제', 'extensions/chrome-shield', '확장 ID',
+    '연결 확인', '이 브라우저 차단 규칙에 반영', '차단 테스트',
+  ]) {
+    assert(readme.includes(term), `README is missing the setup term shown in the UI: ${term}`);
+  }
+  // Copy + paste the ID into the app — the app-side handoff the UI now spells out.
+  assert(/복사/.test(readme) && /붙여넣/.test(readme), 'README does not describe copying + pasting the 확장 ID into the app');
+  // Honest limits — unpacked dev load, no Web Store / fixed production id yet, Chrome desktop only.
+  assert(/압축해제|언팩/.test(readme), 'README does not state this is an unpacked dev load');
+  assert(/웹스토어|웹 스토어/.test(readme), 'README does not address the Chrome Web Store status');
+  assert(readme.includes('ID 가 아직 없다') || readme.includes('ID 는 아직 없다') || /고정[^\n]*ID[\s\S]{0,40}(없다|않)/.test(readme),
+    'README does not state there is no fixed production extension ID yet');
+  assert(/Chrome 데스크톱/.test(readme), 'README does not state Chrome-desktop-only scope');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
