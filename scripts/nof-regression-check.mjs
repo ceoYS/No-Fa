@@ -3255,6 +3255,127 @@ check('RC-14 store listing copy makes no false claim (honest positioning only)',
   }
 });
 
+// 106 — RC-15 popup/options copy hardening. The in-extension popup and options pages a Web
+// Store reviewer sees must carry NO internal stage label (프로토타입/데모/prototype/demo/
+// test-only), keep the honest scope (this browser only — NOT device-wide/other apps — and not
+// yet on the Web Store), and make no false/over-claim. blocked.html KEEPS its 프로토타입 label
+// (guard #32 requires it); this guard covers only popup/options. Negations like '감지하지
+// 않아요' are honest; only positive claims ('감지해', '자동 차단') would trip.
+check('RC-15 popup/options copy is stage-label-clean and honest (no false claim)', () => {
+  const dir = 'extensions/chrome-shield';
+  for (const f of ['popup.html', 'options.html']) {
+    const src = read(`${dir}/${f}`);
+    for (const label of ['프로토타입', '데모', 'prototype', 'demo', 'test-only', '테스트 전용']) {
+      assert(!src.includes(label), `${dir}/${f} still carries an internal stage label: ${label}`);
+    }
+    assert(src.includes('기기 전체') && src.includes('막지'), `${dir}/${f} lost the not-device-wide honesty line`);
+    assert(src.includes('Chrome 웹 스토어에는 아직'), `${dir}/${f} lost the not-on-the-Web-Store-yet honesty line`);
+    for (const bad of ['감지해', '자동 차단', '자동 설치', '기기 전체 보호', '모든 앱 차단', '고정 ID', 'AI', '차단했어요', '차단 성공']) {
+      assert(!src.includes(bad), `${dir}/${f} makes a false/over-claim: ${bad}`);
+    }
+  }
+});
+
+// 107 — RC-15 privacy policy draft. A privacy draft must exist on disk and state the honest
+// data story (on-device only, collects nothing, declarativeNetRequest only, the app's
+// situation note is never sent as a rule, no data sale, not medical, not device-wide/mobile),
+// and record that hosting it at a public URL is still a remaining blocker. It must make no
+// false claim (auto-install/auto-detect/AI-detect/fixed-ID/device-wide/medical-action).
+check('RC-15 privacy policy draft exists and is honest (no medical/AI/device-wide claim)', () => {
+  const doc = read('docs/NOF_PRIVACY_POLICY_DRAFT.md');
+  for (const must of [
+    '온디바이스',
+    'declarativeNetRequest',
+    '수집하지 않',
+    '상황 메모는 브라우저 규칙으로 보내지 않아요',
+    '데이터를 팔지 않아요',
+    '의학적 치료나 진단이 아니에요',
+    '기기 전체·다른 앱·모바일은 막지 않아요',
+    '공개 URL 호스팅은 아직 남은 작업이에요',
+  ]) {
+    assert(doc.includes(must), `privacy draft is missing a required honest statement: ${must}`);
+  }
+  for (const bad of ['자동 설치', '자동 감지', '자동 탐지', 'AI 감지', '고정 ID', '기기 전체 보호', '모든 앱 차단', '진단해', '처방해', '치료해']) {
+    assert(!doc.includes(bad), `privacy draft makes a false/over-claim: ${bad}`);
+  }
+});
+
+// 108 — RC-15 Web Store manifest strategy is explicit. Rather than mutating the local
+// manifest.json (which local + prod qa:ext + guard #88 depend on, dev origins included), RC-15
+// ships a separate submission-candidate manifest.webstore.json that drops the dev origins from
+// externally_connectable (production origin ONLY), keeps name=NoF, the four icons, minimal
+// perms (declarativeNetRequest only), and a stage-label-free, non-over-claiming description.
+check('RC-15 ships a production-only Web Store manifest candidate (manifest.webstore.json)', () => {
+  const dir = 'extensions/chrome-shield';
+  const mf = JSON.parse(read(`${dir}/manifest.webstore.json`));
+  assert(mf.manifest_version === 3, 'webstore manifest is not Manifest V3');
+  assert(typeof mf.name === 'string' && mf.name.includes('NoF'), 'webstore manifest name must include NoF');
+  const ecm = (mf.externally_connectable && mf.externally_connectable.matches) || [];
+  assert(ecm.includes('https://nof-mauve.vercel.app/*'), 'webstore manifest does not keep the production app origin');
+  for (const dev of ['http://localhost/*', 'http://127.0.0.1/*']) {
+    assert(!ecm.includes(dev), `webstore manifest still ships a dev origin in externally_connectable: ${dev}`);
+  }
+  assert(Array.isArray(mf.permissions) && mf.permissions.length === 1 && mf.permissions[0] === 'declarativeNetRequest',
+    'webstore manifest permissions drifted from the minimal [declarativeNetRequest]');
+  for (const size of ['16', '32', '48', '128']) {
+    assert(mf.icons && mf.icons[size] === `icons/icon${size}.png`, `webstore manifest icons missing size ${size}`);
+  }
+  const storeCopy = [mf.name, mf.description, mf.action && mf.action.default_title].join(' ');
+  for (const label of ['프로토타입', '데모', 'prototype', 'demo', 'test-only', '테스트 전용']) {
+    assert(!storeCopy.includes(label), `webstore manifest store copy carries a stage label: ${label}`);
+  }
+  assert(typeof mf.description === 'string' && mf.description.length > 0, 'webstore manifest has no description');
+  for (const bad of ['감지해', '자동 차단', '자동 설치', '웹 스토어', '웹스토어', 'AI', '고정 ID']) {
+    assert(!mf.description.includes(bad), `webstore manifest description makes a false/over-claim: ${bad}`);
+  }
+});
+
+// 109 — RC-15 pre-submit hardening packet exists and is complete. Docs-only: pins that the
+// RC-15 doc carries every required section, frames itself as pre-submit hardening (NOT an
+// actual Web Store submission), references the webstore-manifest + privacy-draft strategy, and
+// that the frozen listing copy (§8 fenced blocks) is honest EN+KO with no false claim. Only
+// the code blocks are scanned, so the surrounding prose may name the claims it avoids.
+check('RC-15 pre-submit hardening packet exists and is complete (no submission claim)', () => {
+  const doc = read('docs/NOF_RC15_PRE_SUBMIT_HARDENING.md');
+  for (const section of [
+    '## 1. Baseline',
+    '## 2. What RC-15 hardens',
+    '## 3. What RC-15 does not do',
+    '## 4. Popup/options copy hardening',
+    '## 5. Web Store manifest strategy',
+    '## 6. Privacy policy status',
+    '## 7. Screenshot checklist',
+    '## 8. Store listing draft freeze',
+    '## 9. Remaining blockers before actual Web Store submission',
+  ]) {
+    assert(doc.includes(section), `RC-15 doc is missing the "${section}" section`);
+  }
+  assert(
+    /pre-submit hardening, not an actual Web Store submission/i.test(doc) || doc.includes('실제 제출이 아니'),
+    'RC-15 doc does not frame itself as pre-submit hardening, not an actual submission',
+  );
+  assert(doc.includes('manifest.webstore.json'), 'RC-15 doc does not reference the manifest.webstore.json strategy');
+  assert(doc.includes('NOF_PRIVACY_POLICY_DRAFT.md'), 'RC-15 doc does not reference the privacy policy draft');
+  const m = doc.match(/## 8\. Store listing draft freeze[\s\S]*?(?=\n## 9\.)/);
+  assert(m, 'cannot isolate the RC-15 store listing freeze section (§8)');
+  const blocks = (m[0].match(/```[\s\S]*?```/g) || []).join('\n');
+  assert(blocks.length > 0, 'RC-15 §8 has no fenced store-copy blocks');
+  assert(
+    blocks.includes('helps you pause before visiting user-confirmed risk signals in this Chrome browser'),
+    'RC-15 listing freeze is missing the honest EN one-liner',
+  );
+  assert(
+    blocks.includes('사용자가 직접 확인한 위험 신호가 이 Chrome 브라우저에서 열릴 때'),
+    'RC-15 listing freeze is missing the honest KO one-liner',
+  );
+  for (const bad of [
+    '자동으로 감지', '자동 감지', '자동 탐지', '자동 차단', '자동 설치', 'AI',
+    '기기 전체', '모든 앱', '고정 ID', '웹 스토어에 등록', '웹 스토어에서 설치', '스토어에 올라',
+  ]) {
+    assert(!blocks.includes(bad), `RC-15 listing freeze makes a false/over-claim: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
