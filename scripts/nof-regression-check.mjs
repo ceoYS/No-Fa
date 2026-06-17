@@ -3140,6 +3140,121 @@ check('RC-13 danger-signal input is verified by a real browser behavior (B39)', 
   assert(qa.includes('브라우저 규칙으로 보내지 않아요'), 'B39 does not assert the situation-note-is-app-only copy');
 });
 
+// 102 — RC-14 manifest store readiness. The extension manifest must carry real Web Store
+// icons (16/32/48/128 on disk + referenced by `icons` and `action.default_icon`), keep the
+// store-facing copy free of internal stage labels (프로토타입/데모/prototype/demo/test-only)
+// while still pinging as 'NoF' (so qa:ext keeps identifying the extension), and the
+// description must make no false/over-claim (auto-detection, automatic install, AI, a fixed
+// ID, device-wide blocking, or a Web Store listing). Permissions stay minimal (cross-pins #35).
+check('RC-14 manifest is Web Store readiness-clean (icons, honest copy, minimal perms)', () => {
+  const dir = 'extensions/chrome-shield';
+  const mf = JSON.parse(read(`${dir}/manifest.json`));
+  const iconAbs = (p) => join(ROOT, dir, p);
+
+  // Real icon set: 16/32/48/128 referenced AND present on disk (non-empty PNGs). A manifest
+  // that references a missing icon file makes Chrome fail to load the unpacked extension.
+  assert(mf.icons && typeof mf.icons === 'object', 'manifest has no icons map');
+  assert(mf.action && mf.action.default_icon, 'manifest action has no default_icon map');
+  for (const size of ['16', '32', '48', '128']) {
+    assert(mf.icons[size] === `icons/icon${size}.png`, `manifest.icons is missing/incorrect size ${size}`);
+    assert(mf.action.default_icon[size] === `icons/icon${size}.png`, `action.default_icon is missing/incorrect size ${size}`);
+    let st = null;
+    try { st = statSync(iconAbs(mf.icons[size])); } catch { st = null; }
+    assert(st && st.size > 0, `icon file missing or empty: ${dir}/${mf.icons[size]}`);
+  }
+
+  // Store-facing copy: identifies as NoF, carries no internal stage label.
+  assert(typeof mf.name === 'string' && mf.name.includes('NoF'), 'manifest name must still include NoF (qa:ext PINGs on the name)');
+  const storeCopy = [mf.name, mf.description, mf.action && mf.action.default_title].join(' ');
+  for (const label of ['프로토타입', '데모', 'prototype', 'demo', 'test-only', '테스트 전용']) {
+    assert(!storeCopy.includes(label), `manifest store copy still carries an internal stage label: ${label}`);
+  }
+  // The description must not over-claim. Tokens chosen so honest negations don't trip
+  // (e.g. '감지하지도 않아요' is fine; only a positive '감지해' would fail).
+  assert(typeof mf.description === 'string' && mf.description.length > 0, 'manifest has no description');
+  for (const bad of ['감지해', '자동 차단', '자동 설치', '웹 스토어', '웹스토어', 'AI', '고정 ID']) {
+    assert(!mf.description.includes(bad), `manifest description makes a false/over-claim: ${bad}`);
+  }
+  // Permissions stay minimal (declarativeNetRequest only).
+  assert(Array.isArray(mf.permissions) && mf.permissions.length === 1 && mf.permissions[0] === 'declarativeNetRequest',
+    'manifest permissions drifted from the minimal [declarativeNetRequest]');
+});
+
+// 103 — RC-14 README readiness honesty. The extension README must add a Web Store readiness
+// section that states plainly: not on the Web Store yet, unpacked/manual load, manual ID
+// paste, this-Chrome-browser-only, the situation note is never sent as a rule, no AI
+// auto-detection — and links the readiness doc. It must make no positive Web-Store-install
+// claim. (The RC-11 honesty terms are still pinned by guard #98.)
+check('RC-14 README states the Chrome Web Store readiness status honestly', () => {
+  const readme = read('extensions/chrome-shield/README.md');
+  assert(readme.includes('## Web Store 준비 상태 (RC-14)'), 'README is missing the RC-14 Web Store readiness section');
+  assert(readme.includes('Chrome 웹 스토어에는 아직 올라가지 않았어요'), 'README does not state the extension is not on the Web Store yet');
+  assert(readme.includes('압축해제(언팩)로 직접 로드'), 'README does not state this is an unpacked manual load');
+  assert(readme.includes('확장 ID 를 직접 복사해서 앱에 붙여넣어요'), 'README does not state the manual ID-paste connection');
+  assert(readme.includes('이 Chrome 브라우저에서만'), 'README does not state the this-browser-only scope');
+  assert(readme.includes('기기 전체·다른 앱·모바일은 막지 않아요'), 'README does not state no device/other-app/mobile blocking');
+  assert(readme.includes('AI 자동 감지는 하지 않아요'), 'README does not state there is no AI auto-detection');
+  assert(readme.includes('상황 메모는 브라우저 규칙으로 보내지 않아요'), 'README does not state the situation note is never sent as a rule');
+  assert(readme.includes('NOF_RC14_WEB_STORE_READINESS.md'), 'README does not link the RC-14 readiness doc');
+  for (const claim of ['웹 스토어에서 설치', '웹 스토어 설치 완료', '스토어에 등록됐', '스토어에서 받았', '자동으로 설치']) {
+    assert(!readme.includes(claim), `README falsely claims a Web Store install: ${claim}`);
+  }
+});
+
+// 104 — RC-14 readiness packet exists and is complete. Docs-only — pins that the readiness
+// doc carries every section the RC-14 prompt requires (baseline, what it prepares, what it
+// does NOT claim, manifest summary, permission justification, host-permission rationale,
+// data-handling/privacy, screenshot checklist, store listing copy, pre-submit checklist,
+// remaining blockers) so the packet can't rot into a stub. Asserts nothing about behavior.
+check('RC-14 Web Store readiness packet exists and is complete', () => {
+  const doc = read('docs/NOF_RC14_WEB_STORE_READINESS.md');
+  for (const section of [
+    '## 1. Baseline',
+    '## 2. What RC-14 prepares',
+    '## 3. What RC-14 does not claim',
+    '## 4. Manifest summary',
+    '## 5. Permission justification',
+    '## 6. Host permission rationale',
+    '## 7. Data handling / privacy copy',
+    '## 8. Screenshot checklist',
+    '## 9. Store listing copy draft',
+    '## 10. Pre-submit checklist',
+    '## 11. Remaining blockers before actual Web Store submission',
+  ]) {
+    assert(doc.includes(section), `RC-14 readiness doc is missing the "${section}" section`);
+  }
+  assert(/readiness pack, not a launch/i.test(doc), 'RC-14 doc does not frame itself as a readiness pack, not a launch');
+  assert(doc.includes('declarativeNetRequest'), 'RC-14 doc does not justify the declarativeNetRequest permission');
+  assert(/privacy policy/i.test(doc), 'RC-14 doc does not mention the hosted privacy policy requirement');
+});
+
+// 105 — RC-14 store listing copy stays honest. The actual store copy (the fenced blocks under
+// §9) must carry the approved honest positioning (EN + KO) and make NO false/over-claim:
+// no auto-detection, no AI, no device-wide / all-app blocking, no fixed ID, no Web-Store-live
+// / store-install claim. Only the code blocks are scanned, so the surrounding prose may name
+// the claims it avoids.
+check('RC-14 store listing copy makes no false claim (honest positioning only)', () => {
+  const doc = read('docs/NOF_RC14_WEB_STORE_READINESS.md');
+  const m = doc.match(/## 9\. Store listing copy draft[\s\S]*?(?=\n## 10\.)/);
+  assert(m, 'cannot isolate the RC-14 store listing copy section (§9)');
+  const blocks = (m[0].match(/```[\s\S]*?```/g) || []).join('\n');
+  assert(blocks.length > 0, 'RC-14 §9 has no fenced store-copy blocks');
+  assert(
+    blocks.includes('helps you pause before visiting user-confirmed risk signals in this Chrome browser'),
+    'store copy is missing the honest EN positioning line',
+  );
+  assert(
+    blocks.includes('사용자가 직접 확인한 위험 신호가 이 Chrome 브라우저에서 열릴 때'),
+    'store copy is missing the honest KO positioning line',
+  );
+  for (const bad of [
+    '자동으로 감지', '자동 감지', '자동 탐지', '자동 차단', '자동 설치', 'AI',
+    '기기 전체', '모든 앱', '고정 ID', '고정된 ID', '웹 스토어에 등록', '웹 스토어에서 설치', '스토어에 올라',
+  ]) {
+    assert(!blocks.includes(bad), `RC-14 store listing copy makes a false/over-claim: ${bad}`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
