@@ -33,9 +33,16 @@ import {
 
 const TEST_SIGNAL = 'nof-test-risk-signal';
 const TEST_EXAMPLE = 'https://example.com/?q=nof-test-risk-signal';
-// IANA-reserved harmless test domain, written scheme-less on purpose: guard #37 allows the
-// scheme literal ONLY inside TEST_EXAMPLE above, so the RC-8 send field uses a bare host.
-const TEST_DOMAIN = 'example.com';
+// RC-13 — a user-entered value may become a real browser-rule candidate only if it is a plain
+// matching token (a site/domain-like or search string). Dangerous schemes are rejected app-side
+// BEFORE a value can be confirmed; the extension's normalizeSignals strips any leading web-scheme
+// prefix on its side (kept out of this screen so guard #37's single-allowed-scheme rule holds).
+const UNSAFE_SCHEME = /^(?:javascript|data|vbscript|file|blob|chrome|chrome-extension):/i;
+function toCandidate(raw) {
+  const value = String(raw || '').trim();
+  if (!value || UNSAFE_SCHEME.test(value)) return '';
+  return value;
+}
 
 // Map a bridge error code to an honest Korean next step. Never claims a connection.
 function reasonText(error) {
@@ -55,9 +62,15 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
   // 'connected' branch, reachable only after a real PING actually answers — never faked.
   const [conn, setConn] = useState({ state: 'idle', detail: '' });
   const [testMsg, setTestMsg] = useState('');
-  // RC-8 — the user's concrete test value sent to this browser's real block rules. Defaults
-  // to the harmless reserved domain; the result message renders success ONLY behind res.ok.
-  const [blockValue, setBlockValue] = useState(TEST_DOMAIN);
+  // RC-13 — danger-signal input model. siteOrSearch is the CONCRETE value the user is typing (a
+  // site/search token that can become a real browser rule); situationNote is an ABSTRACT in-app
+  // reminder that is NEVER sent as a rule; candidates is the explicit list of concrete values the
+  // user has confirmed as 브라우저 차단 규칙 후보. Only candidates are sent through SET_BLOCK_RULES;
+  // the result message renders success ONLY behind res.ok.
+  const [siteOrSearch, setSiteOrSearch] = useState('');
+  const [situationNote, setSituationNote] = useState('');
+  const [candidates, setCandidates] = useState([]);
+  const [signalMsg, setSignalMsg] = useState('');
   const [blockMsg, setBlockMsg] = useState('');
   // RC-9 — real-state flags the guided stepper reads. ruleApplied flips true ONLY inside the
   // real SET_BLOCK_RULES ok:true branch (and resets to false on every failed/empty send), and
@@ -97,26 +110,50 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
     }
   };
 
-  // RC-8 — push the user's concrete test value to THIS Chrome's real declarativeNetRequest
-  // dynamic rules. Saved 위험 신호 stay abstract reminders (category/situation), so they are
-  // surfaced as a COUNT only and never sent here as if a label were a browser rule — that
-  // would fake blocking. Success copy renders ONLY when the extension answers ok:true; the
-  // ruleApplied flag (read by the guided stepper) is gated on that same real ok response.
+  // RC-13 — confirm the typed concrete value as a 브라우저 차단 규칙 후보. The value is rejected
+  // app-side if empty or a dangerous scheme (javascript:/data:/chrome-extension:/file:/…), so an
+  // unsafe value can never reach the extension. Confirming clears the input and resets ruleApplied
+  // (the new candidate set has not been sent yet). Abstract situation notes never pass through here.
+  const addCandidate = () => {
+    const value = toCandidate(siteOrSearch);
+    if (!value) {
+      setSignalMsg('이 값은 브라우저 차단 규칙 후보로 쓸 수 없어요. 사이트 주소나 검색어를 적어요.');
+      return;
+    }
+    if (candidates.includes(value)) {
+      setSignalMsg('이미 후보에 있어요.');
+      return;
+    }
+    setCandidates((cur) => [...cur, value]);
+    setSiteOrSearch('');
+    setSignalMsg('');
+    setBlockMsg('');
+    setRuleApplied(false);
+  };
+
+  const removeCandidate = (value) => {
+    setCandidates((cur) => cur.filter((v) => v !== value));
+    setRuleApplied(false);
+  };
+
+  // RC-13/RC-8 — push ONLY the user-confirmed concrete candidates to THIS Chrome's real
+  // declarativeNetRequest dynamic rules. The abstract 상황 메모 (situationNote) and the saved 위험
+  // 신호 (blocklist) are never sent — sending a label/note as a rule would fake blocking. Success
+  // copy renders ONLY when the extension answers ok:true; ruleApplied is gated on that same ok.
   const sendBlock = async () => {
     const id = saveExtensionId(extId);
     setExtId(id);
-    const value = blockValue.trim();
-    if (!value) {
-      setBlockMsg('차단 테스트용 값을 먼저 적어요. 예: example.com');
+    if (candidates.length === 0) {
+      setBlockMsg('직접 확인한 값이 없어요. 먼저 사이트나 검색어를 후보로 확인해요.');
       setRuleApplied(false);
       return;
     }
     setBlockMsg('이 브라우저 차단 규칙으로 보내는 중이에요…');
-    const res = await sendBlockRules(id, [value]);
+    const res = await sendBlockRules(id, candidates);
     if (res && res.ok) {
       setRuleApplied(true);
       setBlockMsg(
-        `이 Chrome 브라우저에 차단 규칙 ${res.count}개를 반영했어요. 주소창에 "${value}" 가 든 주소를 열면 잠깐 멈춤으로 이어져요.`,
+        `이 Chrome 브라우저에 차단 규칙 ${res.count}개를 반영했어요. 후보로 확인한 값이 든 주소를 열면 잠깐 멈춤으로 이어져요.`,
       );
     } else {
       setRuleApplied(false);
@@ -124,11 +161,11 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
     }
   };
 
-  // RC-9 — reveal the test guidance built around the user's OWN value. We never claim the
-  // redirect happened (the app cannot observe a navigation in another tab); we show what to
-  // open and what success looks like. Enabled only once a concrete value exists.
+  // RC-9 — reveal the test guidance built around the user's OWN confirmed values. We never claim
+  // the redirect happened (the app cannot observe a navigation in another tab); we show what to
+  // open and what success looks like. Enabled only once a concrete candidate exists.
   const showTestGuide = () => {
-    setTestGuided(blockValue.trim().length > 0);
+    setTestGuided(candidates.length > 0);
   };
 
   const scrollTo = (ref, focusSel) => {
@@ -146,10 +183,10 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
     {
       key: 'signal',
       name: '위험 신호 정리',
-      desc: '차단 테스트용 값을 하나 정해요.',
-      done: blockValue.trim().length > 0,
-      doneLabel: '입력됨',
-      go: () => scrollTo(blockRef, '#block-test-value'),
+      desc: '피하고 싶은 사이트나 검색어를 후보로 확인해요.',
+      done: candidates.length > 0,
+      doneLabel: '확인됨',
+      go: () => scrollTo(blockRef, '#danger-site-value'),
     },
     {
       key: 'connect',
@@ -233,7 +270,7 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
         {testGuided ? (
           <div className="shield-test-guide" aria-live="polite">
             <p className="hairline-note">
-              주소창에 <code>{blockValue.trim()}</code> 가 들어간 주소를 열어요.
+              주소창에 <code>{candidates[0]}</code> 가 들어간 주소를 열어요.
             </p>
             <p className="hairline-note text-quiet">
               예시(해롭지 않은 테스트 주소): <code>{TEST_EXAMPLE}</code>
@@ -387,46 +424,93 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
         </p>
       </section>
 
-      {/* RC-8 — saved-signal / test-value → REAL dynamic block rule. A connected user sends a
-          concrete value (default the reserved harmless example.com) through SET_BLOCK_RULES; the
-          extension installs a declarativeNetRequest dynamic rule and a matching top-level
-          navigation redirects to the in-app 잠깐 멈춤. Saved 위험 신호 are abstract reminders
-          (category/situation), so they are surfaced as a COUNT only — never sent as if an
-          abstract label were a browser rule (that would fake blocking). The success line renders
-          ONLY when the extension answers ok:true; otherwise it stays honestly not-connected. */}
+      {/* RC-13 — danger-signal input. The user separates a CONCRETE value (a site or search token
+          that can become a real browser rule) from an ABSTRACT 상황 메모 (an in-app reminder that
+          is NEVER sent as a rule). Only values the user explicitly confirms as 브라우저 차단 규칙
+          후보 are pushed through the proven SET_BLOCK_RULES path; the situation note and the saved
+          위험 신호 (surfaced as a COUNT only) never become rules — that would fake blocking. The
+          success line renders ONLY when the extension answers ok:true; otherwise it stays honestly
+          not-connected. No preset block list, no AI, no auto-detection. */}
       <section className="card shield-ext-block" ref={blockRef}>
         <div className="card-row">
-          <span className="card-label">브라우저 차단 규칙 반영</span>
+          <span className="card-label">위험 신호 정리</span>
           <span className="pill shield-tag">이 기기 Chrome 차단</span>
         </div>
         <p className="hairline-note">
-          연결된 확장에 차단 테스트용 값을 보내면, 이 Chrome 브라우저에서 그 값이 든 주소가
-          잠깐 멈춤으로 이어져요.
+          피하고 싶은 사이트나 검색어를 적고, 그중 이 브라우저 차단 규칙에 반영할 값을 직접 확인해요.
         </p>
         <p className="hairline-note text-quiet">
-          저장한 위험 신호 {blocklist.length}개는 기억용이에요. 카테고리·상황 같은 신호는
-          그대로 브라우저 규칙이 되지 않아, 아래 차단 테스트용 값으로 실제로 막히는지 확인해요.
+          저장한 위험 신호 {blocklist.length}개는 기억용이에요. 카테고리·상황 같은 신호는 그대로
+          브라우저 규칙이 되지 않아요. 아래에서 구체 값을 직접 확인해 반영해요.
         </p>
 
-        <label className="field-label" htmlFor="block-test-value">차단 테스트용 값</label>
+        <label className="field-label" htmlFor="danger-site-value">피하고 싶은 사이트나 검색어</label>
         <input
-          id="block-test-value"
+          id="danger-site-value"
           type="text"
           className="sheet-input"
-          value={blockValue}
-          onChange={(e) => setBlockValue(e.target.value.trim())}
-          placeholder="example.com"
+          value={siteOrSearch}
+          onChange={(e) => setSiteOrSearch(e.target.value.trim())}
+          placeholder="예: example.com 또는 내가 피하고 싶은 검색어"
           maxLength={120}
           autoCapitalize="none"
           autoCorrect="off"
           spellCheck={false}
         />
+        <p className="hairline-note text-quiet">이 값만 브라우저 차단 규칙 후보가 돼요.</p>
+        <button type="button" className="btn btn-ghost btn-block" onClick={addCandidate}>
+          차단 규칙 후보로 직접 확인
+        </button>
+        {signalMsg ? (
+          <p className="hairline-note text-quiet" aria-live="polite">{signalMsg}</p>
+        ) : null}
+
+        <label className="field-label" htmlFor="danger-situation-note">자주 흔들리는 상황</label>
+        <textarea
+          id="danger-situation-note"
+          className="sheet-input reflect-input"
+          value={situationNote}
+          onChange={(e) => setSituationNote(e.target.value.slice(0, 120))}
+          placeholder="예: 밤에 혼자 있을 때, 피곤할 때"
+          maxLength={120}
+          rows={2}
+        />
         <p className="hairline-note text-quiet">
-          이 값은 내가 직접 적는 테스트용 신호예요. 미리 만들어 둔 차단 목록이 아니에요.
+          상황 메모는 앱 안에서만 기억해요. 브라우저 규칙으로 보내지 않아요.
         </p>
 
+        <div className="shield-candidates" aria-live="polite">
+          <span className="card-label">브라우저 차단 규칙 후보</span>
+          {candidates.length === 0 ? (
+            <p className="hairline-note text-quiet">아직 보낼 수 있는 구체 값이 없어요.</p>
+          ) : (
+            <>
+              <p className="hairline-note">직접 확인한 값 {candidates.length}개</p>
+              <ul className="shield-entry-list">
+                {candidates.map((value) => (
+                  <li className="shield-entry-row" key={value}>
+                    <span className="shield-entry-label"><code>{value}</code></span>
+                    <button
+                      type="button"
+                      className="shield-entry-remove"
+                      aria-label={`${value} 후보에서 빼기`}
+                      onClick={() => removeCandidate(value)}
+                    >
+                      빼기
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </>
+          )}
+        </div>
+
+        <p className="hairline-note text-quiet">상황 메모는 차단 규칙이 아니에요.</p>
+        <p className="hairline-note text-quiet">직접 확인한 값만 이 Chrome 브라우저에 반영해요.</p>
+        <p className="hairline-note text-quiet">기기 전체나 다른 앱까지 막는 기능은 아니에요.</p>
+
         <button type="button" className="btn btn-primary btn-block" onClick={sendBlock}>
-          이 브라우저 차단 규칙에 반영
+          선택한 값을 이 브라우저 차단 규칙에 반영
         </button>
         {blockMsg ? (
           <p className="hairline-note text-quiet" aria-live="polite">{blockMsg}</p>
