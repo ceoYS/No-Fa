@@ -1,0 +1,49 @@
+{
+  "manifest_version": 3,
+  "name": "NoF 실드",
+  "version": "0.0.1",
+  "description": "이 Chrome 브라우저에서, 직접 확인한 위험 신호가 열리면 NoF 잠깐 멈춤으로 이어줘요. 기기 전체·다른 앱·모바일은 막지 않고, 자동으로 감지하지도 않아요.",
+  "permissions": ["declarativeNetRequest"],
+  "host_permissions": ["http://*/*", "https://*/*"],
+  "icons": {
+    "16": "icons/icon16.png",
+    "32": "icons/icon32.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "background": {
+    "service_worker": "service_worker.js",
+    "type": "module"
+  },
+  "action": {
+    "default_popup": "popup.html",
+    "default_title": "NoF 실드",
+    "default_icon": {
+      "16": "icons/icon16.png",
+      "32": "icons/icon32.png",
+      "48": "icons/icon48.png",
+      "128": "icons/icon128.png"
+    }
+  },
+  "options_page": "options.html",
+  "declarative_net_request": {
+    "rule_resources": [
+      {
+        "id": "nof_static_rules",
+        "enabled": true,
+        "path": "rules.json"
+      }
+    ]
+  },
+  "web_accessible_resources": [
+    {
+      "resources": ["blocked.html"],
+      "matches": ["<all_urls>"]
+    }
+  ],
+  "externally_connectable": {
+    "matches": [
+      "https://nof-mauve.vercel.app/*"
+    ]
+  }
+}

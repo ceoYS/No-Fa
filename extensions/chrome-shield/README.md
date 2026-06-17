@@ -71,6 +71,16 @@ RC-14 는 **Chrome 웹 스토어 등록 자체가 아니라 등록 준비(readin
 스토어 제출 전 준비 항목(아이콘·매니페스트 카피·권한 정당화·프라이버시·스크린샷·남은 차단 요소)은
 [`../../docs/NOF_RC14_WEB_STORE_READINESS.md`](../../docs/NOF_RC14_WEB_STORE_READINESS.md) 에 정리했다.
 
+## 제출 전 하드닝 (RC-15)
+
+RC-15 는 **실제 제출이 아니라 제출 전 하드닝**이다. 팝업·옵션 화면에서 내부 단계 라벨을 지우고,
+제출 후보 매니페스트(`manifest.webstore.json` — dev origin 제거·프로덕션 출처만)와 개인정보 처리
+방침 초안([`../../docs/NOF_PRIVACY_POLICY_DRAFT.md`](../../docs/NOF_PRIVACY_POLICY_DRAFT.md))을 분리해
+준비한다. **이 폴더의 `manifest.json` 은 로컬·프로덕션 QA가 그대로 쓰므로 바꾸지 않는다** — 실제
+제출 때 `manifest.webstore.json` 으로 패키징한다. 남은 차단 요소(공개 프라이버시 URL, host_permissions
+좁히기, 스크린샷)는
+[`../../docs/NOF_RC15_PRE_SUBMIT_HARDENING.md`](../../docs/NOF_RC15_PRE_SUBMIT_HARDENING.md) 에 있다.
+
 ## 테스트
 
 **막히는 경우 (테스트 신호 닿음)**
