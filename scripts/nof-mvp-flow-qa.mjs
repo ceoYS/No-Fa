@@ -79,6 +79,7 @@ const BEHAVIORS = {
   B36: 'RC-9 guided 3분 보호 설정 is reachable + honest: 4-step stepper (위험 신호 정리/Chrome 확장 연결/차단 규칙 반영/차단 테스트), browser-scoped scope, 잠깐 멈춤+오늘 기록 CTAs, no connected/complete state without a real extension, no 체크인/금욕/AI/device-wide/full-block claim',
   B37: 'RC-10 shield→app deep link: ?from=shield&to=urge opens 잠깐 멈춤, &to=record opens 오늘 기록, invalid destination falls back home, blocked target never passed, no 체크인/금욕/fake AI/device-wide/full-block claim',
   B38: 'RC-11 extension setup is compressed + honest: reachable setup flow (Chrome 확장 준비/압축해제 설치/확장 ID/연결 확인/이 브라우저 차단 규칙에 반영/차단 테스트), states Chrome 웹 스토어 not yet + this-Chrome-only + not device-wide/other-app, no connected/complete state without a real extension reply, 잠깐 멈춤+오늘 기록 exits, no 체크인/금욕/fake AI/device-wide/full-block claim',
+  B39: 'RC-13 danger-signal input is product-like + honest: 위험 신호 정리 with a concrete 피하고 싶은 사이트나 검색어 field + an abstract 자주 흔들리는 상황 note, only user-confirmed 브라우저 차단 규칙 후보 are sent (situation note never sent), no rule-success/연결됨/설정 완료 without a real extension reply, this-Chrome-only + not device-wide, no 체크인/금욕/AI/자동 탐지/성인 사이트 목록 claim',
 };
 
 // Test data planted by the flow and read back to prove persistence (not source scans).
@@ -684,26 +685,68 @@ async function runFlow(c) {
   check('B34', extConnectClear,
     extConnectClear ? '' : `reach:${toExt}/${onExt} scope:${extScopeHonest} id:${hasIdField} connect:${hasConnectBtn} send:${hasSendTestBtn} honestBefore:${honestBeforeClick} stillNot:${stillNotConnected} clean:${extNoForbidden}/${extNoFake}`);
 
-  // 35 · RC-8 saved-signal / test-value → REAL browser block rule. On the SAME extension screen,
-  //      a connected user sends a concrete 차단 테스트용 값 (default the reserved harmless
-  //      example.com) to THIS Chrome's declarativeNetRequest rules via SET_BLOCK_RULES. With NO
-  //      extension answering in this headless run, pressing 반영 must NOT claim a rule was
-  //      installed — it must tell the user to connect first. Asserts: the send field + the
-  //      saved-signal count are present, the honest not-connected result, no fake install, and no
-  //      체크인/금욕 or fake AI/auto-block/mobile claim. Rendered DOM only (this is the RC-8 gap
-  //      closer over RC-7, which only sent the harmless static test token).
-  const blkUi = (await c.has('차단 테스트용 값')) && (await c.has('브라우저 차단 규칙 반영'));
+  // 39 · RC-13 danger-signal input. On the SAME extension screen, the danger-signal section
+  //      separates a CONCRETE value (피하고 싶은 사이트나 검색어 → a real 브라우저 차단 규칙 후보)
+  //      from an ABSTRACT 자주 흔들리는 상황 note (an in-app reminder NEVER sent as a rule). A typed
+  //      concrete value can be confirmed into a candidate; only confirmed candidates are sent via
+  //      SET_BLOCK_RULES, and — with NO extension answering in this headless run — the send must NOT
+  //      claim a rule was installed (no 반영했어요 / 설정 완료 / 연결됨). The situation note stays
+  //      app-only. No 체크인/금욕 or fake AI/auto-detection/adult-list/device-wide claim. Runs BEFORE
+  //      B35 so the empty-candidate state is observable. Rendered DOM only.
+  const dsTitle = await c.has('위험 신호 정리');
+  const dsConcreteField = await c.has('피하고 싶은 사이트나 검색어');
+  const dsSituationField = await c.has('자주 흔들리는 상황');
+  const dsCandidateCard = await c.has('브라우저 차단 규칙 후보');
+  const dsEmptyBefore = await c.has('아직 보낼 수 있는 구체 값이 없어요'); // no candidate confirmed yet
+  const dsSituationAppOnly = await c.has('브라우저 규칙으로 보내지 않아요');
+  const dsSituationNotRule = await c.has('상황 메모는 차단 규칙이 아니에요');
+  const dsThisChromeOnly = await c.has('직접 확인한 값만 이 Chrome 브라우저에 반영해요');
+  const dsNotDeviceWide = await c.has('기기 전체나 다른 앱까지 막는 기능은 아니에요');
+  // A concrete value can be confirmed into a candidate (real state change).
+  await c.type('#danger-site-value', 'nof-rc13-danger-signal');
+  const dsConfirmed = await c.clickExact('차단 규칙 후보로 직접 확인'); await sleep(300);
+  const dsCandidateShown = (await c.has('nof-rc13-danger-signal')) && (await c.has('직접 확인한 값'));
+  // A situation note is typed but must remain app-only (never sent as a rule).
+  await c.type('#danger-situation-note', '밤에 혼자 있을 때');
+  // Send the confirmed candidate; with no extension answering, NO fake rule-success.
+  const dsSent = await c.clickExact('선택한 값을 이 브라우저 차단 규칙에 반영'); await sleep(500);
+  const dsNotConnected = await c.has('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.');
+  const dsNoFakeInstall = !(await c.has('반영했어요'));
+  const dsNoFakeComplete = !(await c.has('설정 완료')) && !(await c.has('연결됨'));
+  const dsNoForbidden = !(await c.has('체크인')) && !(await c.has('금욕'));
+  const dsNoFake =
+    !(await c.has('AI')) && !(await c.has('자동 차단')) && !(await c.has('자동 탐지')) &&
+    !(await c.has('성인 사이트 목록')) && !(await c.has('추천 차단 목록')) &&
+    !(await c.has('모바일')) && !(await c.has('치료'));
+  const dangerSignalOk =
+    dsTitle && dsConcreteField && dsSituationField && dsCandidateCard && dsEmptyBefore &&
+    dsSituationAppOnly && dsSituationNotRule && dsThisChromeOnly && dsNotDeviceWide &&
+    dsConfirmed && dsCandidateShown && dsSent && dsNotConnected && dsNoFakeInstall &&
+    dsNoFakeComplete && dsNoForbidden && dsNoFake;
+  check('B39', dangerSignalOk,
+    dangerSignalOk ? '' : `title:${dsTitle} concrete:${dsConcreteField} situation:${dsSituationField} cand:${dsCandidateCard} empty:${dsEmptyBefore} appOnly:${dsSituationAppOnly} notRule:${dsSituationNotRule} thisChrome:${dsThisChromeOnly} notDevice:${dsNotDeviceWide} confirm:${dsConfirmed} shown:${dsCandidateShown} sent:${dsSent} notConn:${dsNotConnected} noInstall:${dsNoFakeInstall} notDone:${dsNoFakeComplete} clean:${dsNoForbidden}/${dsNoFake}`);
+  await c.shot('shield_danger_signal_input');
+
+  // 35 · RC-13/RC-8 confirmed-candidate send is honest. On the SAME extension screen, a confirmed
+  //      concrete candidate is sent to THIS Chrome's declarativeNetRequest rules via SET_BLOCK_RULES.
+  //      With NO extension answering in this headless run, pressing 반영 must NOT claim a rule was
+  //      installed — it must tell the user to connect first. Asserts: the concrete input field + the
+  //      saved-signal count are present, a fresh value can be confirmed as a candidate, the honest
+  //      not-connected result, no fake install, and no 체크인/금욕 or fake AI/auto-block/mobile claim.
+  const blkUi = (await c.has('피하고 싶은 사이트나 검색어')) && (await c.has('위험 신호 정리'));
   const blkSavedCount = await c.has('저장한 위험 신호');
-  const blkSent = await c.clickExact('이 브라우저 차단 규칙에 반영'); await sleep(500);
+  await c.type('#danger-site-value', 'nof-rc13-b35-signal');
+  const blkConfirmed = await c.clickExact('차단 규칙 후보로 직접 확인'); await sleep(250);
+  const blkSent = await c.clickExact('선택한 값을 이 브라우저 차단 규칙에 반영'); await sleep(500);
   const blkNotConnected = await c.has('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.');
   const blkNoFakeInstall = !(await c.has('반영했어요'));
   const blkNoForbidden = !(await c.has('체크인')) && !(await c.has('금욕'));
   const blkNoFake =
     !(await c.has('AI')) && !(await c.has('자동 차단')) && !(await c.has('모바일')) && !(await c.has('치료'));
   const blockRuleClear =
-    blkUi && blkSavedCount && blkSent && blkNotConnected && blkNoFakeInstall && blkNoForbidden && blkNoFake;
+    blkUi && blkSavedCount && blkConfirmed && blkSent && blkNotConnected && blkNoFakeInstall && blkNoForbidden && blkNoFake;
   check('B35', blockRuleClear,
-    blockRuleClear ? '' : `ui:${blkUi} count:${blkSavedCount} sent:${blkSent} notConn:${blkNotConnected} noInstall:${blkNoFakeInstall} clean:${blkNoForbidden}/${blkNoFake}`);
+    blockRuleClear ? '' : `ui:${blkUi} count:${blkSavedCount} confirm:${blkConfirmed} sent:${blkSent} notConn:${blkNotConnected} noInstall:${blkNoFakeInstall} clean:${blkNoForbidden}/${blkNoFake}`);
   await c.shot('shield_extension_block_rules');
 
   // 36 · RC-9 guided 3분 보호 설정. On the SAME extension screen (already reached via Home → 보호
