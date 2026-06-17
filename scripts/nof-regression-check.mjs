@@ -2776,7 +2776,7 @@ check('RC-8 saved-signal → real browser block rule is honest (test-value send,
   // fallback, saved signals surfaced as a COUNT (blocklist.length) — not sent as abstract rules.
   const screen = read('src/screens/ShieldExtensionScreen.jsx');
   assert(screen.includes('sendBlockRules'), 'ShieldExtensionScreen does not import/use sendBlockRules');
-  assert(screen.includes('차단 테스트용 값'), 'ShieldExtensionScreen has no 차단 테스트용 값 send field');
+  assert(screen.includes('피하고 싶은 사이트나 검색어'), 'ShieldExtensionScreen has no 피하고 싶은 사이트나 검색어 danger-signal field');
   assert(screen.includes('이 브라우저 차단 규칙에 반영'), 'ShieldExtensionScreen has no block-rule send action');
   assert(screen.includes('blocklist.length'), 'ShieldExtensionScreen does not surface the saved-signal count');
   assert(/blocklist\s*=\s*\[\]/.test(screen), 'ShieldExtensionScreen does not accept the blocklist prop (default [])');
@@ -2808,8 +2808,8 @@ check('RC-8 block-rule send is verified by a real browser behavior (B35)', () =>
   assert(/B35:/.test(qa), 'B35 is not declared in the BEHAVIORS map');
   assert(/check\(\s*'B35'\s*,/.test(qa), "QA flow has no real check('B35', …) call");
   assert(!/check\(\s*'B35'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B35') is gutted to a constant");
-  assert(qa.includes('차단 테스트용 값'), 'B35 does not assert the block-rule send field');
-  assert(qa.includes("clickExact('이 브라우저 차단 규칙에 반영')"), 'B35 does not exercise the block-rule send action');
+  assert(qa.includes('피하고 싶은 사이트나 검색어'), 'B35 does not assert the danger-signal concrete field');
+  assert(qa.includes("clickExact('선택한 값을 이 브라우저 차단 규칙에 반영')"), 'B35 does not exercise the confirmed-candidate send action');
   assert(qa.includes('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.'), 'B35 does not assert the honest not-connected result');
   assert(qa.includes('저장한 위험 신호'), 'B35 does not assert the saved-signal count surfacing');
 });
@@ -3083,6 +3083,61 @@ check('RC-12 extension distribution decision packet exists and is complete', () 
   // The packet must name the two paths it decides between (Web Store vs danger-signal UX).
   assert(/Web Store/.test(doc), 'RC-12 decision doc never names the Chrome Web Store path');
   assert(/danger-signal/i.test(doc), 'RC-12 decision doc never names the danger-signal UX path');
+});
+
+// 100 — RC-13 danger-signal input UX. ShieldExtensionScreen turns the old test-value field into
+// a product-like danger-signal flow: a CONCRETE input (site/search → a real browser-rule candidate)
+// is separated from an ABSTRACT 상황 메모 (an in-app reminder NEVER sent as a rule). Only values the
+// user explicitly confirms as 브라우저 차단 규칙 후보 are sent through SET_BLOCK_RULES; the situation
+// note and the saved 위험 신호 (blocklist) are never an argument to it. Dangerous schemes are rejected
+// app-side, success stays ok-gated, and there is no curated adult list / AI / auto-detection /
+// device-wide CLAIM (the not-device-wide line is a NEGATION and stays allowed).
+check('RC-13 danger-signal input UX is honest (concrete vs situation, only confirmed candidates sent)', () => {
+  const screen = read('src/screens/ShieldExtensionScreen.jsx');
+  // (a) The danger-signal section + the two distinct inputs + the candidate card.
+  assert(screen.includes('위험 신호 정리'), 'danger-signal section title (위험 신호 정리) missing');
+  assert(screen.includes('피하고 싶은 사이트나 검색어'), 'concrete site/search field label missing');
+  assert(screen.includes('자주 흔들리는 상황'), 'abstract situation note field label missing');
+  assert(screen.includes('브라우저 차단 규칙 후보'), 'browser-rule candidate card (브라우저 차단 규칙 후보) missing');
+  assert(/id="danger-site-value"/.test(screen), 'concrete value input id (#danger-site-value) missing');
+  assert(/id="danger-situation-note"/.test(screen), 'situation note input id (#danger-situation-note) missing');
+  // (b) Concrete vs abstract is stated to the user: the note is an in-app reminder, not a rule.
+  assert(screen.includes('브라우저 규칙으로 보내지 않아요'), 'situation note is not stated to be app-only (never a browser rule)');
+  assert(screen.includes('상황 메모는 차단 규칙이 아니에요'), 'missing the "situation note is not a block rule" line');
+  assert(screen.includes('직접 확인한 값만 이 Chrome 브라우저에 반영해요'), 'missing the "only confirmed values are applied" honesty line');
+  assert(screen.includes('아직 보낼 수 있는 구체 값이 없어요'), 'missing the empty-candidate honest state');
+  // (c) Only user-confirmed CONCRETE candidates are sent; the situation note / blocklist are NEVER args.
+  assert(/const \[candidates, setCandidates\] = useState\(\[\]\)/.test(screen), 'no confirmed-candidate list state (candidates)');
+  assert(/sendBlockRules\(\s*id\s*,\s*candidates\s*\)/.test(screen), 'send does not pass the confirmed candidate list to sendBlockRules');
+  assert(!/sendBlockRules\([^)]*situation/i.test(screen), 'situation note is sent to sendBlockRules — abstract notes must never become browser rules');
+  assert(!/sendBlockRules\([^)]*blocklist/.test(screen), 'abstract saved signals (blocklist) are sent as rules — that fakes blocking');
+  // (d) Success stays gated on a real ok response (no fake install), with an honest failure.
+  assert(/res && res\.ok[\s\S]{0,160}setRuleApplied\(true\)/.test(screen), 'rule-applied is not gated behind a real SET_BLOCK_RULES ok response');
+  assert(screen.includes('아직 연결되지 않았어요. 먼저 연결 확인을 눌러요.'), 'lost the honest not-connected send failure');
+  // (e) App-side rejection of dangerous schemes BEFORE a value can become a candidate.
+  assert(/UNSAFE_SCHEME/.test(screen) && /javascript\|data/.test(screen), 'no app-side dangerous-scheme rejection (UNSAFE_SCHEME) for candidate values');
+  // (f) No curated adult list, no AI/auto-detection, no device-wide/other-app CLAIM, no 체크인/금욕.
+  for (const bad of ['성인 사이트 목록', '추천 차단 목록', 'AI 감지', '자동 탐지', '자동 차단', '기기 전체 보호', '모든 앱 차단', '체크인', '금욕']) {
+    assert(!screen.includes(bad), `danger-signal UX makes a forbidden claim/vocabulary: ${bad}`);
+  }
+});
+
+// 101 — RC-13 danger-signal input is verified by a REAL browser behavior (B39): the danger-signal
+// section + both inputs + the candidate card are reachable, a concrete value can be confirmed into a
+// 브라우저 차단 규칙 후보, the situation note stays app-only, and — with no extension answering — the
+// send claims no rule success. Pins the behavior so it can't be dropped or gutted to a constant.
+check('RC-13 danger-signal input is verified by a real browser behavior (B39)', () => {
+  const qa = read('scripts/nof-mvp-flow-qa.mjs');
+  assert(/B39:/.test(qa), 'B39 is not declared in the BEHAVIORS map');
+  assert(/check\(\s*'B39'\s*,/.test(qa), "QA flow has no real check('B39', …) call");
+  assert(!/check\(\s*'B39'\s*,\s*(?:true|false|1|0)\b/.test(qa), "QA flow check('B39') is gutted to a constant");
+  assert(
+    qa.includes('위험 신호 정리') && qa.includes('피하고 싶은 사이트나 검색어') && qa.includes('자주 흔들리는 상황'),
+    'B39 does not assert the danger-signal section + both inputs',
+  );
+  assert(qa.includes('브라우저 차단 규칙 후보'), 'B39 does not assert the browser-rule candidate card');
+  assert(qa.includes("clickExact('선택한 값을 이 브라우저 차단 규칙에 반영')"), 'B39/B35 does not exercise the confirmed-candidate send action');
+  assert(qa.includes('브라우저 규칙으로 보내지 않아요'), 'B39 does not assert the situation-note-is-app-only copy');
 });
 
 let failed = 0;
