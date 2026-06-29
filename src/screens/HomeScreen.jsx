@@ -336,6 +336,13 @@ export default function HomeScreen({
           <button
             type="button"
             className="btn btn-ghost btn-block"
+            onClick={() => onNavigate('settings')}
+          >
+            설정 · 언어
+          </button>
+          <button
+            type="button"
+            className="btn btn-ghost btn-block"
             aria-haspopup="dialog"
             onClick={() => setConfirmReset(true)}
           >

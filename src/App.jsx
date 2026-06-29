@@ -10,6 +10,7 @@ import ShieldScreen from './screens/ShieldScreen.jsx';
 import ProtectionScreen from './screens/ProtectionScreen.jsx';
 import SafeBrowserScreen from './screens/SafeBrowserScreen.jsx';
 import ShieldExtensionScreen from './screens/ShieldExtensionScreen.jsx';
+import SettingsScreen from './screens/SettingsScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import ScreenSwitcher from './components/ScreenSwitcher.jsx';
 import { EMPTY_BADGES, summarizeRules } from './constants/discipline.js';
@@ -37,6 +38,7 @@ const SCREENS = [
   { id: 'protection', label: '보호 설정', Component: ProtectionScreen },
   { id: 'shieldBrowser', label: '안전 브라우저', Component: SafeBrowserScreen },
   { id: 'shieldExtension', label: '실제 차단 테스트', Component: ShieldExtensionScreen },
+  { id: 'settings', label: '설정', Component: SettingsScreen },
 ];
 
 const DAY_MS = 86400000;
@@ -320,6 +322,14 @@ export default function App() {
     crisisRewardDay,
     slipReflectionDay,
   ]);
+
+  // Reflect the chosen language on the document element so assistive tech announces
+  // each screen with the right speech profile (WCAG 3.1.1 Language of Page). This only
+  // mirrors the already-normalized locale onto <html lang> — no network, no extra
+  // storage; the persisted value still round-trips through the locale primitive above.
+  useEffect(() => {
+    document.documentElement.lang = locale;
+  }, [locale]);
 
   // RC-10 — navigate + consume the one-shot 실드 continuation note. Any user navigation
   // (a screen CTA or the bottom nav) clears the note, so it shows only on the deep-link
@@ -782,6 +792,8 @@ export default function App() {
           <Screen
             onNavigate={navigate}
             fromShield={fromShield}
+            locale={locale}
+            onSetLocale={handleSetLocale}
             rules={rules}
             onAddRule={addRule}
             onSetRuleStatus={setRuleStatus}
