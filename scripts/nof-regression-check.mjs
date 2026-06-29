@@ -3376,6 +3376,34 @@ check('RC-15 pre-submit hardening packet exists and is complete (no submission c
   }
 });
 
+// Locale primitive — the persisted-language contract is real and pinned: the
+// constants module declares the supported set + default, defaults to ko, and App
+// reads/persists `locale` through the same no-network bundle as every other slice.
+// This guards the i18n FOUNDATION only; it intentionally asserts NO Settings toggle,
+// onboarding pick, or translated copy (those are later, separately-approved slices).
+check('locale persistence primitive is wired (constants + App read/save)', () => {
+  const loc = read('src/constants/locale.js');
+  assert(loc.includes('SUPPORTED_LOCALES'), 'locale.js does not declare SUPPORTED_LOCALES');
+  assert(loc.includes('DEFAULT_LOCALE'), 'locale.js does not declare DEFAULT_LOCALE');
+  assert(loc.includes('normalizeLocale'), 'locale.js does not declare normalizeLocale');
+  assert(/['"]ko['"]/.test(loc), "locale.js does not list the 'ko' locale");
+  assert(/['"]en['"]/.test(loc), "locale.js does not list the 'en' locale");
+  assert(/DEFAULT_LOCALE\s*=\s*['"]ko['"]/.test(loc), "DEFAULT_LOCALE is not 'ko'");
+
+  const app = read('src/App.jsx');
+  assert(
+    /import \{[^}]*\bnormalizeLocale\b[^}]*\} from '\.\/constants\/locale\.js'/.test(app),
+    'App.jsx does not import normalizeLocale from ./constants/locale.js',
+  );
+  assert(
+    /useState\(\(\) => normalizeLocale\(persisted\?\.locale\)\)/.test(app),
+    'App.jsx does not initialize locale from normalizeLocale(persisted?.locale)',
+  );
+  const bundle = app.match(/saveState\(\{[\s\S]*?\}\);/);
+  assert(bundle && /\n\s*locale,/.test(bundle[0]), 'locale is not persisted in the saveState({ ... }) bundle');
+  assert(/\}, \[\s*locale,/.test(app), 'locale is not listed in the save-effect dependency array');
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
