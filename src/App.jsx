@@ -22,6 +22,7 @@ import {
   feedReaction,
 } from './constants/roomItems.js';
 import { DEFAULT_BLOCKLIST, makeBlockEntry } from './constants/shield.js';
+import { normalizeLocale } from './constants/locale.js';
 import { loadState, saveState } from './utils/storage.js';
 
 const SCREENS = [
@@ -184,6 +185,16 @@ export default function App() {
   // src/utils/storage.js for the honesty note. Guard #38 pins this.
   const [persisted] = useState(() => loadState());
 
+  // Locale primitive (P0 i18n foundation). The persisted-language contract only:
+  // a saved value is normalized on read (an unknown / missing / corrupt value
+  // resolves to ko), and it round-trips through the same no-network bundle as every
+  // other slice. This slice is deliberately UI-less in this round — no onboarding
+  // language pick, no Settings toggle, no translated screens yet (those are later,
+  // separately-approved slices). handleSetLocale normalizes its input so a future
+  // toggle can never write an unsupported value into the bundle.
+  const [locale, setLocale] = useState(() => normalizeLocale(persisted?.locale));
+  const handleSetLocale = (value) => setLocale(normalizeLocale(value));
+
   const [rules, setRules] = useState(() => persisted?.rules ?? INITIAL_RULES);
   const [categories, setCategories] = useState(() => persisted?.categories ?? SEED_CATEGORIES);
   // Multi-counter state (counter-management). Persisted with ABSOLUTE startMs, so a
@@ -267,6 +278,7 @@ export default function App() {
   // yesterday. saveState never throws and never touches the network (storage.js).
   useEffect(() => {
     saveState({
+      locale,
       counters,
       selectedCounterId,
       rules,
@@ -288,6 +300,7 @@ export default function App() {
       slipReflectionDay,
     });
   }, [
+    locale,
     counters,
     selectedCounterId,
     rules,
