@@ -3404,6 +3404,71 @@ check('locale persistence primitive is wired (constants + App read/save)', () =>
   assert(/\}, \[\s*locale,/.test(app), 'locale is not listed in the save-effect dependency array');
 });
 
+// NoF-3B — the settings shell + language toggle must stay wired AND honest. A source-level
+// regression guard over the already-shipped toggle (commit "feat: add settings language
+// toggle"); it asserts NO new behavior. It pins: the Settings route, the Home entry, the
+// App→screen locale + onSetLocale wiring, the <html lang> sync (WCAG 3.1.1 Language of Page),
+// the SUPPORTED_LOCALES-driven control, the aria-pressed selected state, and — the honesty
+// invariant — that the Settings copy KEEPS its partial-translation + local-only caveats and
+// never overclaims full-app translation, cloud/account sync, AI, medical, or device-wide blocking.
+check('settings language toggle is wired and honest (route + locale flow + no overclaim)', () => {
+  const app = read('src/App.jsx');
+  // 1 — the Settings screen is imported and routed.
+  assert(/import SettingsScreen from/.test(app), 'App.jsx does not import SettingsScreen');
+  assert(/id:\s*'settings'/.test(app), "App.jsx does not route a 'settings' screen");
+  // 2 — Home exposes a settings/language entry.
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(home.includes("onNavigate('settings')"), 'Home has no entry that navigates to the Settings screen');
+  // 3 — App threads BOTH locale and onSetLocale down to the screens.
+  assert(/locale=\{locale\}/.test(app), 'App does not pass locale down to the screens');
+  assert(/onSetLocale=\{handleSetLocale\}/.test(app), 'App does not pass onSetLocale down to the screens');
+  // 4 — the chosen locale is mirrored onto <html lang> (assistive tech speech profile).
+  assert(
+    /document\.documentElement\.lang\s*=\s*locale/.test(app),
+    'App does not sync document.documentElement.lang to the locale',
+  );
+  // 5 — the toggle is driven off SUPPORTED_LOCALES (mirrors the locale primitive, no hardcoded list).
+  const screen = read('src/screens/SettingsScreen.jsx');
+  assert(screen.includes('SUPPORTED_LOCALES'), 'SettingsScreen does not use SUPPORTED_LOCALES');
+  assert(
+    screen.includes("from '../constants/locale.js'"),
+    'SettingsScreen does not source the locale set from the locale primitive',
+  );
+  // 6 — the selected language reaches assistive tech via aria-pressed (not only a visual hook).
+  assert(
+    /aria-pressed=\{selected\}/.test(screen),
+    'SettingsScreen language chips do not expose the selected state via aria-pressed',
+  );
+  // 7 — HONESTY: the copy must KEEP its partial-translation + local-only caveats and overclaim nothing.
+  assert(
+    screen.includes('다른 화면은 아직 한국어') && screen.includes('Other screens are still in Korean'),
+    'SettingsScreen drops the honest partial-translation caveat (would imply the whole app is translated)',
+  );
+  assert(
+    screen.includes('이 기기에만 저장') && screen.includes('on this device only'),
+    'SettingsScreen drops the honest local-only storage note (no account / no cloud)',
+  );
+  // Overclaims are forbidden only in REAL (non-comment) source — the JSDoc header
+  // legitimately NEGATES these ("NO account, NO cloud sync, NO login"), so comment lines
+  // are exempt here exactly like the token bans in checks #4 / #6. The user-facing STRINGS
+  // are non-comment lines and so are still scanned.
+  const overclaims = [
+    '전체 번역', 'fully translated',
+    '클라우드 동기화', 'cloud sync', '계정 동기화', 'account sync', '클라우드에 저장', '계정에 저장',
+    '인공지능', 'AI 분석', '의료', '진단',
+    '전체 차단', '기기 차단', '모든 앱을 차단',
+  ];
+  const overclaimHits = [];
+  screen.split('\n').forEach((line, i) => {
+    if (isCommentLine(line)) return;
+    for (const o of overclaims) if (line.includes(o)) overclaimHits.push(`${o} (line ${i + 1})`);
+  });
+  assert(
+    overclaimHits.length === 0,
+    `SettingsScreen copy overclaims (forbidden in an honest settings shell): ${overclaimHits.join(', ')}`,
+  );
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {
