@@ -3230,26 +3230,47 @@ button.room-card:active {
   gap: var(--sp-2);
 }
 
-.month-summary-row {
-  display: flex;
-  gap: var(--sp-3);
-}
-
-.month-summary-stat {
-  flex: 1;
+/* P0 app shell — stats list composition: label left, large tnum metric right.
+   Counts stay real (straight from the ledger); this changes composition only. */
+.stats-list {
   display: flex;
   flex-direction: column;
-  align-items: center;
-  gap: 2px;
-  padding: var(--sp-3) var(--sp-2);
-  border-radius: var(--r-md);
-  background: var(--bg-surface-raised);
 }
 
-.month-summary-num {
-  font-size: var(--fs-h1);
+.stats-row {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: var(--sp-3);
+  padding: var(--sp-3) 0;
+}
+
+.stats-row + .stats-row {
+  border-top: 1px solid var(--border-soft);
+}
+
+.stats-row-label {
+  color: var(--text-secondary);
+}
+
+.stats-row-value {
+  display: flex;
+  align-items: baseline;
+  gap: var(--sp-1);
+}
+
+.stats-num {
+  font-size: 32px;
+  font-weight: 700;
   color: var(--text-ember);
+  font-feature-settings: 'tnum' 1;
+  letter-spacing: -0.02em;
   line-height: 1;
+}
+
+.stats-unit {
+  font-size: var(--fs-small);
+  color: var(--text-muted);
 }
 
 /* RC-9 guided "3분 보호 설정" stepper ------------------------------------ */

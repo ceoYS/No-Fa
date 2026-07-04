@@ -193,16 +193,22 @@ export default function CalendarScreen({
       {totalRecordCount > 0 ? (
         <section className="card month-summary">
           <span className="card-label">기록한 날</span>
-          <div className="month-summary-row">
-            <div className="month-summary-stat">
-              <span className="month-summary-num">{monthRecordCount}</span>
-              <span className="hairline-note">이 달 기록한 날</span>
-            </div>
-            <div className="month-summary-stat">
-              <span className="month-summary-num">{totalRecordCount}</span>
-              <span className="hairline-note">지금까지 기록한 날</span>
-            </div>
-          </div>
+          <ul className="stats-list">
+            <li className="stats-row">
+              <span className="stats-row-label">이 달 기록한 날</span>
+              <span className="stats-row-value">
+                <span className="stats-num">{monthRecordCount}</span>
+                <span className="stats-unit">일</span>
+              </span>
+            </li>
+            <li className="stats-row">
+              <span className="stats-row-label">지금까지 기록한 날</span>
+              <span className="stats-row-value">
+                <span className="stats-num">{totalRecordCount}</span>
+                <span className="stats-unit">일</span>
+              </span>
+            </li>
+          </ul>
           <p className="hairline-note">실제로 기록한 날만 세어요. 없는 기록은 만들지 않아요.</p>
         </section>
       ) : null}
