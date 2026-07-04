@@ -311,42 +311,50 @@ export default function HomeScreen({
           거치며, 계정/클라우드 없이 이 기기 저장분만 지운다는 사실을 그대로 밝힌다. */}
       <section className="card home-manage" aria-label="관리 바로가기">
         <span className="card-label">관리</span>
-        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+        <div className="settings-rows">
           <button
             type="button"
-            className="btn btn-ghost btn-block"
+            className="settings-row"
             onClick={() => onNavigate('reward')}
           >
-            고양이 방 꾸미기
+            <span className="settings-row-label">고양이 방 꾸미기</span>
+            <ManageChevron />
           </button>
           <button
             type="button"
-            className="btn btn-ghost btn-block"
+            className="settings-row"
             onClick={() => onNavigate('protection')}
           >
-            보호 설정 적기
+            <span className="settings-row-label">보호 설정 적기</span>
+            <ManageChevron />
           </button>
           <button
             type="button"
-            className="btn btn-ghost btn-block"
+            className="settings-row"
             onClick={() => onNavigate('shield')}
           >
-            차단 설정 (준비 중)
+            <span className="settings-row-label">차단 설정 (준비 중)</span>
+            <ManageChevron />
           </button>
           <button
             type="button"
-            className="btn btn-ghost btn-block"
+            className="settings-row"
             onClick={() => onNavigate('settings')}
           >
-            설정 · 언어
+            <span className="settings-row-label">설정 · 언어</span>
+            <ManageChevron />
           </button>
+        </div>
+        {/* 기록 지우기 is destructive, so it sits in its own row block below the
+            navigation rows — same confirm sheet, no direct reset from here. */}
+        <div className="settings-rows">
           <button
             type="button"
-            className="btn btn-ghost btn-block"
+            className="settings-row"
             aria-haspopup="dialog"
             onClick={() => setConfirmReset(true)}
           >
-            이 기기의 기록 지우기
+            <span className="settings-row-label">이 기기의 기록 지우기</span>
           </button>
         </div>
         <p className="hairline-note text-quiet">
@@ -675,5 +683,22 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
         </div>
       </div>
     </div>
+  );
+}
+
+// Trailing chevron for the 관리 navigation rows — decorative only (each row's
+// visible text is the accessible name), so it stays aria-hidden.
+function ManageChevron() {
+  return (
+    <svg
+      className="settings-row-chevron"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.6"
+      aria-hidden="true"
+    >
+      <path d="m9 5 7 7-7 7" />
+    </svg>
   );
 }

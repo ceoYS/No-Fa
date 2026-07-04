@@ -3455,3 +3455,11 @@ button.settings-row:active {
   border-color: var(--ember-300);
   color: var(--text-ember);
 }
+
+/* In-card settings rows (Home 관리) — rows bleed to the card edge so hairline
+   dividers run full width; row padding mirrors the card padding. */
+.card .settings-rows {
+  display: flex;
+  flex-direction: column;
+  margin: 0 calc(-1 * var(--sp-5));
+}
