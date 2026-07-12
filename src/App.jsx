@@ -11,6 +11,7 @@ import ProtectionScreen from './screens/ProtectionScreen.jsx';
 import SafeBrowserScreen from './screens/SafeBrowserScreen.jsx';
 import ShieldExtensionScreen from './screens/ShieldExtensionScreen.jsx';
 import SettingsScreen from './screens/SettingsScreen.jsx';
+import FutureDiaryScreen from './screens/FutureDiaryScreen.jsx';
 import BottomNav from './components/BottomNav.jsx';
 import ScreenSwitcher from './components/ScreenSwitcher.jsx';
 import { EMPTY_BADGES, summarizeRules } from './constants/discipline.js';
@@ -26,14 +27,19 @@ import { DEFAULT_BLOCKLIST, makeBlockEntry } from './constants/shield.js';
 import { normalizeLocale } from './constants/locale.js';
 import { loadState, saveState } from './utils/storage.js';
 
+// v13 Final Handoff IA: the five nav tabs are 홈 · 캘린더 · 기록(오늘 기록) ·
+// 미래일기 · 내 방. Everything below 'diary' stays a secondary route reached
+// from screen CTAs (잠깐 멈춤 from the Home hero, 보호/차단/설정 from Home
+// manage rows and Settings), not from the bottom nav.
 const SCREENS = [
   { id: 'home', label: '홈', Component: HomeScreen },
-  { id: 'checkin', label: '오늘 기록', Component: CheckinScreen },
+  { id: 'calendar', label: '캘린더', Component: CalendarScreen },
+  { id: 'checkin', label: '기록', Component: CheckinScreen },
+  { id: 'diary', label: '미래일기', Component: FutureDiaryScreen },
+  { id: 'reward', label: '내 방', Component: PetRewardScreen },
   { id: 'urge', label: '잠깐 멈춤', Component: UrgeScreen },
   { id: 'discipline', label: '나의 규율', Component: DisciplineScreen },
-  { id: 'calendar', label: '최근 기록', Component: CalendarScreen },
   { id: 'recovery', label: '복기 다이어리', Component: RecoveryScreen },
-  { id: 'reward', label: '고양이 방', Component: PetRewardScreen },
   { id: 'shield', label: '차단 설정', Component: ShieldScreen },
   { id: 'protection', label: '보호 설정', Component: ProtectionScreen },
   { id: 'shieldBrowser', label: '안전 브라우저', Component: SafeBrowserScreen },
@@ -167,11 +173,28 @@ const INITIAL_RULES = [
   { id: 'lonely_swap', label: '외로울 때 바로 검색하지 않고 대체 행동 1개 하기', category: '외로움', counterId: 'c_nofap', status: 'missed', badges: { ...EMPTY_BADGES, reflected: true, nextActionWritten: true } },
 ];
 
+// QA/dev one-shot initial-screen choice (?screen=<id>). Like shieldDeepLink this is
+// consumed on first paint only — no router, no history, no persistence. It exists so
+// the visual-QA harness (headless Chrome screenshots) can open each surface directly;
+// an unknown id falls back to home.
+function screenDeepLink() {
+  if (typeof window === 'undefined') return null;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    const id = params.get('screen');
+    return id && SCREENS.some((s) => s.id === id) ? id : null;
+  } catch {
+    return null;
+  }
+}
+
 export default function App() {
   // RC-10 — open the deep-linked screen on first paint (잠깐 멈춤 / 오늘 기록), else home.
   const [screenId, setScreenId] = useState(() => {
     const dest = shieldDeepLink();
-    return dest === 'urge' ? 'urge' : dest === 'record' ? 'checkin' : 'home';
+    if (dest === 'urge') return 'urge';
+    if (dest === 'record') return 'checkin';
+    return screenDeepLink() ?? 'home';
   });
   // RC-10 — one-shot continuation note for a 실드 → 앱 deep-link landing. True only on the
   // initial deep-link paint; cleared on the first navigation so it never becomes a persistent

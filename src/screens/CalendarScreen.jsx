@@ -123,12 +123,11 @@ export default function CalendarScreen({
 
   return (
     <div className="screen">
-      <header className="screen-header">
-        <div>
-          <p className="screen-greeting">하루하루 남긴 기록이에요</p>
-          <h1 className="screen-title">기록</h1>
-        </div>
-      </header>
+      {/* v13 monthly-calendar (screen 22): 월간 캘린더 app bar, current month at right. */}
+      <div className="v13-appbar">
+        <h1 className="v13-appbar-title">월간 캘린더</h1>
+        <span className="v13-appbar-right v13-appbar-right--acc">{view.month + 1}월</span>
+      </div>
 
       <p className="screen-subtitle">
         날짜를 누르면 그 날 남긴 글을 볼 수 있어요. 기록이 없는 날은 비어 있어요.
@@ -190,26 +189,21 @@ export default function CalendarScreen({
         </div>
       </section>
 
+      {/* v13 legend chips — honest semantics only: this calendar marks days that HAVE a
+          saved record (dot) and today; it does not classify past days as 지킴/흔들림
+          because that per-day state is never stored (no fabricated tints). */}
+      <div className="v13-legend-row" aria-hidden="true">
+        <span className="v13-chip v13-chip--sm v13-chip--kept">기록 있음</span>
+        <span className="v13-chip v13-chip--sm v13-chip--on">오늘</span>
+        <span className="v13-chip v13-chip--sm v13-chip--lock">없음</span>
+      </div>
+
       {totalRecordCount > 0 ? (
-        <section className="card month-summary">
-          <span className="card-label">기록한 날</span>
-          <ul className="stats-list">
-            <li className="stats-row">
-              <span className="stats-row-label">이 달 기록한 날</span>
-              <span className="stats-row-value">
-                <span className="stats-num">{monthRecordCount}</span>
-                <span className="stats-unit">일</span>
-              </span>
-            </li>
-            <li className="stats-row">
-              <span className="stats-row-label">지금까지 기록한 날</span>
-              <span className="stats-row-value">
-                <span className="stats-num">{totalRecordCount}</span>
-                <span className="stats-unit">일</span>
-              </span>
-            </li>
-          </ul>
-          <p className="hairline-note">실제로 기록한 날만 세어요. 없는 기록은 만들지 않아요.</p>
+        <section className="v13-card v13-card--flat v13-month-flow" aria-label="이번 달 흐름">
+          <span className="v13-lbl">이번 달 흐름</span>
+          <span className="v13-muted">
+            이 달 기록 {monthRecordCount}일 · 지금까지 {totalRecordCount}일
+          </span>
         </section>
       ) : null}
 

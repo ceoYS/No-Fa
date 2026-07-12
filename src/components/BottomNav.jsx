@@ -1,19 +1,20 @@
-// Persistent primary navigation. 잠깐 멈춤 (the 5-minute crisis pause) sits in the
-// center slot so the app's panic action is one thumb-tap from every screen, not only
-// from Home. It routes to the real UrgeScreen (id 'urge') — never a dead entry.
+// Persistent bottom navigation — v13 Final Handoff nav() structure:
+// 홈 · 캘린더 · 기록 · 미래일기 · 내 방, each item a rounded-square indicator
+// (.bottom-nav-nd) above a small label; the active item fills ink. 잠깐 멈춤
+// stays one tap away via the Home hero CTA (and every screen's existing
+// routes) — the v13 nav carries surfaces, not the panic action.
 const TABS = [
-  { id: 'home', label: '홈', icon: HomeIcon },
-  { id: 'calendar', label: '기록', icon: CalendarIcon },
-  { id: 'urge', label: '잠깐 멈춤', icon: PauseIcon },
-  { id: 'checkin', label: '오늘 기록', icon: CheckIcon },
-  { id: 'recovery', label: '복기', icon: SparkIcon },
+  { id: 'home', label: '홈' },
+  { id: 'calendar', label: '캘린더' },
+  { id: 'checkin', label: '기록' },
+  { id: 'diary', label: '미래일기' },
+  { id: 'reward', label: '내 방' },
 ];
 
 export default function BottomNav({ value, onChange }) {
   return (
     <nav className="bottom-nav" aria-label="primary">
       {TABS.map((t) => {
-        const Icon = t.icon;
         const active = value === t.id;
         return (
           <button
@@ -23,54 +24,11 @@ export default function BottomNav({ value, onChange }) {
             aria-current={active ? 'page' : undefined}
             onClick={() => onChange(t.id)}
           >
-            <Icon className="bottom-nav-icon" active={active} />
+            <span className="bottom-nav-nd" aria-hidden="true" />
             <span>{t.label}</span>
           </button>
         );
       })}
     </nav>
-  );
-}
-
-function HomeIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M4 11.5 12 4l8 7.5V20a1 1 0 0 1-1 1h-4v-6h-6v6H5a1 1 0 0 1-1-1Z" />
-    </svg>
-  );
-}
-
-function CalendarIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="3.5" y="5" width="17" height="15" rx="2.5" />
-      <path d="M3.5 10h17M8 3v4M16 3v4" />
-    </svg>
-  );
-}
-
-function PauseIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <rect x="7" y="5" width="3.4" height="14" rx="1.6" />
-      <rect x="13.6" y="5" width="3.4" height="14" rx="1.6" />
-    </svg>
-  );
-}
-
-function CheckIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <circle cx="12" cy="12" r="8.5" />
-      <path d="m8.5 12 2.5 2.5 4.5-5" />
-    </svg>
-  );
-}
-
-function SparkIcon({ className }) {
-  return (
-    <svg className={className} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6">
-      <path d="M12 4v4M12 16v4M4 12h4M16 12h4M6.5 6.5l2.8 2.8M14.7 14.7l2.8 2.8M6.5 17.5l2.8-2.8M14.7 9.3l2.8-2.8" />
-    </svg>
   );
 }

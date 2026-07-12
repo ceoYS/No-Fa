@@ -1,4 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
+import CatCompanion from '../components/CatCompanion.jsx';
 
 // Real "delay the choice" alternatives (urge loop). Each is a concrete, offline
 // action that buys time; completing one returns to the breathing timer with a calm
@@ -118,7 +119,8 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
   const pickedLabel = ALT_ACTIONS.find((a) => a.id === routinePick)?.label ?? '';
 
   return (
-    <div className="screen" style={{ gap: 'var(--sp-3)' }}>
+    <div className="screen v13-pause" style={{ gap: 'var(--sp-3)' }}>
+      <div className="v13-glow" aria-hidden="true" />
       <header className="screen-header">
         <button
           type="button"
@@ -131,12 +133,18 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
         <span className="pill pill-moss">잠깐 멈춤 · 5분</span>
       </header>
 
+      {/* v13 pause-vulnerable (screen 31) headline. The counter-name context line keeps
+          which restraint this pause belongs to (counter-management). */}
       <header className="screen-header" style={{ alignItems: 'flex-start' }}>
         <div>
-          <h1 className="screen-title">지금 충동을 멈춰요</h1>
+          <h1 className="screen-title v13-pause-title">
+            지금 멈추면
+            <br />
+            내일이 조금 가벼워져요
+          </h1>
           <p className="screen-subtitle" style={{ marginTop: 'var(--sp-2)' }}>
-            {selectedCounterName ? `‘${selectedCounterName}’ — ` : ''}지금은 결정하지 않고, 선택을 5분만
-            늦추는 시간이에요. 같이 버텨봐요.
+            {selectedCounterName ? `‘${selectedCounterName}’ — ` : ''}선택을 늦추는 시간입니다. 곁에서
+            함께 기다릴게요.
           </p>
         </div>
       </header>
@@ -321,11 +329,14 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
       ) : (
         <>
           <div className="urge-stage">
-            <div className="urge-breath" aria-hidden="true">
-              <div className="urge-breath-core" />
-            </div>
-            <div className="urge-timer">
+            <div className="v13-lbl v13-pause-timer-label">대기 타이머</div>
+            <div className="urge-timer v13-timer">
               {mm}:{ss}
+            </div>
+            {/* Canonical cat (cutline §6) — the cream front_idle pause companion from
+                the v13 design, inside its soft bronze halo. Static illustration only. */}
+            <div className="v13-pause-cat" aria-hidden="true">
+              <CatCompanion variant="front_idle" color="#E7DCC6" height={54} />
             </div>
             <div
               className="urge-progress"
@@ -385,6 +396,9 @@ export default function UrgeScreen({ onNavigate, onCrisisHeld, onStashCheckinNot
               {altNote}
             </p>
           ) : null}
+
+          {/* v13 vulnerable-moment guard marker: no products, no payment, no Pro here. */}
+          <p className="v13-pause-nomon" aria-hidden="false">상품과 결제는 없습니다</p>
 
           <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
             {!started ? (

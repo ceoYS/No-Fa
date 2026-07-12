@@ -272,15 +272,17 @@ check('top-level ErrorBoundary wraps the app', () => {
 // record hero CTAs sit above the secondary cards (the core loop is not buried).
 check('home is timer-first with crisis + record hero CTAs', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  assert(home.includes('abstinence-timer-card'), 'Home timer hero (abstinence-timer-card) missing');
-  assert(home.includes('home-hero-actions'), 'Home hero CTA row (home-hero-actions) missing');
+  // v13 Final Handoff home-primary: ink hero card with the live timer first,
+  // then the 잠깐 멈춤 (primary) / 오늘 기록 (secondary) action row.
+  assert(home.includes('v13-hero'), 'Home v13 ink hero card (v13-hero) missing');
+  assert(home.includes('v13-action-row'), 'Home action row (v13-action-row) missing');
   assert(
-    home.includes('못 참을 것 같아요') && home.includes("onNavigate('urge')"),
-    'Home crisis CTA (못 참을 것 같아요 → urge) missing',
+    home.includes('잠깐 멈춤') && home.includes("onNavigate('urge')"),
+    'Home crisis CTA (잠깐 멈춤 → urge) missing',
   );
   assert(
-    home.includes('오늘 기록하기') && home.includes("onNavigate('checkin')"),
-    'Home record CTA (오늘 기록하기 → checkin) missing',
+    home.includes('오늘 기록') && home.includes("onNavigate('checkin')"),
+    'Home record CTA (오늘 기록 → checkin) missing',
   );
 });
 
@@ -359,7 +361,11 @@ check('home exposes add + edit counter UI (name/date/time/target)', () => {
   const home = read('src/screens/HomeScreen.jsx');
   assert(/function AddCounterSheet\(/.test(home), 'AddCounterSheet missing');
   assert(/function EditCounterSheet\(/.test(home), 'EditCounterSheet missing');
-  assert(home.includes('+ 카운터 추가'), 'add-counter entry (+ 카운터 추가) missing');
+  assert(
+    home.includes('setAddCounterOpen(true)'),
+    'add-counter entry (추가 → AddCounterSheet) missing',
+  );
+  assert(home.includes('카운터 편집'), 'edit-counter entry (카운터 편집) missing');
   assert(home.includes('type="date"') && home.includes('type="time"'), 'start date/time inputs missing');
   assert(home.includes('목표 일수'), 'target-days field (목표 일수) missing');
   assert(
@@ -368,11 +374,13 @@ check('home exposes add + edit counter UI (name/date/time/target)', () => {
   );
 });
 
-// 17 — Home must render a selectable counter list (cards) that changes selection.
+// 17 — Home must render a selectable counter list that changes selection.
+// v13 shape: the selected counter IS the ink hero; the other items render as
+// v13 row cards and a tap pins one as the new hero (onSelectCounter).
 check('home renders a selectable counter list', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  assert(home.includes('counter-card'), 'counter card markup (counter-card) missing');
-  assert(home.includes('counters.map('), 'Home does not iterate counters into a list');
+  assert(home.includes('v13-item-row'), 'v13 item row markup (v13-item-row) missing');
+  assert(home.includes('otherCounters.map('), 'Home does not iterate counters into a list');
   assert(home.includes('onSelectCounter'), 'counter selection handler (onSelectCounter) not wired');
   const app = read('src/App.jsx');
   assert(
@@ -511,15 +519,20 @@ check('audio is an honest silent fallback (no fake sound claim)', () => {
 // aria-pressed. No 보는 중 / 현재 / 선택됨 text badge may render inside the card.
 check('counter selected state is visual-only (no 보는 중 text badge)', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  assert(home.includes('data-selected={selected}'), 'counter card has no data-selected visual hook');
-  assert(home.includes('aria-pressed={selected}'), 'counter card selection is not exposed via aria-pressed');
+  // v13 shape: selection is expressed structurally — the selected counter renders
+  // as the ink hero card and is excluded from the row list (otherCounters). No
+  // text badge ever marks selection.
+  assert(
+    home.includes('counters.filter((c) => c.id !== (selectedCounter?.id ?? selectedCounterId))'),
+    'selected counter is not lifted out of the row list into the hero',
+  );
   for (const badge of ['보는 중', '선택됨', 'counter-card-flag']) {
-    assert(!home.includes(badge), `counter card still renders a selected text badge: ${badge}`);
+    assert(!home.includes(badge), `counter list still renders a selected text badge: ${badge}`);
   }
   const css = read('src/styles/components.css');
   assert(
-    /\.counter-card\[data-selected='true'\][\s\S]*?border-color:\s*var\(--accent-ember\)/.test(css),
-    'selected counter card has no amber border treatment',
+    /\.v13-card--ink\s*\{[\s\S]*?background:\s*var\(--ink-900\)/.test(css),
+    'v13 ink hero card treatment missing',
   );
 });
 
@@ -844,10 +857,16 @@ check('pet-room sound toggle is hidden until real audio is available (no dead sw
 // real UrgeScreen (never a dead entry). This is the single highest-urgency action in
 // a self-control app, so gating it behind a Home round-trip is a real-use harm.
 check('global crisis pause (잠깐 멈춤) is in the persistent nav and routes to the real urge screen', () => {
+  // v13 Final Handoff IA: the nav carries the five surfaces (홈·캘린더·기록·
+  // 미래일기·내 방) and the panic action lives as the Home hero's PRIMARY CTA —
+  // still one tap from the landing screen, and the urge route stays real.
   const nav = read('src/components/BottomNav.jsx');
-  assert(/id:\s*'urge'/.test(nav), 'BottomNav has no 잠깐 멈춤 (urge) tab');
-  assert(nav.includes('잠깐 멈춤'), 'BottomNav urge tab is missing the warm 잠깐 멈춤 label');
   assert(/onChange\(t\.id\)/.test(nav), 'BottomNav tabs do not route via onChange(tab id) — could be a dead entry');
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(
+    home.includes('잠깐 멈춤') && home.includes("onNavigate('urge')"),
+    'Home lost its one-tap 잠깐 멈춤 crisis CTA (→ urge)',
+  );
 
   const app = read('src/App.jsx');
   // The nav must route to the screen router. RC-10 routes it through navigate() — a thin wrapper
@@ -894,8 +913,8 @@ check('bottom nav stays visible on mobile (device frame fits viewport + safe-are
   assert(navCss[0].includes('env(safe-area-inset-bottom'), '.bottom-nav does not pad for the home-indicator safe area');
   assert(/flex-shrink:\s*0/.test(navCss[0]), '.bottom-nav can shrink (no flex-shrink:0) — labels could be squeezed/clipped');
 
-  // (c) All five tab labels are present, using the RC-2A 오늘 기록 wording (not 체크인).
-  for (const label of ['홈', '기록', '잠깐 멈춤', '오늘 기록', '복기']) {
+  // (c) All five v13 tab labels are present (홈·캘린더·기록·미래일기·내 방).
+  for (const label of ['홈', '캘린더', '기록', '미래일기', '내 방']) {
     assert(nav.includes(`label: '${label}'`), `BottomNav is missing the tab label: ${label}`);
   }
   assert(!nav.includes("label: '체크인'"), 'BottomNav still shows the old 체크인 tab label');
@@ -1254,7 +1273,8 @@ check('no internal stage vocabulary (프로토타입/MVP/P0/WIP) in user-facing 
 // this pins NoF-authored strings only.
 check('product speaks one counter vocabulary (절제 카운터, no 금욕 in product copy)', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  assert(home.includes('절제 카운터'), 'Home counter section label 절제 카운터 missing');
+  // v13 vocabulary: the home list section is 절제 항목 (the design's own term).
+  assert(home.includes('절제 항목'), 'Home counter section label 절제 항목 missing');
   assert(!home.includes('금욕'), 'Home surface still uses 금욕 vocabulary (R-10)');
   for (const file of ['src/screens/DisciplineScreen.jsx', 'src/screens/ShieldScreen.jsx']) {
     assert(!read(file).includes('금욕'), `${file} still uses 금욕 vocabulary (residual cleanup)`);
@@ -1964,19 +1984,19 @@ check('final recovery-loop guard pack: vocab, structure, a11y, styling stay inta
     }
   }
 
-  // (b) RC-2A: Home keeps the REDUCED status-surface structure — the timer hero, the
-  //     crisis/record hero actions, the counter list, and the compact 관리 links. The old
-  //     dashboard sections must stay gone so Home cannot drift back into a long scroll.
-  for (const hook of ['abstinence-timer-card', 'home-hero-actions', 'home-counters', 'home-manage']) {
+  // (b) v13 home-primary keeps the REDUCED status-surface structure — the ink timer
+  //     hero, the crisis/record action row, the item list, and the compact 관리 rows.
+  //     The old dashboard sections must stay gone so Home cannot drift back into a
+  //     long scroll.
+  for (const hook of ['v13-hero', 'v13-action-row', 'v13-item-row', 'v13-manage-group']) {
     assert(home.includes(hook), `Home lost a status-surface section: ${hook}`);
   }
   for (const gone of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state']) {
     assert(!home.includes(gone), `Home dashboard section returned (RC-2A removed it): ${gone}`);
   }
 
-  // (c) The reset trigger keeps its dialog-opener a11y hint, and the 관리 group is labelled.
+  // (c) The reset trigger keeps its dialog-opener a11y hint.
   assert(home.includes('aria-haspopup="dialog"'), 'reset trigger lost its dialog-opener a11y hint');
-  assert(home.includes('aria-label="관리 바로가기"'), 'Home 관리 links group lost its a11y region label');
   // The old onboarding ordered-list / hub / room a11y labels must not linger.
   for (const gone of ['aria-label="오늘의 회복 루프"', 'aria-label="오늘의 방"', 'aria-label="NoF 사용 3단계 안내"']) {
     assert(!home.includes(gone), `Home kept a removed a11y region label: ${gone}`);
@@ -2074,13 +2094,13 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
   const reward = read('src/screens/PetRewardScreen.jsx');
   const protect = read('src/screens/ProtectionScreen.jsx');
 
-  // (a) RC-2A Home core order: timer hero → counters → compact 관리 links. The status
-  //     surface leads with the timer, then the counters, with secondary entries last.
-  const tHero = home.indexOf('timer-hero');
-  const tCounters = home.indexOf('home-counters');
-  const tManage = home.indexOf('home-manage');
-  assert(tHero !== -1 && tCounters !== -1 && tManage !== -1, 'Home lost a core section marker (timer-hero / home-counters / home-manage)');
-  assert(tHero < tCounters && tCounters < tManage, 'Home core order regressed — must stay timer hero → counters → 관리 links');
+  // (a) v13 Home core order: ink timer hero → item list → compact 관리 rows. The
+  //     status surface leads with the timer, then the items, with secondary entries last.
+  const tHero = home.indexOf('v13-hero');
+  const tCounters = home.indexOf('v13-item-row');
+  const tManage = home.indexOf('v13-manage-group');
+  assert(tHero !== -1 && tCounters !== -1 && tManage !== -1, 'Home lost a core section marker (v13-hero / v13-item-row / v13-manage-group)');
+  assert(tHero < tCounters && tCounters < tManage, 'Home core order regressed — must stay timer hero → items → 관리 rows');
 
   // (b) No forbidden 금욕 / fake claim anywhere on the two closeout surfaces (file-level). 상점
   //     is intentionally absent from this list — the cosmetic room shop is a real feature.
@@ -2232,21 +2252,22 @@ check('NoF record indicators stay clear (monthly grid: date+state a11y, today ma
   }
 });
 
-// 72 — RC-1 live counters. Feedback #1: the counters must show every 절제 item in real
-// time, down to seconds — not just the selected hero. The 1-second Home tick already
-// re-renders the list; this pins that each counter card derives elapsed from the live
-// `now` and renders seconds, with an honest 절제 중 status and no 금욕 vocabulary.
+// 72 — RC-1 live counters. Feedback #1: every 절제 item shows real elapsed time from
+// the same 1-second Home tick. v13 shape: the hero timer ticks visibly to the second
+// (58px tabular clock); the item rows derive from the same live `now` and show the
+// design's 일 + hh:mm density. No frozen stamps, no 금욕 vocabulary.
 check('discipline counters tick live to the second on Home', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  // (a) The 1-second tick that drives every counter card's re-render.
+  // (a) The 1-second tick that drives every row's re-render.
   assert(/setInterval\(\(\) => setNow\(Date\.now\(\)\), 1000\)/.test(home), 'Home lost its 1-second now tick');
-  // (b) Each counter card's elapsed is derived from the live `now` (not a frozen stamp).
-  assert(/const el = formatElapsed\(now - c\.startMs\)/.test(home), 'counter card elapsed is not derived from the live now');
-  // (c) The card renders seconds (el.ss), so all items tick visibly — not just hh:mm.
-  assert(/counter-card-time[\s\S]{0,120}el\.ss/.test(home), 'counter card does not render live seconds (el.ss)');
+  // (b) Each item row's elapsed is derived from the live `now` (not a frozen stamp).
+  assert(/const el = formatElapsed\(now - c\.startMs\)/.test(home), 'item row elapsed is not derived from the live now');
+  // (c) The hero clock renders live seconds; rows render the v13 일 + hh:mm density.
+  assert(/v13-hero-timer[\s\S]{0,400}\{hh\}:\{mm\}:\{ss\}/.test(home), 'hero timer does not render live seconds');
+  assert(/v13-item-row-time[\s\S]{0,120}el\.hh/.test(home), 'item row does not render live elapsed time');
   assert(/formatElapsed[\s\S]*?ss:/.test(home) || /ss = String/.test(home), 'formatElapsed does not expose seconds');
   // (d) Honest live-status copy, one vocabulary (no 금욕).
-  assert(home.includes('절제 중'), 'counter card is missing the 절제 중 live-status label');
+  assert(home.includes('절제 경과'), 'hero is missing the 절제 경과 live-status label');
   assert(!home.includes('금욕'), 'counter surface uses forbidden 금욕 vocabulary');
 });
 
@@ -2305,8 +2326,9 @@ check('RC-1 product loop: writing-first check-in, live counters, real cat intera
   // (b) The user's own writing reads back in records.
   assert(/day\.checkin\.promise/.test(cal) && /day\.checkin\.resolve/.test(cal), 'records do not read back the user writing (약속/다짐)');
 
-  // (c) Counters tick to the second on Home (every item, not just the hero).
-  assert(/counter-card-time[\s\S]{0,120}el\.ss/.test(home), 'counters no longer tick to the second');
+  // (c) The hero timer ticks to the second; item rows tick from the same live now (v13 density).
+  assert(/v13-hero-timer[\s\S]{0,400}\{hh\}:\{mm\}:\{ss\}/.test(home), 'hero timer no longer ticks to the second');
+  assert(/v13-item-row-time[\s\S]{0,120}el\.hh/.test(home), 'item rows no longer tick from the live now');
 
   // (d) The cat room has a real, visible, persisted 쓰다듬기 interaction.
   assert(
@@ -2361,8 +2383,9 @@ check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluf
     assert(!stripComments(read(f)).includes('체크인'), `${f} shows user-facing "체크인" — use 오늘 기록`);
   }
 
-  // (2) The RC-2A vocabulary is present where it matters.
-  assert(read('src/components/BottomNav.jsx').includes("label: '오늘 기록'"), 'BottomNav lost the 오늘 기록 tab label');
+  // (2) The RC-2A vocabulary is present where it matters. (v13 nav shortens the tab
+  //     label to 기록 — the screen itself keeps the 오늘 기록 wording.)
+  assert(read('src/components/BottomNav.jsx').includes("label: '기록'"), 'BottomNav lost the 기록 tab label');
   const checkin = read('src/screens/CheckinScreen.jsx');
   assert(checkin.includes('오늘 회고') && checkin.includes('오늘 기록이 저장됐어요'), 'CheckinScreen lost the 오늘 회고 / 오늘 기록 wording');
   assert(read('src/screens/CalendarScreen.jsx').includes('오늘 회고'), 'CalendarScreen lost the 오늘 회고 read-back label');
@@ -2374,9 +2397,9 @@ check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluf
     assert(!src.includes('흔들려도 다시 이어갈 수 있어요'), `${f} still carries the decorative "흔들려도 다시 이어갈" filler`);
   }
 
-  // (4) Home stays a reduced status surface — timer + counters + compact 관리, no dashboard.
+  // (4) Home stays a reduced status surface — v13 ink hero + item rows + compact 관리.
   const home = read('src/screens/HomeScreen.jsx');
-  for (const keep of ['abstinence-timer-card', 'home-counters', 'home-manage']) {
+  for (const keep of ['v13-hero', 'v13-item-row', 'v13-manage-group']) {
     assert(home.includes(keep), `Home lost its RC-2A status-surface section: ${keep}`);
   }
   for (const gone of ['home-loop-hub', 'home-checkin-summary', 'home-room-state', 'home-onboarding']) {
@@ -2483,12 +2506,14 @@ check('RC-4 first-run counters are honest 예시 samples with a one-tap real sta
   assert(home.includes('onStartOwnRun'), 'Home does not wire the onStartOwnRun handler');
   assert(home.includes('isSample'), 'Home does not branch on isSample (sample label + 최장 gating)');
   assert(
-    /!heroIsSample \?[\s\S]{0,160}최장 \{bestDays\}일/.test(home),
+    /!heroIsSample \?[\s\S]{0,400}최장 \{bestDays\}일/.test(home),
     'hero 최장 record is not gated behind a non-sample check (!heroIsSample)',
   );
+  // v13 item rows show only name + elapsed (no 최장 at all), which is stricter than
+  // the old per-card gate; a sample row still discloses itself with an 예시 marker.
   assert(
-    /!c\.isSample \?[\s\S]{0,200}최장 /.test(home),
-    'counter-card 최장 record is not gated behind a non-sample check (!c.isSample)',
+    /v13-item-row-sample/.test(home) && /c\.isSample \?/.test(home),
+    'item rows no longer disclose sample counters (예시 marker)',
   );
   for (const banned of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state']) {
     assert(!home.includes(banned), `RC-4 sample banner must not reuse a removed Home section class: ${banned}`);
@@ -2555,7 +2580,7 @@ check('RC-5 records usefulness stays honest (real recorded-day count, honest CTA
     'the recorded-day counts are not rendered from the computed values',
   );
   assert(
-    cal.includes('이 달 기록한 날') && cal.includes('지금까지 기록한 날'),
+    cal.includes('이 달 기록') && cal.includes('지금까지'),
     'records lost the honest recorded-day recognition labels',
   );
 
@@ -3467,6 +3492,61 @@ check('settings language toggle is wired and honest (route + locale flow + no ov
     overclaimHits.length === 0,
     `SettingsScreen copy overclaims (forbidden in an honest settings shell): ${overclaimHits.join(', ')}`,
   );
+});
+
+// 109 — v13 Final Handoff shell fidelity. The shell's single design source is the
+// claude_design MCP "NoF Product Screens v13 — Final Handoff" (cutline §0): light
+// paper canvas (#F4F6F7), white cards on #DBE0E4 borders, deep ink (#1B2024) hero/
+// CTA, bronze (#B0894F) accent, and the five-tab v13 nav. This pins the palette and
+// structure so the shell can neither regress to the failed dark prototype nor drift
+// into a generic beige/light theme, and keeps the honesty labels in place.
+check('v13 final handoff shell: palette, nav, structure, honesty labels pinned', () => {
+  const tokens = read('src/styles/tokens.css');
+  const css = read('src/styles/components.css');
+  const html = read('index.html');
+
+  // (a) v13 palette values are the live tokens.
+  assert(tokens.includes('v13 Final Handoff palette'), 'tokens.css lost the v13 Final Handoff source marker');
+  assert(tokens.includes('--bg-canvas: #f4f6f7'), 'v13 paper canvas (#F4F6F7) missing');
+  assert(tokens.includes('--ink-900: #1b2024'), 'v13 deep ink (#1B2024) missing');
+  assert(tokens.includes('--accent-ember: #b0894f'), 'v13 bronze accent (#B0894F) missing');
+  assert(tokens.includes('--border-medium: #dbe0e4'), 'v13 border (#DBE0E4) missing');
+  // No dark-prototype canvas and no generic-beige drift.
+  for (const bad of ['#0e0a07', '#14100b', '#f4f5f1', '#efece5']) {
+    assert(!tokens.toLowerCase().includes(bad), `tokens.css carries a non-v13 shell color: ${bad}`);
+  }
+  assert(html.includes('content="#F4F6F7"'), 'index.html theme-color is not the v13 canvas');
+
+  // (b) The v13 shell layer + core structures exist in CSS.
+  assert(css.includes('NoF v13 Final Handoff shell'), 'components.css lost the v13 shell layer marker');
+  for (const sel of ['.v13-hero-timer', '.v13-card--ink', '.bottom-nav-nd', '.v13-room', '.v13-cta']) {
+    assert(css.includes(sel), `v13 shell CSS structure missing: ${sel}`);
+  }
+  // The v13 timer is tabular + light-weight (no mono/serif display faces).
+  assert(/\.v13-timer\s*\{[\s\S]*?tabular-nums/.test(css), 'v13 timer lost tabular-nums');
+  assert(!tokens.includes('JetBrains Mono') && !tokens.includes('Italiana'), 'non-v13 display/mono faces returned to the token stack');
+
+  // (c) The old dark-prototype home hero heading stays gone from Home (the phrase in
+  //     running sentences — e.g. the restart sheet's "절제 시간만 0으로" — is fine).
+  const home = read('src/screens/HomeScreen.jsx');
+  assert(
+    !/screen-title">\s*절제 시간\s*</.test(home) && !home.includes('<h1 className="screen-title">절제 시간'),
+    'Home reintroduced the old 절제 시간 hero heading',
+  );
+
+  // (d) Honesty labels: diary tab is 준비 중 (no fake save), blocking row stays 준비 중,
+  //     and Settings keeps the working language control with no paywall/subscription rows.
+  const diary = read('src/screens/FutureDiaryScreen.jsx');
+  assert(diary.includes('준비 중'), '미래일기 tab lost its 준비 중 honesty label');
+  for (const fake of ['일기 저장', '저장됐어요', 'saveDiary']) {
+    assert(!diary.includes(fake), `미래일기 tab claims an unimplemented save: ${fake}`);
+  }
+  assert(home.includes('차단 설정 (준비 중)'), 'Home blocking row lost its 준비 중 honesty label');
+  const settings = read('src/screens/SettingsScreen.jsx');
+  assert(settings.includes('segmented') && settings.includes('onSetLocale'), 'Settings lost the working language control');
+  for (const bad of ['구독', 'Pro 보기', '결제', '플랜']) {
+    assert(!settings.includes(bad), `Settings carries paywall/subscription vocabulary: ${bad}`);
+  }
 });
 
 let failed = 0;

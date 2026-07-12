@@ -63,12 +63,11 @@ export default function SettingsScreen({ onNavigate, locale = 'ko', onSetLocale 
 
   return (
     <div className="screen">
-      <header className="screen-header">
-        <div>
-          <p className="screen-greeting">{t.greeting}</p>
-          <h1 className="screen-title">{t.title}</h1>
-        </div>
-      </header>
+      {/* v13 settings (screen 72): plain app-bar title, grouped white row cards.
+          No plan/Pro/subscription rows — the repo ships no paywall (guard-pinned). */}
+      <div className="v13-appbar">
+        <h1 className="v13-appbar-title">{t.title}</h1>
+      </div>
 
       <section className="settings-block" aria-label={t.languageGroup}>
         <div className="settings-group">

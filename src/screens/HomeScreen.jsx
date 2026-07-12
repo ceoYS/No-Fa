@@ -1,8 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
-import { summarizeRules, linkedRules, STATUS_LABEL, STATUS_PILL } from '../constants/discipline.js';
+import { summarizeRules, linkedRules } from '../constants/discipline.js';
 import { nextLockedMilestone } from '../constants/rewards.js';
 import { msToDateValue, msToTimeValue, dateTimeToMs } from '../utils/datetime.js';
+import CatCompanion from '../components/CatCompanion.jsx';
 
 function formatElapsed(ms) {
   const total = Math.max(0, Math.floor(ms / 1000));
@@ -13,11 +14,20 @@ function formatElapsed(ms) {
   return { days, hh, mm, ss };
 }
 
-// RC-2A: Home is deliberately reduced to a status surface — the abstinence timer and
-// the active discipline counters, plus the two in-the-moment actions (잠깐 멈춤 / 오늘
-// 기록). The old daily-action hub, first-run guidance, saved-summary, room preview and
-// records strip were removed from Home; those features stay reachable via the bottom
-// nav and the compact 관리 links below (records → 기록 tab, room/shield/protection/reset).
+// v13 item-dot palette (design screen 09: green/bronze dots on the restraint
+// rows, bronze on the hero). Purely decorative rotation — no status meaning.
+const ITEM_DOTS = ['var(--moss-300)', 'var(--accent-ember)', 'var(--tint-caution-text)'];
+
+/*
+ * HomeScreen — v13 Final Handoff home-primary (screen 09, + 79 empty / 80 first-use).
+ *
+ * Structure follows the design source: NoF app bar → ink hero card (selected
+ * counter, 58px tabular timer, 절제 경과, milestone strip) → 잠깐 멈춤 / 오늘 기록
+ * → 흔들림 기록 link → 절제 항목 list (row cards, tap to pin as hero) → 내 방
+ * preview (room scene + canonical CatCompanion + real streak/milestone copy).
+ * Every number is real state (counters/startMs/milestones); samples keep their
+ * 예시 honesty labels and the one-tap 내 기록으로 시작.
+ */
 export default function HomeScreen({
   onNavigate,
   rules = [],
@@ -62,8 +72,8 @@ export default function HomeScreen({
 
   // RC-4 first-run honesty: a cleared install seeds 예시 SAMPLE counters so a new user can
   // see the app's shape. They are clearly labelled and never counted as the user's own — the
-  // hero/card 최장 record is hidden while a counter is a sample, and a one-tap 내 기록으로 시작
-  // (onStartOwnRun) converts every sample into a real run from now.
+  // hero 최장/대표 framing is replaced by an 예시 chip while a counter is a sample, and a
+  // one-tap 내 기록으로 시작 (onStartOwnRun) converts every sample into a real run from now.
   const heroIsSample = !!selectedCounter?.isSample;
   const hasSample = counters.some((c) => c.isSample);
 
@@ -74,293 +84,282 @@ export default function HomeScreen({
   const goalRemaining = nextGoal ? Math.max(0, nextGoal.day - days) : 0;
   const goalPct = nextGoal ? Math.min(100, Math.round((days / nextGoal.day) * 100)) : 100;
 
-  // Rules linked to the currently-selected counter (rule↔counter link). This is a
-  // TODAY rule-status view — kept separate from the counter's elapsed time, which
-  // the hero/cards above already show. A rule slip never moves the timer.
+  // Rules linked to the currently-selected counter (rule↔counter link) — shown as a
+  // compact flat row (v13 grammar) that opens 나의 규율. A rule slip never moves the timer.
   const counterRules = useMemo(
     () => linkedRules(rules, selectedCounter?.id),
     [rules, selectedCounter?.id],
   );
   const counterRuleSummary = useMemo(() => summarizeRules(counterRules), [counterRules]);
 
+  const otherCounters = counters.filter((c) => c.id !== (selectedCounter?.id ?? selectedCounterId));
+
   const confirmRelapse = () => {
     setConfirmRestart(false);
     onRelapse?.();
   };
 
-  return (
-    <div className="screen">
-      <header className="screen-header">
-        <div>
-          <p className="screen-greeting">오늘도 지키는 중이에요</p>
-          <h1 className="screen-title">절제 시간</h1>
+  // v13 screen 79 (home-empty): honest empty state when no restraint items exist.
+  if (counters.length === 0) {
+    return (
+      <div className="screen v13-empty-screen">
+        <div className="v13-appbar">
+          <h1 className="v13-appbar-title">NoF</h1>
+          <span className="v13-appbar-right">무료</span>
         </div>
-      </header>
-
-      {/* 1) 절제 경과 시간 히어로 — 첫 화면에서 가장 크게 보이는 핵심 정보 */}
-      <section className="abstinence-timer-card timer-hero" aria-label="현재 절제 경과 시간">
-        <p className="timer-hero-eyebrow">마지막 시작 이후 이어가는 중</p>
-        <h2 className="timer-hero-name">{selectedCounterName || '절제'}</h2>
-        <div className="timer-hero-days">
-          <span className="timer-hero-days-num">{days}</span>
-          <span className="timer-hero-days-unit">일</span>
+        <div className="v13-empty-body">
+          <div className="v13-empty-glyph" aria-hidden="true" />
+          <h2 className="v13-empty-title">아직 절제 항목이 없어요</h2>
+          <p className="v13-empty-lead">멀리 둘 항목을 하나만 골라도 시작할 수 있어요</p>
         </div>
-        <div className="timer-hero-clock" aria-label={`${hh}시간 ${mm}분 ${ss}초`}>
-          {hh}:{mm}:{ss}
+        <div className="v13-ctas">
+          <button type="button" className="v13-cta" onClick={() => setAddCounterOpen(true)}>
+            첫 항목 추가
+          </button>
         </div>
-
-        {nextGoal ? (
-          <div className="timer-progress" aria-hidden="true">
-            <span className="timer-progress-fill" style={{ width: `${goalPct}%` }} />
-          </div>
+        {addCounterOpen ? (
+          <AddCounterSheet
+            onCancel={() => setAddCounterOpen(false)}
+            onSubmit={(payload) => {
+              onAddCounter?.(payload);
+              setAddCounterOpen(false);
+            }}
+          />
         ) : null}
+      </div>
+    );
+  }
 
-        <div className="timer-hero-meta">
-          {!heroIsSample ? (
-            <span className="pill pill-ember" style={{ fontSize: 'var(--fs-small)' }}>
-              최장 {bestDays}일
+  return (
+    <div className="screen v13-home">
+      <div className="v13-appbar">
+        <h1 className="v13-appbar-title">NoF</h1>
+        <span className="v13-appbar-right">무료</span>
+      </div>
+
+      {/* 1) Ink hero — the selected counter's live elapsed time (v13 hero card) */}
+      <section className="v13-card v13-card--ink v13-hero" aria-label="현재 절제 경과 시간">
+        <div className="v13-glow" aria-hidden="true" />
+        <div className="v13-hero-inner">
+          <div className="v13-between">
+            <span className="v13-hero-name-row">
+              <span className="v13-dot" style={{ background: 'var(--accent-ember)' }} aria-hidden="true" />
+              <span className="v13-hero-name">{selectedCounterName || '절제'}</span>
             </span>
-          ) : (
-            <span className="pill sample-pill" style={{ fontSize: 'var(--fs-small)' }}>
-              예시
+            {heroIsSample ? (
+              <span className="v13-chip v13-chip--hero">예시</span>
+            ) : (
+              <span className="v13-chip v13-chip--hero">대표 · 고정</span>
+            )}
+          </div>
+
+          <div
+            className="v13-timer v13-hero-timer"
+            aria-label={`${days}일 ${hh}시간 ${mm}분 ${ss}초 경과`}
+          >
+            <span className="v13-hero-days">
+              {days}
+              <span className="v13-hero-days-unit">일</span>
             </span>
-          )}
-          <span className="hairline-note">
-            {heroIsSample
-              ? '예시 기록이에요. 아래에서 내 기록으로 시작할 수 있어요.'
-              : nextGoal
-                ? `다음 목표 ${nextGoal.day}일까지 ${goalRemaining}일`
-                : '최장 기록을 새로 쓰는 중이에요'}
-          </span>
+            <span>
+              {hh}:{mm}:{ss}
+            </span>
+          </div>
+          <div className="v13-lbl v13-hero-caption">절제 경과</div>
+
+          <div className="v13-hero-milestone">
+            {nextGoal ? (
+              <>
+                <div className="v13-between">
+                  <span className="v13-hero-milestone-label">다음 보상 마디까지</span>
+                  <span className="v13-hero-milestone-value">
+                    {nextGoal.day}일 · {goalRemaining}일 남음
+                  </span>
+                </div>
+                <div className="v13-bar-track v13-bar-track--ink" aria-hidden="true">
+                  <span className="v13-bar-fill" style={{ width: `${goalPct}%` }} />
+                </div>
+              </>
+            ) : !heroIsSample ? (
+              <div className="v13-between">
+                <span className="v13-hero-milestone-label">최장 기록을 새로 쓰는 중이에요</span>
+                <span className="v13-hero-milestone-value">최장 {bestDays}일</span>
+              </div>
+            ) : (
+              // RC-4: a 예시 sample never shows an earned-looking 최장 record.
+              <div className="v13-between">
+                <span className="v13-hero-milestone-label">예시 기록이에요</span>
+              </div>
+            )}
+          </div>
         </div>
       </section>
 
-      {/* RC-4 first-run honesty: when 예시 sample counters are present, a short honest notice
-          (not the removed RC-2A onboarding dashboard) explains they are samples and offers a
-          one-tap start of the user's own run. The per-counter 편집 sheet sets a real start
-          date/time. The notice disappears once no samples remain. */}
+      {/* RC-4 first-run honesty: 예시 notice + one-tap own-run start (v13 warm card). */}
       {hasSample ? (
-        <section className="card sample-banner" aria-label="예시 카운터 안내">
-          <span className="card-label">지금 보이는 기록은 예시예요</span>
-          <p className="hairline-note">
-            처음 둘러보기 쉽도록 예시 카운터를 넣어놨어요. ‘내 기록으로 시작’을 누르면 지금부터 0일째로
-            새로 시작하고, 예시 표시는 사라져요. 시작일을 직접 정하려면 카운터 편집에서 바꿀 수 있어요.
+        <section className="v13-card v13-card--warm" aria-label="예시 카운터 안내">
+          <p className="v13-warm-lead">
+            지금 보이는 기록은 예시예요. ‘내 기록으로 시작’을 누르면 지금부터 0일째로 새로 시작해요.
           </p>
-          <button
-            type="button"
-            className="btn btn-primary btn-block"
-            onClick={() => onStartOwnRun?.()}
-          >
+          <button type="button" className="v13-cta v13-cta--sm" onClick={() => onStartOwnRun?.()}>
             내 기록으로 시작
           </button>
         </section>
       ) : null}
 
-      {/* 2) 홈에서 바로 할 수 있는 두 행동만 — 위기엔 잠깐 멈춤(urge), 하루는 오늘 기록(checkin).
-          데일리 허브·첫 사용 안내·저장 확인 카드는 RC-2A에서 제거했다(홈은 상태 화면). */}
-      <section className="home-crisis">
-        <p className="home-crisis-eyebrow">못 참을 것 같다면</p>
-        <div className="home-hero-actions stack" style={{ '--gap': 'var(--sp-2)' }}>
-          <button
-            type="button"
-            className="btn btn-primary btn-block btn-lg"
-            onClick={() => onNavigate('urge')}
-          >
-            못 참을 것 같아요
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => onNavigate('checkin')}
-          >
-            오늘 기록하기
-          </button>
-        </div>
-      </section>
+      {/* 2) The two in-the-moment actions (v13: 잠깐 멈춤 primary · 오늘 기록 secondary) */}
+      <div className="v13-action-row">
+        <button type="button" className="v13-cta" style={{ flex: 2 }} onClick={() => onNavigate('urge')}>
+          잠깐 멈춤
+        </button>
+        <button
+          type="button"
+          className="v13-secbtn"
+          style={{ flex: 1 }}
+          onClick={() => onNavigate('checkin')}
+        >
+          오늘 기록
+        </button>
+      </div>
 
-      {/* 3) 무너졌거나 흔들렸을 때 — 다시 시작은 반드시 확인 시트를 거친다 */}
-      <section className="card home-restart">
-        <span className="card-label">무너졌거나, 흔들렸다면</span>
-        <p className="hairline-note">
-          무너진 날도 끝이 아니에요. 차분히 다시 시작점을 찍고, 무엇이 계기였는지 함께 돌아봐요.
-        </p>
-        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => setConfirmRestart(true)}
-          >
-            무너졌어요 · 다시 시작
-          </button>
-          <button
-            type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => onStartSlipReflection?.(null)}
-          >
-            오늘 복기하기
-          </button>
-        </div>
-      </section>
+      {/* 3) Slip / restart entries — v13 흔들림 기록 link. 다시 시작 still confirms in a sheet. */}
+      <div className="v13-link-row">
+        <button type="button" className="v13-quiet-link" onClick={() => onStartSlipReflection?.(null)}>
+          흔들림 기록
+        </button>
+        <button type="button" className="v13-quiet-link" onClick={() => setConfirmRestart(true)}>
+          무너졌어요 · 다시 시작
+        </button>
+      </div>
 
-      {/* 4) 절제 카운터 목록 (R-10: 제목 '절제 시간'과 같은 어휘 계열) — 여러 절제를
-          한눈에. 카드를 누르면 히어로 타이머가 바뀐다 */}
-      <section className="home-counters">
-        <div className="card-row">
-          <p className="section-eyebrow">절제 카운터</p>
-          <button type="button" className="btn-add" onClick={() => setAddCounterOpen(true)}>
-            + 카운터 추가
-          </button>
-        </div>
-        <div className="counter-list">
-          {counters.map((c) => {
-            const el = formatElapsed(now - c.startMs);
-            const pct = c.targetDays > 0 ? Math.min(100, Math.round((el.days / c.targetDays) * 100)) : 0;
-            const selected = c.id === (selectedCounter?.id ?? selectedCounterId);
-            const linkedCount = rules.filter((r) => r.counterId === c.id).length;
-            return (
-              <button
-                key={c.id}
-                type="button"
-                className="counter-card"
-                data-selected={selected}
-                aria-pressed={selected}
-                aria-label={`${c.name} — 절제 중 ${el.days}일 ${el.hh}:${el.mm}:${el.ss}`}
-                onClick={() => onSelectCounter?.(c.id)}
-              >
-                <div className="counter-card-head">
-                  <span className="counter-card-name">{c.name}</span>
-                  <span className="counter-card-status">{c.isSample ? '예시 · 지금까지' : '절제 중 · 지금까지'}</span>
-                </div>
-                {/* RC-1: every counter ticks live to the second (not just the hero) — the
-                    1초 now 틱이 카드를 다시 그려, 모든 절제 항목이 실시간으로 흐른다. */}
-                <div className="counter-card-time">
-                  {el.days}일 {el.hh}:{el.mm}:{el.ss}
-                </div>
-                <div className="counter-mini-progress" aria-hidden="true">
-                  <span className="counter-mini-progress-fill" style={{ width: `${pct}%` }} />
-                </div>
-                <div className="counter-card-meta">
-                  <span className="hairline-note">목표 {c.targetDays}일</span>
-                  <span className="hairline-note">규율 {linkedCount}개</span>
-                  {!c.isSample ? (
-                    <span className="hairline-note">최장 {Math.max(c.longestDays ?? 0, el.days)}일</span>
-                  ) : (
-                    <span className="hairline-note text-quiet">예시 기록</span>
-                  )}
-                </div>
-              </button>
-            );
-          })}
-        </div>
-        {selectedCounter ? (
-          <section className="card linked-rules-card">
-            <div className="card-row">
-              <span className="card-label">‘{selectedCounter.name}’에 연결된 규율</span>
-              <button
-                type="button"
-                className="text-quiet"
-                style={{ fontSize: 'var(--fs-small)' }}
-                onClick={() => onNavigate('discipline')}
-              >
-                규율 편집
-              </button>
-            </div>
-            {counterRules.length === 0 ? (
-              <p className="hairline-note">
-                아직 이 카운터에 연결된 규율이 없어요. ‘나의 규율’에서 더할 수 있어요.
-              </p>
-            ) : (
-              <>
-                <p className="discipline-summary">
-                  오늘 {counterRuleSummary.total}개 중 {counterRuleSummary.keeping}개를 지키는 중이에요.
-                </p>
-                <ul className="linked-rule-list">
-                  {counterRules.map((r) => (
-                    <li className="linked-rule-row" key={r.id}>
-                      <span className="linked-rule-label">{r.label}</span>
-                      <span
-                        className={`pill ${STATUS_PILL[r.status] ?? 'pill'} linked-rule-status`}
-                      >
-                        {STATUS_LABEL[r.status] ?? '미정'}
-                      </span>
-                    </li>
-                  ))}
-                </ul>
-              </>
-            )}
-            <p className="hairline-note text-quiet">
-              규율은 절제 시간을 돕는 보조 약속이에요. 못 지켜도 타이머는 그대로 이어가요.
-            </p>
-          </section>
-        ) : null}
+      {/* 4) 절제 항목 리스트 (v13 row cards) — tap pins the item as the hero timer */}
+      <div className="v13-between v13-section-head">
+        <span className="v13-lbl">절제 항목 · {counters.length}개 관리 중</span>
+        <button type="button" className="v13-chip v13-chip--acc" onClick={() => setAddCounterOpen(true)}>
+          추가
+        </button>
+      </div>
 
-        {selectedCounter ? (
+      {otherCounters.map((c, i) => {
+        const el = formatElapsed(now - c.startMs);
+        return (
           <button
+            key={c.id}
             type="button"
-            className="btn btn-ghost btn-block"
-            onClick={() => setEditCounterOpen(true)}
+            className="v13-card v13-card--row v13-item-row"
+            aria-label={`${c.name} — 절제 중 ${el.days}일 ${el.hh}:${el.mm} — 대표로 선택`}
+            onClick={() => onSelectCounter?.(c.id)}
           >
-            ‘{selectedCounter.name}’ 카운터 편집
+            <span
+              className="v13-dot"
+              style={{ background: ITEM_DOTS[i % ITEM_DOTS.length] }}
+              aria-hidden="true"
+            />
+            <span className="v13-item-row-body">
+              <span className="v13-item-row-name">
+                {c.name}
+                {c.isSample ? <span className="v13-item-row-sample"> · 예시</span> : null}
+              </span>
+              <span className="v13-item-row-time">
+                {el.days}일 {el.hh}:{el.mm}
+              </span>
+            </span>
           </button>
-        ) : null}
-      </section>
+        );
+      })}
 
-      {/* 5) 관리 · 바로가기 (RC-2A 홈 다이어트) — 최근 기록 / 고양이 방 / 보호 설정 등 보조
-          화면을 길게 깔린 카드 대신 짧은 링크 한 줄씩으로 모았다. 최근 기록은 하단 탭 ‘기록’으로
-          옮겼고, 라우트·기능은 그대로 두고 홈에서의 노출만 줄였다. 데이터 초기화는 확인 시트를
-          거치며, 계정/클라우드 없이 이 기기 저장분만 지운다는 사실을 그대로 밝힌다. */}
-      <section className="card home-manage" aria-label="관리 바로가기">
-        <span className="card-label">관리</span>
-        <div className="settings-rows">
-          <button
-            type="button"
-            className="settings-row"
-            onClick={() => onNavigate('reward')}
-          >
-            <span className="settings-row-label">고양이 방 꾸미기</span>
-            <ManageChevron />
-          </button>
-          <button
-            type="button"
-            className="settings-row"
-            onClick={() => onNavigate('protection')}
-          >
-            <span className="settings-row-label">보호 설정 적기</span>
-            <ManageChevron />
-          </button>
-          <button
-            type="button"
-            className="settings-row"
-            onClick={() => onNavigate('shield')}
-          >
-            <span className="settings-row-label">차단 설정 (준비 중)</span>
-            <ManageChevron />
-          </button>
-          <button
-            type="button"
-            className="settings-row"
-            onClick={() => onNavigate('settings')}
-          >
-            <span className="settings-row-label">설정 · 언어</span>
-            <ManageChevron />
-          </button>
-        </div>
-        {/* 기록 지우기 is destructive, so it sits in its own row block below the
-            navigation rows — same confirm sheet, no direct reset from here. */}
-        <div className="settings-rows">
-          <button
-            type="button"
-            className="settings-row"
-            aria-haspopup="dialog"
-            onClick={() => setConfirmReset(true)}
-          >
-            <span className="settings-row-label">이 기기의 기록 지우기</span>
-          </button>
-        </div>
-        <p className="hairline-note text-quiet">
-          기록은 이 기기에만 저장돼요. 계정이나 클라우드는 없어요. 최근 기록은 하단 ‘기록’ 탭에서 봐요.
-        </p>
-      </section>
+      {/* Rules linked to the hero counter — compact flat row into 나의 규율 */}
+      <button
+        type="button"
+        className="v13-card v13-card--flat v13-flat-row"
+        onClick={() => onNavigate('discipline')}
+      >
+        <span className="v13-muted">
+          {counterRules.length > 0
+            ? `연결된 규율 · 오늘 ${counterRuleSummary.total}개 중 ${counterRuleSummary.keeping}개 지키는 중`
+            : '연결된 규율 없음 · 나의 규율에서 더할 수 있어요'}
+        </span>
+        <span className="v13-muted v13-muted--acc">나의 규율</span>
+      </button>
+
+      {selectedCounter ? (
+        <button
+          type="button"
+          className="v13-quiet-link v13-edit-link"
+          onClick={() => setEditCounterOpen(true)}
+        >
+          ‘{selectedCounter.name}’ 카운터 편집
+        </button>
+      ) : null}
+
+      {/* 5) 내 방 미리보기 (v13 room preview) — real streak + real next milestone copy,
+          canonical CatCompanion (cutline §6). The scene shapes are the v13 illustration. */}
+      <button
+        type="button"
+        className="v13-room-preview"
+        aria-label={`내 방 열기 — ${days}일째 함께`}
+        onClick={() => onNavigate('reward')}
+      >
+        <span className="v13-room" aria-hidden="true">
+          <span className="v13-room-window" />
+          <span className="v13-room-floor" />
+          <span className="v13-room-rug" />
+          <span className="v13-room-cushion" />
+          <span className="v13-room-sprout v13-room-sprout--l" />
+          <span className="v13-room-sprout v13-room-sprout--r" />
+          <span className="v13-room-shelf" />
+          <span className="v13-room-plant" />
+          <span className="v13-room-lampstand" />
+          <span className="v13-room-lampglow" />
+          <CatCompanion
+            variant="side_waiting"
+            color="#1E2328"
+            height={42}
+            style={{ position: 'absolute', left: '15%', bottom: '8%' }}
+          />
+        </span>
+        <span className="v13-room-overlay">
+          <span className="v13-room-overlay-text">
+            <span className="v13-room-title">내 방 · {days}일째 함께</span>
+            <span className="v13-room-sub">
+              {nextGoal ? `${nextGoal.label} 보상까지 ${goalRemaining}일` : '지금까지의 보상이 모두 열렸어요'}
+            </span>
+          </span>
+          <span className="v13-chip v13-chip--acc">들어가기</span>
+        </span>
+      </button>
+
+      {/* 6) 관리 rows — 보호/차단/설정 + destructive local reset (confirm sheet).
+          The blocking row keeps its 준비 중 honesty label (in-app planner enforces nothing). */}
+      <div className="v13-between v13-section-head">
+        <span className="v13-lbl">관리</span>
+      </div>
+      <div className="v13-manage-group">
+        <button type="button" className="v13-card v13-card--row v13-manage-row" onClick={() => onNavigate('protection')}>
+          <span>보호 설정</span>
+          <span className="v13-muted">›</span>
+        </button>
+        <button type="button" className="v13-card v13-card--row v13-manage-row" onClick={() => onNavigate('shield')}>
+          <span>차단 설정 (준비 중)</span>
+          <span className="v13-muted">›</span>
+        </button>
+        <button type="button" className="v13-card v13-card--row v13-manage-row" onClick={() => onNavigate('settings')}>
+          <span>설정 · 언어</span>
+          <span className="v13-muted">›</span>
+        </button>
+        <button
+          type="button"
+          className="v13-card v13-card--row v13-manage-row"
+          aria-haspopup="dialog"
+          onClick={() => setConfirmReset(true)}
+        >
+          <span>이 기기의 기록 지우기</span>
+          <span className="v13-muted">›</span>
+        </button>
+      </div>
+      <p className="hairline-note text-quiet v13-manage-note">
+        기록은 이 기기에만 저장돼요. 계정이나 클라우드는 없어요.
+      </p>
 
       {/* 재발 확인 시트 — 즉시 리셋 금지. 실제 onRelapse()는 여기서만 호출된다. */}
       {confirmRestart ? (
@@ -454,7 +453,9 @@ export default function HomeScreen({
       {editCounterOpen && selectedCounter ? (
         <EditCounterSheet
           counter={selectedCounter}
-          onCancel={() => setEditCounterOpen(false)}
+          onCancel={() => {
+            setEditCounterOpen(false);
+          }}
           onSubmit={(payload) => {
             onEditCounter?.(selectedCounter.id, payload);
             setEditCounterOpen(false);
@@ -683,22 +684,5 @@ function EditCounterSheet({ counter, onCancel, onSubmit }) {
         </div>
       </div>
     </div>
-  );
-}
-
-// Trailing chevron for the 관리 navigation rows — decorative only (each row's
-// visible text is the accessible name), so it stays aria-hidden.
-function ManageChevron() {
-  return (
-    <svg
-      className="settings-row-chevron"
-      viewBox="0 0 24 24"
-      fill="none"
-      stroke="currentColor"
-      strokeWidth="1.6"
-      aria-hidden="true"
-    >
-      <path d="m9 5 7 7-7 7" />
-    </svg>
   );
 }
