@@ -320,9 +320,9 @@ export default function HomeScreen({
         </span>
         <span className="v13-room-overlay">
           <span className="v13-room-overlay-text">
-            <span className="v13-room-title">내 방 · {days}일째 함께</span>
+            <span className="v13-room-title">내 방 · 함께 지나온 {days}일</span>
             <span className="v13-room-sub">
-              {nextGoal ? `${nextGoal.label} 보상까지 ${goalRemaining}일` : '지금까지의 보상이 모두 열렸어요'}
+              {nextGoal ? `쌓여가는 변화 · ${nextGoal.label}까지 ${goalRemaining}일` : '쌓아온 변화가 이 방에 담겨 있어요'}
             </span>
           </span>
           <span className="v13-chip v13-chip--acc">들어가기</span>

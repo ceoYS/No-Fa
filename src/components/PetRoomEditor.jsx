@@ -140,6 +140,27 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     .filter((p) => ITEM_BY_ID[p.itemId] && isItemSpriteReady(ITEM_BY_ID[p.itemId].assetId))
     .sort((a, b) => (a.z ?? 0) - (b.z ?? 0));
 
+  // Pointer/tilt parallax — nudge the plate, depth layers and items by different
+  // amounts so a single flat image reads as 2.5D. Writes CSS vars straight to the
+  // node (no re-render); prefers-reduced-motion zeroes the offsets in CSS.
+  const handleParallax = (e) => {
+    if (!resolvedSceneMode) return;
+    const el = stageRef.current;
+    if (!el) return;
+    const r = el.getBoundingClientRect();
+    if (!r.width || !r.height) return;
+    const nx = Math.max(-1, Math.min(1, ((e.clientX - r.left) / r.width - 0.5) * 2));
+    const ny = Math.max(-1, Math.min(1, ((e.clientY - r.top) / r.height - 0.5) * 2));
+    el.style.setProperty('--par-x', nx.toFixed(3));
+    el.style.setProperty('--par-y', ny.toFixed(3));
+  };
+  const resetParallax = () => {
+    const el = stageRef.current;
+    if (!el) return;
+    el.style.setProperty('--par-x', '0');
+    el.style.setProperty('--par-y', '0');
+  };
+
   return (
     <>
       <div
@@ -148,19 +169,28 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
         data-theme={theme}
         role="group"
         aria-label={label ?? '고양이 방 편집'}
+        onPointerMove={handleParallax}
+        onPointerLeave={resetParallax}
       >
         {artReady ? (
           <>
             <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />
             {resolvedSceneMode ? (
-              onCatTap ? (
-                <button
-                  type="button"
-                  className="pet-room-scene-tap"
-                  onClick={onCatTap}
-                  aria-label="고양이 방 쓰다듬기"
-                />
-              ) : null
+              <>
+                {/* Depth + ambient light over the finished scene. The scene is already
+                    a fully-decorated composite, so nothing is overlaid on it — the
+                    2.5D feel comes purely from lighting, vignette and parallax. */}
+                <div className="scene-depth" aria-hidden="true" />
+                <div className="scene-glow" aria-hidden="true" />
+                {onCatTap ? (
+                  <button
+                    type="button"
+                    className="pet-room-scene-tap"
+                    onClick={onCatTap}
+                    aria-label="고양이 방 쓰다듬기"
+                  />
+                ) : null}
+              </>
             ) : (
               <>
                 <div className="pet-stage-floor" />
@@ -200,7 +230,7 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
 
       {resolvedSceneMode && artReady ? (
         <p className="room-scene-note">
-          현재는 완성된 방 이미지로 표시 중이에요. 배치 기능은 투명 아이템 이미지가 준비되면 제공돼요.
+          완성된 방 한 장면이에요. 오늘의 절제가 이 방을 조용히 밝혀요.
         </p>
       ) : null}
 

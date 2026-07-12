@@ -254,7 +254,7 @@ export default function PetRewardScreen({
     <div className="screen">
       <header className="screen-header">
         <div>
-          <p className="screen-greeting">오늘의 절제가 만든 방</p>
+          <p className="screen-greeting">함께 지나온 시간이 머무는 곳</p>
           <h1 className="screen-title">고양이 방</h1>
         </div>
         <div className="room-header-side">
@@ -365,7 +365,7 @@ export default function PetRewardScreen({
                   feedback so the same sentence never stacks twice. Kept mounted (empty
                   when idle) so it stays a stable live region and reserves its space. */}
               {stageReady
-                ? tapMsg ?? '아이템 배치하기로 방을 꾸미고, 간식을 놓아줄 수 있어요.'
+                ? tapMsg ?? '함께 지나온 하루가 이 방에 조용히 담겨 있어요.'
                 : '승인된 고양이와 방 이미지를 연결하면 꾸미기를 시작할 수 있어요.'}
             </p>
           )}
@@ -405,12 +405,6 @@ export default function PetRewardScreen({
           </p>
           <p className="hairline-note">
             · 지금까지 모은 {RESOURCE.name} {emberShards}{RESOURCE.unit}
-          </p>
-          <p className="hairline-note">
-            ·{' '}
-            {petFedToday
-              ? '오늘 간식 놓아주기 완료 · 오늘의 방 온기에 반영돼요.'
-              : '오늘 간식을 놓아주면 오늘의 방 온기에 반영돼요.'}
           </p>
           <p className="hairline-note">· {nextRoomNote}</p>
         </div>
