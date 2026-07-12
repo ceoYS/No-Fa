@@ -111,7 +111,16 @@ function check(id, ok, extra = '') {
 const overflowSeen = [];
 async function scanOverflow(c, screen) {
   const o = await c.overflow();
-  if (o.bad && o.bad.length) overflowSeen.push({ screen, ...o });
+  // A CRITICAL 390px overflow is one that actually makes the document scroll horizontally
+  // (docScrollW > vw) — that is what clips content or shows a horizontal scrollbar to the user.
+  // An element wider than the viewport that is CLIPPED by an ancestor is not, on its own,
+  // critical: e.g. the v13 잠깐 멈춤 screen (.screen.v13-pause) intentionally full-bleeds its
+  // dark-ink background to the device-frame edges via a negative horizontal margin, with a
+  // compensating equal padding so every piece of content stays inside the safe area. That
+  // leaves docScrollW == vw (no scrollbar, nothing clipped), so it must not fail B22. We keep
+  // the offender list for diagnostics but only record a screen when the document truly overflows.
+  const realOverflow = o.docScrollW > o.vw + 1;
+  if (realOverflow && o.bad && o.bad.length) overflowSeen.push({ screen, ...o });
   return o;
 }
 
@@ -295,10 +304,13 @@ async function runFlow(c) {
   await c.goto(APP_URL);
   await c.clearLS();
   await c.goto(APP_URL);
-  check('B01', await c.has('절제 시간'));
-  // RC-2A: Home is a status surface — the counter list + the two actions, no dashboard hub.
-  check('B02', await c.has('절제 카운터'));
-  check('B03', (await c.has('오늘 기록하기')) && (await c.has('못 참을 것 같아요')));
+  // v13 Final Handoff Home mounts as the ink-hero status surface with the 절제 항목 counter
+  // list (root .v13-home). '절제 시간'/'절제 카운터' were the pre-v13 home strings; they now
+  // live only in a confirm sheet / DisciplineScreen, so home is keyed on '절제 항목' + .v13-home.
+  check('B01', await c.eval("!!document.querySelector('.v13-home')"));
+  check('B02', (await c.has('절제 항목')) && (await c.eval('document.querySelectorAll(".v13-item-row").length >= 1')));
+  // v13 in-the-moment actions: 잠깐 멈춤 (hero primary) + 오늘 기록 (secondary).
+  check('B03', (await c.has('잠깐 멈춤')) && (await c.has('오늘 기록')));
   await scanOverflow(c, 'home-fresh');
   await c.shot('home_fresh');
 
@@ -318,7 +330,7 @@ async function runFlow(c) {
 
   // 4 · Home → 잠깐 멈춤 (bottom-nav center) → urge empty-protection honesty.
   await c.clickExact('잠깐 멈춤');
-  const onUrge = await c.has('지금 충동을 멈춰요');
+  const onUrge = await c.has('지금 멈추면'); // v13 pause-vulnerable title (was '지금 충동을 멈춰요')
   check('B04', onUrge && (await c.has('아직 보호 설정이 없어요')) && (await c.has('보호 설정 적기')));
   await scanOverflow(c, 'urge-empty-protection');
   await c.shot('urge_empty_protection');
@@ -336,8 +348,8 @@ async function runFlow(c) {
 
   // 6–7 · Hard reload keeps the app; plan persists locally across the reload.
   await c.reload();
-  check('B06', await c.waitForText('절제 시간', 6000)); // wait for re-hydration, not a fixed sleep
-  await c.click('보호 설정 적기');
+  check('B06', await c.waitForText('절제 항목', 6000)); // wait for re-hydration, not a fixed sleep
+  await c.click('보호 설정'); // v13 Home 관리 row → 보호 설정 (was urge-side '보호 설정 적기')
   check('B07', (await c.has('저장된 보호 설정')) && (await c.has(ALT)));
   await c.shot('protection_persisted');
 
@@ -374,8 +386,8 @@ async function runFlow(c) {
 
   // 13–14 · Reward → 기록 (monthly calendar); open TODAY's cell in the month grid and the
   //         day detail reads the typed writing (회고 + 약속 + 다짐) verbatim.
-  const toRecords = await c.click('최근 기록 보기');
-  check('B13', toRecords && (await c.has('하루하루 남긴 기록이에요')));
+  const toRecords = await c.click('최근 기록 보기'); // v13 reward → 월간 캘린더
+  check('B13', toRecords && (await c.has('월간 캘린더')));
   const cellClicked = await c.clickSelector('.month-cell[data-today="true"]');
   await sleep(500);
   const recHasNote = await c.has(NOTE);
@@ -393,7 +405,8 @@ async function runFlow(c) {
   //        a recordless day still reads 기록 전, and NO fake insight / 금욕 / 체크인 appears.
   //        Asserted on rendered DOM with a real record present (not a source scan).
   await c.click('닫기'); await sleep(250); // close today's detail opened in B14
-  const recogShown = (await c.has('이 달 기록한 날')) && (await c.has('지금까지 기록한 날'));
+  // v13 recognition copy: '이번 달 흐름' card → "이 달 기록 N일 · 지금까지 N일".
+  const recogShown = (await c.has('이번 달 흐름')) && (await c.has('이 달 기록')) && (await c.has('지금까지'));
   const distinctDay =
     (await c.eval(`document.querySelectorAll('.month-cell[data-has-record="true"]').length`)) >= 1;
   const reopened = await c.clickSelector('.month-cell[data-today="true"]'); await sleep(350);
@@ -420,14 +433,14 @@ async function runFlow(c) {
   // 15 · RC-2A: Home no longer carries a saved-summary card (it is a status surface). The
   //      saved record reads back on the 오늘 기록 screen itself — open it via the bottom nav
   //      and confirm the saved-state summary + the typed 회고 note.
-  await c.clickExact('오늘 기록');
+  await c.clickExact('기록'); // v13 bottom nav → 오늘 기록(CheckinScreen) saved-state (was '오늘 기록')
   check('B15', (await c.has('오늘 기록이 저장됐어요')) && (await c.has(NOTE)));
   await scanOverflow(c, 'checkin-saved');
   await c.shot('checkin_saved');
   await c.clickExact('홈');
 
   // 16 · Protection clear empties the plan honestly.
-  await c.click('보호 설정 적기');
+  await c.click('보호 설정'); // v13 Home 관리 row → 보호 설정
   await c.click('계획 비우기');
   check(
     'B16',
@@ -436,13 +449,13 @@ async function runFlow(c) {
   await c.shot('protection_cleared');
 
   // 17 · Urge returns to the no-plan empty state after the clear. The urge-unique title
-  //      '지금 충동을 멈춰요' is asserted too: '아직 보호 설정이 없어요' ALSO renders on the
+  //      '지금 멈추면' is asserted too: '아직 보호 설정이 없어요' ALSO renders on the
   //      cleared ProtectionScreen, so without it a failed nav (staying on Protection)
   //      would falsely pass B17.
-  const toUrgeEmpty = await c.clickExact('잠깐 멈춤');
+  const toUrgeEmpty = await c.click('잠깐 멈춤 열기'); // v13 protection next-action → urge
   check(
     'B17',
-    toUrgeEmpty && (await c.has('지금 충동을 멈춰요')) && (await c.has('아직 보호 설정이 없어요')) && !(await c.has(ALT)),
+    toUrgeEmpty && (await c.has('지금 멈추면')) && (await c.has('아직 보호 설정이 없어요')) && !(await c.has(ALT)),
   );
   await c.shot('urge_empty_after_clear');
 
@@ -456,7 +469,7 @@ async function runFlow(c) {
   await sleep(500);
   // RC-2A: after reset Home returns to its base status surface (timer + counters) and the
   // typed note is gone. (No first-run onboarding card to assert anymore.)
-  check('B19', (await c.has('절제 시간')) && (await c.has('절제 카운터')) && !(await c.has(NOTE)));
+  check('B19', (await c.has('절제 항목')) && !(await c.has(NOTE)));
   await scanOverflow(c, 'home-after-reset');
   await c.shot('home_after_reset');
 
@@ -469,16 +482,16 @@ async function runFlow(c) {
   const sweep = async (name, navFn) => {
     const clicked = await navFn();
     await sleep(350);
-    const left = clicked && !(await c.has('절제 시간')); // '절제 시간' is home-unique
+    const left = clicked && !(await c.has('절제 항목')); // '절제 항목' is v13 home-unique
     if (left) blobs.push(await c.text());
     else missed.push(name);
     await c.clickExact('홈');
     await sleep(200);
   };
   await sweep('urge', () => c.clickExact('잠깐 멈춤'));
-  await sweep('checkin', () => c.click('오늘 기록하기'));
-  await sweep('room', () => c.click('고양이 방 꾸미기'));
-  await sweep('protection', () => c.click('보호 설정 적기'));
+  await sweep('checkin', () => c.clickExact('오늘 기록'));
+  await sweep('room', () => c.clickExact('내 방'));
+  await sweep('protection', () => c.click('보호 설정'));
   const blob = blobs.join('\n');
   const vocabHits = FORBIDDEN_VOCAB.filter((w) => blob.includes(w));
   const claimHits = FORBIDDEN_CLAIMS.filter((w) => blob.includes(w));
@@ -491,16 +504,16 @@ async function runFlow(c) {
 
   // 23 · Route home works: leave home, tap the home nav, land back on home.
   await c.clickExact('잠깐 멈춤'); await sleep(200);
-  const awayFromHome = !(await c.has('절제 시간'));
+  const awayFromHome = !(await c.has('절제 항목'));
   await c.clickExact('홈'); await sleep(200);
-  const backHome = await c.has('절제 시간');
+  const backHome = await c.has('절제 항목');
   check('B23', awayFromHome && backHome);
 
   // 24 · Every discipline counter ticks LIVE to the second (RC-1 feedback #1). Read a
   //      counter card's elapsed text, wait past a second, read again — it must advance.
   //      This proves the seconds are real (not a frozen stamp), on the rendered DOM.
   await c.clickExact('홈'); await sleep(300);
-  const readCounter = `(() => { const el = document.querySelector('.counter-card-time'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
+  const readCounter = `(() => { const el = document.querySelector('.v13-hero-timer'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
   const tick1 = await c.eval(readCounter);
   await sleep(1500);
   const tick2 = await c.eval(readCounter);
@@ -513,7 +526,7 @@ async function runFlow(c) {
   //      read-back appears (absent before the first pet) — proving the interaction changed
   //      real state, not just played a glow. Asserts on rendered DOM, not source.
   await c.clickExact('홈'); await sleep(250);
-  const toRoom = await c.click('고양이 방 꾸미기'); await sleep(450);
+  const toRoom = await c.clickExact('내 방'); await sleep(450); // v13 bottom nav → 고양이 방(내 방)
   const beforePet = await c.has('지금까지 쓰다듬기'); // no petting yet this run → absent
   const petClicked = await c.click('쓰다듬기'); await sleep(350);
   const afterPet = await c.has('지금까지 쓰다듬기'); // count read-back now visible
@@ -532,16 +545,18 @@ async function runFlow(c) {
     const vh = window.innerHeight;
     const vw = document.documentElement.clientWidth;
     const r = el.getBoundingClientRect();
-    const spans = [...el.querySelectorAll('button > span')].map((s) => {
-      const b = s.getBoundingClientRect();
-      return { t: s.textContent.replace(/\\s+/g, ' ').trim(), bottom: b.bottom, w: b.width, vis: s.offsetParent !== null };
+    // v13 nav renders five buttons, each an indicator span (.bottom-nav-nd, empty) above a
+    // label span — so assert on the five BUTTONS (their collapsed text is the label), not span count.
+    const btns = [...el.querySelectorAll('button')];
+    const labels = btns.map((b) => b.textContent.replace(/\\s+/g, ' ').trim());
+    const wanted = ['홈', '캘린더', '기록', '미래일기', '내 방'];
+    const allPresent = wanted.every((w) => labels.includes(w));
+    const noneClipped = btns.length === 5 && btns.every((b) => {
+      const bb = b.getBoundingClientRect();
+      return b.offsetParent !== null && bb.width > 0 && bb.bottom <= vh + 1;
     });
-    const texts = spans.map((s) => s.t);
-    const wanted = ['홈', '기록', '잠깐 멈춤', '오늘 기록', '복기'];
-    const allPresent = wanted.every((w) => texts.includes(w));
-    const noneClipped = spans.length === 5 && spans.every((s) => s.vis && s.w > 0 && s.bottom <= vh + 1);
     const navInView = r.bottom <= vh + 1 && r.top >= 0 && r.width <= vw + 1;
-    return { ok: allPresent && noneClipped && navInView, allPresent, noneClipped, navInView, navBottom: Math.round(r.bottom), vh, texts };
+    return { ok: allPresent && noneClipped && navInView, allPresent, noneClipped, navInView, navBottom: Math.round(r.bottom), vh, labels };
   })()`);
   check('B26', nav.ok, nav.ok ? '' : JSON.stringify(nav));
   await c.shot('bottom_nav_visible');
@@ -550,8 +565,8 @@ async function runFlow(c) {
   //      header and a distinguishable today cell, and the ‹/› controls move to the previous
   //      month and back. Asserts on the rendered DOM (month-nav label changes then returns).
   await c.clickExact('홈'); await sleep(150);
-  await c.clickExact('기록'); await sleep(300);
-  const onCal = await c.has('하루하루 남긴 기록이에요');
+  await c.clickExact('캘린더'); await sleep(300); // v13 IA: 캘린더 tab = monthly calendar (기록 tab = writing)
+  const onCal = await c.has('월간 캘린더');
   const readMonth = `(() => { const el = document.querySelector('.month-nav-label'); return el ? el.textContent.trim() : null; })()`;
   const monthNow = await c.eval(readMonth);
   const hasWeekday = await c.eval(`(() => !!document.querySelector('.month-weekday'))()`);
@@ -568,7 +583,7 @@ async function runFlow(c) {
   //      to place it, and a placed card appears on the stage; after a HARD RELOAD the card
   //      is still there (coordinates persisted to localStorage), asserted on rendered DOM.
   await c.clickExact('홈'); await sleep(200);
-  await c.click('고양이 방 꾸미기'); await sleep(350);
+  await c.clickExact('내 방'); await sleep(350); // v13 bottom nav → 고양이 방
   await c.click('아이템 배치하기'); await sleep(300);
   const trayBefore = await c.eval(`document.querySelectorAll('.room-tray-item').length`);
   const placedBefore = await c.eval(`document.querySelectorAll('.room-card').length`);
@@ -576,7 +591,7 @@ async function runFlow(c) {
   const placedAfter = await c.eval(`document.querySelectorAll('.room-card').length`);
   await c.reload(); await sleep(400);
   await c.clickExact('홈'); await sleep(200);
-  await c.click('고양이 방 꾸미기'); await sleep(350);
+  await c.clickExact('내 방'); await sleep(350); // v13 bottom nav → 고양이 방
   await c.click('아이템 배치하기'); await sleep(300);
   const placedAfterReload = await c.eval(`document.querySelectorAll('.room-card').length`);
   const placeOk = trayBefore > 0 && placedAfter > placedBefore && placedAfterReload >= placedAfter;
@@ -608,14 +623,14 @@ async function runFlow(c) {
   await c.shot('room_snack_handoff');
 
   // 31 · RC-6 protection clarity. The 보호 설정 screen the user actually reaches (Home →
-  //      보호 설정 적기) must be HONEST about scope — it is a self-opened protection plan, NOT
+  //      보호 설정 관리 row) must be HONEST about scope — it is a self-opened protection plan, NOT
   //      an automatic or device-wide blocker — expose practical next actions to 잠깐 멈춤 and
   //      오늘 기록 through EXISTING routes, frame the real protection path as a NoF Chrome extension
   //      (browser-scoped blocking, not a toy experiment/preview), and carry NO 금욕/체크인 or fake
   //      AI/detection/medical/recovery claim. Asserted on the rendered DOM, and the 잠깐 멈춤 next
   //      action is actually clicked to prove it routes.
   await c.clickExact('홈'); await sleep(250);
-  const toProtect = await c.click('보호 설정 적기'); await sleep(350);
+  const toProtect = await c.click('보호 설정'); await sleep(350); // v13 Home 관리 row → 보호 설정
   const onProtectRc6 = await c.has('흔들리는 순간을 미리 적어둬요');
   // Honest scope: a self-opened plan, no automatic / device-wide blocking claim.
   const scopeHonest =
@@ -641,7 +656,7 @@ async function runFlow(c) {
     !(await c.has('AI')) && !(await c.has('회복 점수')) && !(await c.has('치료')) && !(await c.has('감지'));
   await c.shot('protection_clarity');
   // The 잠깐 멈춤 next action actually routes to the real urge screen.
-  const pauseRoutes = (await c.click('잠깐 멈춤 열기')) && (await c.has('지금 충동을 멈춰요'));
+  const pauseRoutes = (await c.click('잠깐 멈춤 열기')) && (await c.has('지금 멈추면'));
   const protectionClear =
     toProtect && onProtectRc6 && scopeHonest && noAutoBlockClaim && hasPauseCta &&
     hasRecordCta && chromeBlockHonest && noExperimentCopy && noForbiddenProtect &&
@@ -650,13 +665,13 @@ async function runFlow(c) {
     protectionClear ? '' : `reach:${toProtect}/${onProtectRc6} scope:${scopeHonest} noAuto:${noAutoBlockClaim} pause:${hasPauseCta}/${pauseRoutes} record:${hasRecordCta} chrome:${chromeBlockHonest} noExp:${noExperimentCopy} clean:${noForbiddenProtect}/${noFakeProtect}`);
 
   // 34 · RC-7 app↔extension connection. The user can REACH the Chrome extension connection
-  //      screen (Home → 보호 설정 적기 → 차단 테스트하기), it states the honest browser-scoped
+  //      screen (Home → 보호 설정 → 차단 테스트하기), it states the honest browser-scoped
   //      scope (this Chrome only, not device-wide / other apps), offers a REAL connection
   //      mechanism (a local 확장 ID field + 연결 확인), and — with NO real extension answering in
   //      this headless run — it must NOT claim 연결됨 (no fake link). It also offers 테스트 신호
   //      보내기 and carries no 체크인/금욕 or fake AI/medical/auto-block claim. Rendered DOM only.
   await c.clickExact('홈'); await sleep(250);
-  await c.click('보호 설정 적기'); await sleep(300);
+  await c.click('보호 설정'); await sleep(300); // v13 Home 관리 row → 보호 설정
   const toExt = await c.click('차단 테스트하기'); await sleep(400);
   const onExt = await c.has('실제 차단 테스트'); // ShieldExtensionScreen title (hangul-stable)
   // Honest scope: a NoF Chrome extension, this browser only, not device-wide / other apps.
@@ -783,7 +798,7 @@ async function runFlow(c) {
   await c.shot('shield_guided_setup');
 
   // 38 · RC-11 compressed extension setup. On the SAME extension screen (already reached via Home →
-  //      보호 설정 적기 → 차단 테스트하기), the setup is compressed into one honest 준비 → 설치 → ID
+  //      보호 설정 → 차단 테스트하기), the setup is compressed into one honest 준비 → 설치 → ID
   //      복사 → 연결 → 규칙 → 테스트 flow. It must surface the compressed setup terms, state the
   //      install KIND honestly (Chrome 웹 스토어 not yet, this Chrome only, not device-wide / other
   //      apps), keep useful 잠깐 멈춤 + 오늘 기록 exits, and — with NO real extension answering in this
@@ -821,13 +836,13 @@ async function runFlow(c) {
   //      neither landing may carry 체크인/금욕 or a fake AI/device-wide/medical/full-block claim.
   //      The blocked target is NEVER passed in the link. Asserted on rendered DOM after a real load.
   await c.goto(`${APP_URL}?from=shield&to=urge`); await sleep(500);
-  const dlUrge = await c.has('지금 충동을 멈춰요');
+  const dlUrge = await c.has('지금 멈추면'); // v13 urge title
   const dlUrgeText = await c.text();
   await c.goto(`${APP_URL}?from=shield&to=record`); await sleep(500);
   const dlRecord = (await c.has('1분 기록')) || (await c.has('오늘의 기록'));
   const dlRecordText = await c.text();
   await c.goto(`${APP_URL}?from=shield&to=bogus`); await sleep(500);
-  const dlFallback = (await c.has('절제 카운터')) && !(await c.has('지금 충동을 멈춰요'));
+  const dlFallback = (await c.has('절제 항목')) && !(await c.has('지금 멈추면'));
   const dlBlob = `${dlUrgeText}\n${dlRecordText}`;
   const dlNoForbidden = !dlBlob.includes('체크인') && !dlBlob.includes('금욕');
   const dlNoFake = ['자동 차단', 'AI', '기기 전체 보호', '모든 앱 차단', '치료', '회복 점수', '성공 보장']

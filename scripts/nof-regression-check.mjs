@@ -2155,11 +2155,16 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 33 behaviors,
 
   // (c) Must NOT reintroduce the brittle latin-boundary "NoF는 …" innerText assertion
   //     (freeze-audit mistake #1: text-transform:uppercase makes the substring never
-  //     match). RC-2A removed the first-run onboarding card from Home, so the harness no
-  //     longer asserts its "이렇게 써요" phrase — it now asserts the Home status surface
-  //     (절제 카운터) on a fresh mount instead.
+  //     match). The v13 Final Handoff Home is the ink-hero status surface: it mounts as
+  //     .v13-home and renders the 절제 항목 counter list (.v13-item-row rows). The pre-v13
+  //     home strings (절제 시간 / 절제 카운터) moved to a confirm sheet / DisciplineScreen, so
+  //     the harness now keys Home on .v13-home + 절제 항목 on a fresh mount instead.
   assert(!qa.includes('NoF는'), 'QA flow must not assert the brittle "NoF는 …" innerText');
-  assert(/check\(\s*'B02'\s*,\s*await c\.has\('절제 카운터'\)/.test(qa), 'QA flow must assert the Home counter list (절제 카운터) on a fresh mount');
+  assert(/check\(\s*'B01'\s*,[^\n]*\.v13-home/.test(qa), 'QA flow must assert the v13 Home mounts (.v13-home)');
+  assert(
+    /check\(\s*'B02'\s*,[^\n]*c\.has\('절제 항목'\)/.test(qa) && /check\(\s*'B02'\s*,[^\n]*\.v13-item-row/.test(qa),
+    'QA flow must assert the v13 Home counter list (절제 항목 / .v13-item-row) on a fresh mount',
+  );
 
   // (d) Forbidden user-facing copy is actually checked (금욕 vocabulary + fake-claim sweep).
   assert(qa.includes('FORBIDDEN_VOCAB') && qa.includes('금욕'), 'QA flow must sweep forbidden vocabulary (금욕)');
@@ -2620,8 +2625,8 @@ check('RC-5 records usefulness is verified by a real browser behavior (B32)', ()
   // The B32 assertion must actually probe the usefulness signals (not a stub).
   assert(qa.includes('data-has-record="true"'), 'B32 does not assert the saved-record day is visually distinct');
   assert(
-    qa.includes('이 달 기록한 날') || qa.includes('지금까지 기록한 날'),
-    'B32 does not assert the real recorded-day recognition',
+    qa.includes('이번 달 흐름') || qa.includes('이 달 기록'),
+    'B32 does not assert the real recorded-day recognition (v13: 이번 달 흐름 / 이 달 기록)',
   );
   assert(
     qa.includes('오늘 기록으로 이어가기') || qa.includes('보호 계획'),
