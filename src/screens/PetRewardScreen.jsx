@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from 'react';
+import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
 import PetRoomDecorator from '../components/PetRoomDecorator.jsx';
 import PetSceneViewer from '../components/PetSceneViewer.jsx';
@@ -58,6 +58,34 @@ const NO_SNACK_MESSAGE = '보유한 간식이 없어요. 오늘의 보상으로 
 // line — never a gaze / motion / purr / approach claim (the cat stays a static composite).
 const PET_MESSAGE = '고양이 곁에서 잠깐 따뜻한 시간을 보냈어요.';
 
+// 3D room vertical slice — a LOCAL experiment surface only. The default stage
+// stays the 2.5D PetRoomEditor; the real-perspective PetRoom3D renders solely
+// when the debug flag is present (?room3d=1 or localStorage nof.room3d = '1'),
+// read once on first paint like the ?screen= deep link. The three.js scene is
+// code-split behind this lazy import so the flag-off bundle cost stays near
+// zero, and a failed chunk load (or missing WebGL) falls back to the 2.5D room.
+const PetRoom3D = lazy(() =>
+  import('../components/pet-room-3d/PetRoom3D.jsx').catch(() => ({ default: Room3DLoadFallback })),
+);
+
+function Room3DLoadFallback({ onUnsupported }) {
+  useEffect(() => {
+    onUnsupported?.();
+  }, [onUnsupported]);
+  return null;
+}
+
+function room3dRequested() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('room3d') === '1') return true;
+    return window.localStorage.getItem('nof.room3d') === '1';
+  } catch {
+    return false;
+  }
+}
+
 // Character growth v1 — DERIVED warmth labels read from LOCAL records (today's
 // check-in + the abstinence streak). This is a calm summary, NOT a pet evolution
 // level and NOT a live reaction: the cat stays a static composite and nothing here
@@ -101,6 +129,10 @@ export default function PetRewardScreen({
   // 방 꾸미기 — explicit opt-in editing mode (RC-2B). Owned items are tapped or
   // dragged from a tray onto the room as honest framed cards; coordinates persist.
   const [placementMode, setPlacementMode] = useState(false);
+  // 3D experiment flag — one-shot read on mount; room3dBlocked flips true when
+  // WebGL (or the lazy chunk) is unavailable so the 2.5D stage always shows.
+  const [room3d] = useState(room3dRequested);
+  const [room3dBlocked, setRoom3dBlocked] = useState(false);
   const [catMotion, setCatMotion] = useState('idle');
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
@@ -309,35 +341,60 @@ export default function PetRewardScreen({
         </section>
       ) : null}
 
+      {/* 3D experiment stage — mounted OUTSIDE the placementMode branch so ONE
+          canvas (and one camera pose) serves both 감상 and 꾸미기. Toggling
+          아이템 배치하기 only switches PetRoom3D's edit overlay (tray / hints /
+          완료) around the same live scene; the 2.5D decorator below stays the
+          editing surface for flag-off and WebGL-fallback sessions only. */}
+      {room3d && !room3dBlocked ? (
+        <Suspense fallback={<div className="pet-stage pet-room-3d" aria-hidden="true" />}>
+          <PetRoom3D
+            placements={placements}
+            ownedDecor={ownedDecor}
+            editing={placementMode}
+            label={placementMode ? '3D 고양이 방 꾸미기' : '3D 고양이 방'}
+            onPlace={onPlaceItemAt}
+            onMove={onMoveItem}
+            onRemove={onRemovePlacement}
+            onDone={() => setPlacementMode(false)}
+            onUnsupported={() => setRoom3dBlocked(true)}
+          />
+        </Suspense>
+      ) : null}
+
       {placementMode ? (
-        <PetRoomDecorator
-          editable
-          theme={activeRoomTheme}
-          placements={placements}
-          ownedDecor={ownedDecor}
-          reacting={sceneReacting}
-          onPlace={onPlaceItemAt}
-          onMove={onMoveItem}
-          onRemove={onRemovePlacement}
-          onDone={() => setPlacementMode(false)}
-          label="고양이 방 꾸미기"
-        />
-      ) : (
-        <>
-          <PetRoomEditor
+        room3d && !room3dBlocked ? null : (
+          <PetRoomDecorator
+            editable
             theme={activeRoomTheme}
             placements={placements}
-            tone="bright"
-            catMotion={catMotion}
-            selectedId={selectedId}
-            onSelect={setSelectedId}
-            onMove={onMoveItem}
-            onPlaceAt={onPlaceItemAt}
-            onCatTap={handleCatTap}
-            sceneMode={sceneMode}
+            ownedDecor={ownedDecor}
             reacting={sceneReacting}
-            label="지금 꾸미는 고양이 방"
+            onPlace={onPlaceItemAt}
+            onMove={onMoveItem}
+            onRemove={onRemovePlacement}
+            onDone={() => setPlacementMode(false)}
+            label="고양이 방 꾸미기"
           />
+        )
+      ) : (
+        <>
+          {room3d && !room3dBlocked ? null : (
+            <PetRoomEditor
+              theme={activeRoomTheme}
+              placements={placements}
+              tone="bright"
+              catMotion={catMotion}
+              selectedId={selectedId}
+              onSelect={setSelectedId}
+              onMove={onMoveItem}
+              onPlaceAt={onPlaceItemAt}
+              onCatTap={handleCatTap}
+              sceneMode={sceneMode}
+              reacting={sceneReacting}
+              label="지금 꾸미는 고양이 방"
+            />
+          )}
 
           {canControlSelected ? (
             <div className="room-select-bar">

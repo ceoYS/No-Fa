@@ -2015,7 +2015,11 @@ button.room-token:active {
   aspect-ratio: 4 / 3;
   border-radius: var(--r-lg);
   overflow: hidden;
-  border: 1px solid var(--border-soft);
+  /* same premium frame as .pet-room--scene so 감상 ↔ 편집 stay one warm room */
+  border: 1px solid rgba(245, 164, 90, 0.22);
+  box-shadow:
+    inset 0 1px 0 rgba(255, 224, 177, 0.09),
+    0 22px 46px -18px rgba(0, 0, 0, 0.72);
   touch-action: none;
   background: linear-gradient(180deg, #110d0a 0%, #050302 100%);
 }
@@ -4463,4 +4467,35 @@ textarea.sheet-input {
   background: var(--ink-900);
   border-color: var(--ink-900);
   color: #f4f6f7;
+}
+
+/* ── 3D pet room (?room3d=1 experiment only) ─────────────────────────────
+ * Reuses the .pet-stage frame (5:4, rounded, ember gradient backdrop) so the
+ * 3D canvas sits in exactly the same layout slot as the 2.5D stage. The
+ * gradient shows through until the first WebGL frame paints. One canvas
+ * serves both 감상 and 꾸미기 — edit mode only tints the frame. */
+.pet-room-3d {
+  display: block;
+}
+
+.pet-room-3d canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  cursor: grab;
+}
+
+.pet-room-3d canvas:active {
+  cursor: grabbing;
+}
+
+.pet-room-3d[data-editing] {
+  border-color: rgba(232, 176, 106, 0.4);
+}
+
+/* armed tray item — the next floor tap places this one */
+.room-tray-item[data-selected='true'] {
+  border-color: rgba(232, 176, 106, 0.75);
+  background: rgba(185, 107, 42, 0.16);
 }

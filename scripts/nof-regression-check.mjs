@@ -3554,6 +3554,97 @@ check('v13 final handoff shell: palette, nav, structure, honesty labels pinned',
   }
 });
 
+// 110 — Experimental 3D pet room (?room3d=1) product contract. The 3D stage is an
+// OPT-IN experiment layered over the finished 2.5D room, so this pins the deal it
+// shipped under: three.js loads only through the flag-gated lazy code-split; flag-off
+// AND WebGL-failure sessions keep the LATEST 2.5D stage (PetRoomEditor 감상 +
+// PetRoomDecorator 편집 with the scene-depth/scene-glow polish — never a stale plate);
+// one PetRoom3D mount serves 감상 and 꾸미기 alike (same canvas, edit is a prop);
+// 3D placement writes through the SAME normalized placement handlers the 2.5D room
+// persists; item name labels stay an edit-mode affordance (the 감상 scene is one
+// finished composite, no labelled cards); and while the cat art is pending no frame
+// set / sprite is force-marked ready and no cat animation machinery ships.
+check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contract', () => {
+  const pkg = JSON.parse(read('package.json'));
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  const room3d = read('src/components/pet-room-3d/PetRoom3D.jsx');
+  const domain = read('src/components/pet-room-3d/roomDomain.js');
+
+  // (a) three is a real dependency, but reaches the bundle ONLY via the lazy code-split.
+  assert(typeof pkg.dependencies?.three === 'string', 'package.json lost the three dependency');
+  assert(
+    /lazy\(\s*\(\)\s*=>\s*import\('\.\.\/components\/pet-room-3d\/PetRoom3D\.jsx'\)/.test(screen),
+    'PetRoom3D is not loaded through a lazy(() => import(…)) code-split',
+  );
+  assert(
+    !/^import\s+.*PetRoom3D.*from/m.test(screen),
+    'PetRoom3D is statically imported (this kills the code-split and taxes flag-off loads)',
+  );
+
+  // (b) the experiment stays an explicit opt-in flag (?room3d=1 or nof.room3d).
+  assert(screen.includes("get('room3d') === '1'"), 'the ?room3d=1 query flag read is gone');
+  assert(screen.includes("'nof.room3d'"), 'the nof.room3d localStorage flag read is gone');
+
+  // (c) flag OFF keeps the latest 2.5D stage, and WebGL/chunk failure routes to the
+  //     SAME stage: onUnsupported must flip the room3dBlocked gate, nothing else.
+  assert(screen.includes('room3d && !room3dBlocked'), 'the room3d && !room3dBlocked gate is gone');
+  assert(screen.includes('<PetRoomEditor'), 'flag-off 감상 no longer renders PetRoomEditor');
+  assert(screen.includes('<PetRoomDecorator'), 'flag-off 편집 no longer renders PetRoomDecorator');
+  assert(
+    /onUnsupported=\{\(\)\s*=>\s*setRoom3dBlocked\(true\)\}/.test(screen),
+    'the WebGL/chunk failure path no longer falls back through onUnsupported → room3dBlocked',
+  );
+
+  // (d) ONE PetRoom3D mount serves both 감상 and 꾸미기 — the same canvas survives the
+  //     mode toggle because editing arrives as a prop, not as a second mount.
+  assert(
+    (screen.match(/<PetRoom3D\b/g) ?? []).length === 1,
+    'PetRoom3D must be mounted exactly once (one canvas across 감상↔편집)',
+  );
+  assert(/editing=\{placementMode\}/.test(screen), 'PetRoom3D no longer receives editing={placementMode}');
+
+  // (e) 3D placement reuses the normalized 2.5D persistence: the screen hands
+  //     PetRoom3D the same onPlaceItemAt/onMoveItem handlers, and the 3D scene maps
+  //     world hits back through worldToPlacement before calling them.
+  assert(
+    /<PetRoom3D\b[\s\S]*?onPlace=\{onPlaceItemAt\}[\s\S]*?onMove=\{onMoveItem\}[\s\S]*?\/>/.test(screen),
+    'PetRoom3D no longer receives the shared onPlaceItemAt/onMoveItem persistence handlers',
+  );
+  assert(room3d.includes('worldToPlacement'), 'PetRoom3D lost the worldToPlacement inverse mapping');
+  assert(domain.includes('export function worldToPlacement'), 'roomDomain no longer exports worldToPlacement');
+
+  // (f) the 2.5D 편집 stage carries the same scene lighting as the 감상 stage, so a
+  //     fallback session never drops to a flat pre-polish plate.
+  assert(dec.includes('scene-depth'), 'PetRoomDecorator lost the scene-depth lighting layer');
+  assert(dec.includes('scene-glow'), 'PetRoomDecorator lost the scene-glow lighting layer');
+
+  // (g) item name labels are an EDIT affordance: the decorator names its cards, the
+  //     감상 scene stays one finished composite with a caption and no labelled cards.
+  assert(dec.includes('room-card-name'), 'PetRoomDecorator cards lost their honest name labels');
+  assert(editor.includes('room-scene-note'), 'the 감상 scene lost its composite caption');
+  assert(
+    !editor.includes('room-card-name'),
+    'the 감상 stage renders labelled cards (names must stay edit-mode only)',
+  );
+
+  // (h) cat honesty: readiness flags are never force-raised and no animation
+  //     machinery ships while the transparent cat frames are pending.
+  assert(domain.includes('frameSetReady: false'), 'roomDomain no longer seeds frameSetReady: false');
+  const srcFiles = walk(join(ROOT, 'src'), ['.js', '.jsx']);
+  for (const f of srcFiles) {
+    const body = readFileSync(f, 'utf8');
+    assert(
+      !/frameSetReady\s*[:=]\s*true/.test(body) && !/spriteReady\s*[:=]\s*true/.test(body),
+      `${rel(f)} force-marks a cat/sprite frame set ready`,
+    );
+    if (f.includes('pet-room-3d')) {
+      assert(!body.includes('AnimationMixer'), `${rel(f)} ships cat animation machinery ahead of approved frames`);
+    }
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

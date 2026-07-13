@@ -166,7 +166,15 @@ export default function PetRoomDecorator({
         aria-label={label ?? '고양이 방'}
       >
         {roomSrc ? (
-          <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />
+          <>
+            <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />
+            {/* Same scene-depth / scene-glow lighting as the 감상 stage so entering
+                edit mode keeps the warm premium tone instead of dropping to a flat
+                plate. Both layers are pointer-events:none, sit below the placed
+                cards (z 1 / 3 vs card z ≥ 4), and add no motion of the scene. */}
+            <div className="scene-depth" aria-hidden="true" />
+            <div className="scene-glow" aria-hidden="true" />
+          </>
         ) : null}
 
         {placements.map((p) => {
