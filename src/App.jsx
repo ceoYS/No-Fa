@@ -752,6 +752,13 @@ export default function App() {
     setPlacements((prev) => prev.filter((p) => p.itemId !== itemId));
   };
 
+  // 아이템 돌리기 (Phase B-3, 3D room): store an absolute stepped rotation in
+  // degrees on the existing placement record. The 2.5D editor ignores `rot`,
+  // so the schema stays backward-compatible both ways.
+  const rotatePlacement = (itemId, rot) => {
+    setPlacements((prev) => prev.map((p) => (p.itemId === itemId ? { ...p, rot } : p)));
+  };
+
   // 방 테마 바꾸기 (§0.6.9).
   const chooseRoomTheme = (id) => {
     if (!ownedItems.includes(id) && id !== DEFAULT_THEME) return;
@@ -860,6 +867,7 @@ export default function App() {
             onPlaceItemAt={placeItemAt}
             onMoveItem={placeItemAt}
             onRemovePlacement={removePlacement}
+            onRotatePlacement={rotatePlacement}
             onChooseRoomTheme={chooseRoomTheme}
             onFeedSnack={feedSnack}
             onPetPet={petPet}

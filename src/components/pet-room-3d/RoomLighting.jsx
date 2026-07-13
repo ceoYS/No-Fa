@@ -18,8 +18,10 @@ export function buildRoomLighting(THREE) {
   const group = new THREE.Group();
   group.name = 'room-lighting';
 
-  group.add(new THREE.AmbientLight('#3d3126', 0.8));
-  group.add(new THREE.HemisphereLight('#2e2419', '#4a3728', 0.65));
+  // B-3: the walls moved from deep brown to warm ivory, so they now bounce
+  // real light — the flat fills back off a step to keep the ember mood.
+  group.add(new THREE.AmbientLight('#3d3126', 0.66));
+  group.add(new THREE.HemisphereLight('#2e2419', '#4a3728', 0.6));
 
   // Amber key light from the lamp corner — the shadow caster.
   const key = new THREE.SpotLight('#ffc08a', 22);
@@ -51,10 +53,17 @@ export function buildRoomLighting(THREE) {
   group.add(window.target);
 
   // Soft neutral-warm corner fill opposite the lamp, so the far quadrant
-  // keeps readable depth instead of dropping to pure black.
-  const fill = new THREE.PointLight('#a98963', 1.6, 6.5, 2);
+  // keeps readable depth instead of dropping to pure black (B-3: nudged up —
+  // at min-zoom/high-pitch poses the far corner was crushing to near-black).
+  const fill = new THREE.PointLight('#a98963', 2.2, 7, 2);
   fill.position.set(-1.15, 2.15, 1.05);
   group.add(fill);
+
+  // Faint second fill low over the back-west corner for the same reason; no
+  // shadows, tiny reach — it only keeps the darkest floor readable.
+  const cornerFill = new THREE.PointLight('#8d7458', 1.1, 4.5, 2);
+  cornerFill.position.set(-1.2, 1.5, -0.9);
+  group.add(cornerFill);
 
   return { group };
 }

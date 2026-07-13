@@ -1,13 +1,18 @@
-# Pet Room 3D — Asset Contract (v1)
+# Pet Room 3D — Asset Contract (v2)
 
-이 문서는 `?room3d=1` 3D vertical slice가 "진짜 살아있는 방"이 되기 위해 필요한
-아트 에셋의 계약이다. **이 계약이 채워지기 전까지 코드는 어떤 고양이/아이템
-비주얼도 지어내지 않는다** — 슬라이스는 자리(anchor)와 그림자, 자리 표시
-슬롯만 렌더한다. 임시 그림을 생성해 제품 UI에 넣는 것은 금지.
+이 문서는 `?room3d=1` 3D 슬라이스가 승인 아트로 완성되기 위해 필요한 에셋의
+계약이다. 승인 아트가 없는 동안 코드는 **정직한 임시 3D 모형**만 사용한다 —
+아이템은 프록시(`itemProxies.js`), 고양이는 프리미티브 기반 절차 리그
+(`catRig.js`, Phase C). 임시 모형은 "임시 3D 모형"으로만 소개하고, 완성
+캐릭터 아트라고 주장하지 않는다. **임시 그림(이미지)을 생성해 제품 UI에 넣는
+것은 여전히 금지** — 모형은 지오메트리이고, 2D 이미지/빌보드/스프라이트로
+고양이를 흉내 내지 않는다.
 
-관련 코드: `roomDomain.js` (좌표·anchor·애니메이션 상태 인터페이스),
-`PetRoom3D.jsx` (`cat-anchor` mount + contact shadow), `../../constants/petAssets.js`
-(등록소 — `spriteReady`/`frameSetReady`는 사람이 승인할 때만 올린다).
+관련 코드: `roomDomain.js` (좌표·anchor·2D 프레임 상태 인터페이스·mood 파생),
+`PetRoom3D.jsx` (`cat-anchor` mount + contact shadow + 리그 구동),
+`catRig.js` (절차 고양이 리그 — 승인 리그 에셋의 단일 교체 지점),
+`../../constants/petAssets.js` (등록소 — `spriteReady`/`frameSetReady`는
+사람이 승인할 때만 올린다).
 
 ## 1. Room plate / texture set (둘 중 하나)
 
@@ -61,4 +66,39 @@
 2. `petAssets.js` 경로 등록 (`present: true`), 상태별 프레임 매핑 추가.
 3. `roomDomain.js` `createCatAnimationState()`의 `frameSetReady`를 올리는
    커밋은 반드시 에셋 커밋과 함께.
-4. 그때까지 UI 카피는 "자리 표시" 이상을 약속하지 않는다.
+4. 그때까지 2.5D UI 카피는 "자리 표시" 이상을 약속하지 않는다.
+
+## 6. 3D cat model (rigged glb — 절차 리그의 승격 경로)
+
+Phase C의 절차 리그(`catRig.js`)는 정직한 현재 구현이다. 승인된 캐릭터
+모델이 오면 `buildCatRig()` 내부만 교체한다 — 상위의 상호작용·mood·사운드
+경로는 계약이 같으므로 그대로 남는다.
+
+| 항목 | 요구 |
+| --- | --- |
+| 포맷 | glTF 2.0 단일 `.glb` (텍스처 임베드), ≤ 1.5MB |
+| 단위/축 | meter, Y-up, 원점 = 바닥 접점 중앙, 정면 = +z |
+| 스케일 | 앉은 자세 전고 0.30–0.42m (침대 안착 기준) |
+| 재질 | PBR baseColor(+선택 normal) ≤ 1024², unlit 금지, 외부 URL 텍스처 금지 |
+| 리그/클립 | 선택. 포함 시 클립 이름 `Idle` / `Blink` / `EarTwitch` / `TailSway` / `React` |
+| 라이선스 | 상용 가능 + 출처 문서화, 사람 승인 커밋과 함께 등록 |
+
+주의: three의 클립 재생기(`AnimationMixer`)는 가드 #110(h)이 pet-room-3d
+디렉터리에서 막고 있다. 이는 "승인 에셋 없이 클립 기계부터 들어오는 것"을
+막는 장치이므로, glb 클립 재생은 **에셋 커밋 + 가드 #110(h) 완화 + QA를 한
+커밋 묶음**으로만 도입한다. 그 전까지 리그 모션은 `catRig.js`의 transform
+애니메이션(호흡·눈꺼풀·귀·tail 관절)만 사용한다.
+
+## 7. 사운드 (Phase C-4 — 파일 대기 중)
+
+경로·게이트는 `src/hooks/usePetSound.js` 계약 그대로: 실제 파일이 존재해야
+재생되고(HEAD probe + content-type 검사), 사용자 제스처 이후에만 호출되며,
+없으면 조용한 no-op이다. 필요한 파일:
+
+| 파일 | 내용 | 스펙 |
+| --- | --- | --- |
+| `public/assets/sounds/cat_meow_soft.mp3` | 짧고 부드러운 울음 1회 | ≤ 1.2s, ≤ 80KB, 잔잔한 레벨(과도한 피크 금지) |
+| `public/assets/sounds/cat_purr_soft.mp3` | 낮고 고른 반응음 | 1.5–2.5s, ≤ 120KB, 페이드 인/아웃 |
+
+라이선스 상용 가능 + 출처 문서화. 파일이 실제로 붙기 전까지 UI는 소리를
+약속하지 않는다(무음 fallback + 소리 토글 숨김, 가드 #26/#33).

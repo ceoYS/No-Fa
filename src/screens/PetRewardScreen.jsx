@@ -26,6 +26,9 @@ import {
   SHOP_CATEGORIES,
   catalogForCategory,
 } from '../constants/roomItems.js';
+// Pure math module (no three.js inside) — safe to import statically without
+// touching the lazy 3D chunk. Supplies the cat's idle-mood derivation.
+import { deriveCatMood } from '../components/pet-room-3d/roomDomain.js';
 
 /*
  * 고양이 방 — the cosmetic reward loop as a visual room editor (PRD §0.6.9).
@@ -86,10 +89,25 @@ function room3dRequested() {
   }
 }
 
+// Separate DEBUG flag for the 3D stage's dev/QA caption (?room3ddebug=1 or
+// localStorage nof.room3dDebug = '1'). The experiment flag alone shows the
+// product surface WITHOUT development wording — dev captions are not final
+// product copy, so they render only when this second flag asks for them.
+function room3dDebugRequested() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('room3ddebug') === '1') return true;
+    return window.localStorage.getItem('nof.room3dDebug') === '1';
+  } catch {
+    return false;
+  }
+}
+
 // Character growth v1 — DERIVED warmth labels read from LOCAL records (today's
 // check-in + the abstinence streak). This is a calm summary, NOT a pet evolution
-// level and NOT a live reaction: the cat stays a static composite and nothing here
-// animates or grows by itself. The card's disclosure line states this plainly.
+// level and NOT a live reaction. The default 2.5D cat stays a static composite;
+// the optional 3D rig has its own explicitly gated transform motion.
 const ROOM_WARMTH = {
   base: { label: '기본', tone: 'pill', note: '아직 오늘 기록 전이에요. 오늘 기록을 남기면 방이 조금 더 따뜻해져요.' },
   warmer: { label: '조금 따뜻해짐', tone: 'pill-ember', note: '오늘 기록을 남겨서 방이 조금 더 따뜻해졌어요.' },
@@ -115,6 +133,7 @@ export default function PetRewardScreen({
   onPlaceItemAt,
   onMoveItem,
   onRemovePlacement,
+  onRotatePlacement,
   onChooseRoomTheme,
   onFeedSnack,
   onPetPet,
@@ -132,6 +151,7 @@ export default function PetRewardScreen({
   // 3D experiment flag — one-shot read on mount; room3dBlocked flips true when
   // WebGL (or the lazy chunk) is unavailable so the 2.5D stage always shows.
   const [room3d] = useState(room3dRequested);
+  const [room3dDebug] = useState(room3dDebugRequested);
   const [room3dBlocked, setRoom3dBlocked] = useState(false);
   const [catMotion, setCatMotion] = useState('idle');
   const [tapMsg, setTapMsg] = useState(null);
@@ -193,6 +213,14 @@ export default function PetRewardScreen({
   const checkinDoneToday = todayRecord?.checkin != null;
   const warmthLevel = !checkinDoneToday ? 'base' : streakDays > 0 ? 'sustained' : 'warmer';
   const warmth = ROOM_WARMTH[warmthLevel];
+  // 3D cat idle mood — derived from the SAME local signals as the warmth
+  // label (today's check-in, the streak) plus the clock. It only tunes the
+  // rig's idle pacing (breath/blink/rest); it is never an emotion claim.
+  const catRoomMood = deriveCatMood({
+    checkinDone: checkinDoneToday,
+    streakDays,
+    hour: new Date().getHours(),
+  });
   // Next room state the user can honestly reach: the cheapest unowned theme, priced
   // in the same earned 잔불 조각 (no new currency, no random unlock).
   const nextRoom = ROOM_THEMES.filter((t) => t.cost > 0 && !ownedItems.includes(t.id)).sort(
@@ -243,7 +271,8 @@ export default function PetRewardScreen({
 
   // 쓰다듬기 (놀아주기): record the affection (App stamps a day-scoped count) and answer
   // with a VISIBLE cue — the affection token rises + the scene warms — plus a calm,
-  // R-8-safe line. No motion / purr / food claim; the static cat never reacts on its own.
+  // R-8-safe line. No motion / purr / food claim; the default 2.5D cat never
+  // reacts on its own (the optional 3D rig answers only this direct gesture).
   const handlePet = () => {
     onPetPet?.();
     playSound('purr'); // gesture-triggered, silent until a real audio file is wired
@@ -256,6 +285,10 @@ export default function PetRewardScreen({
     triggerMotion('happy', 1200);
   };
 
+  // Cat tap — reached from the 2.5D stage's scene tap AND, in the 3D
+  // experiment, from a direct tap on the cat rig (PetRoom3D routes its cat
+  // gestures back through these same handlers, so sound stays gesture-gated
+  // in one place).
   const handleCatTap = () => {
     setTapMsg(TAP_MESSAGES[tapCount.current % TAP_MESSAGES.length]);
     tapCount.current += 1;
@@ -353,8 +386,13 @@ export default function PetRewardScreen({
             ownedDecor={ownedDecor}
             editing={placementMode}
             label={placementMode ? '3D 고양이 방 꾸미기' : '3D 고양이 방'}
+            showDevNote={room3dDebug}
+            mood={catRoomMood}
+            onCatTap={handleCatTap}
+            onCatPet={handlePet}
             onPlace={onPlaceItemAt}
             onMove={onMoveItem}
+            onRotate={onRotatePlacement}
             onRemove={onRemovePlacement}
             onDone={() => setPlacementMode(false)}
             onUnsupported={() => setRoom3dBlocked(true)}

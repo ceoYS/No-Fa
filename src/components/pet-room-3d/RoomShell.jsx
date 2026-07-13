@@ -9,9 +9,9 @@
  * full horizontal orbit never shows a wall back or an empty void seam.
  *
  * All surface detail is procedural CanvasTexture work (roomTextures.js) — no
- * external texture URLs, no bundled image assets. The cat bed is deliberately
- * EMPTY: it marks the cat anchor as a natural resting spot without fabricating
- * any cat visual (see ASSET_CONTRACT.md).
+ * external texture URLs, no bundled image assets. The cat bed itself stays
+ * plain furniture; the cat resting on it is the separate procedural rig
+ * (catRig.js, mounted by PetRoom3D at the cat anchor — see ASSET_CONTRACT.md).
  *
  * Plain builder functions (no react wrapper): the caller owns the scene graph
  * and the dispose pass covers every geometry/material/texture created here.
@@ -25,9 +25,12 @@ import {
   makeNightWindowTexture,
 } from './roomTextures.js';
 
+// B-3 separation palette: walls warm ivory/taupe (light), floor dark walnut,
+// rug muted terracotta, fixed furniture dark wood, scenery cushion warm beige.
+// Placeable item proxies (itemProxies.js) sit one value step lighter again.
 const WOOD_DARK = '#241812';
 const WOOD_MID = '#43301f';
-const WOOD_WARM = '#4a3323';
+const WOOD_WARM = '#3f2c1e';
 const FABRIC_BED = '#6d4c34';
 const FABRIC_BED_RIM = '#6d4f3a';
 const FABRIC_BED_PAD = '#5c412d';
@@ -64,7 +67,7 @@ export function buildRoomShell(THREE, shadowTex) {
   const floorTex = makeWoodFloorTexture(THREE);
   const floor = new THREE.Mesh(
     new THREE.PlaneGeometry(width, depth),
-    mat('#9b8570', { map: floorTex, roughness: 0.82 }),
+    mat('#83705f', { map: floorTex, roughness: 0.82 }),
   );
   floor.rotation.x = -Math.PI / 2;
   floor.receiveShadow = true;
@@ -73,7 +76,7 @@ export function buildRoomShell(THREE, shadowTex) {
   // ── walls (one group per side, cutaway metadata attached) ───────────────
   const plasterTex = makePlasterTexture(THREE);
   const wallMat = () =>
-    mat('#c9b298', { map: plasterTex, roughness: 0.97, side: THREE.DoubleSide });
+    mat('#ded2c0', { map: plasterTex, roughness: 0.97, side: THREE.DoubleSide });
   const slabT = 0.09;
   const bandH = 0.12;
   const boardH = 0.1;
@@ -95,10 +98,15 @@ export function buildRoomShell(THREE, shadowTex) {
     slab.receiveShadow = true;
     wg.add(slab);
 
-    // inner-face offset for trim pieces (baseboard, top band, cap)
+    // Inner-face offset for trim pieces (baseboard, top band): the trim sits
+    // just inside its OWN wall, i.e. pushed toward the wall along its outward
+    // normal. B-3 fix: the sign was inverted, which attached every wall's
+    // trim to the OPPOSITE side of the room — so a VISIBLE far wall carried a
+    // floating dark band across the near (cutaway) edge, the reported
+    // black-band artifact at high pitch / close zoom.
     const n = def.normal;
-    const innerX = def.axis === 'z' ? -n[0] * (halfW - 0.025) : 0;
-    const innerZ = def.axis === 'x' ? -n[2] * (halfD - 0.025) : 0;
+    const innerX = def.axis === 'z' ? n[0] * (halfW - 0.025) : 0;
+    const innerZ = def.axis === 'x' ? n[2] * (halfD - 0.025) : 0;
     const trimSize = def.axis === 'x' ? [def.innerLen, 0, 0.05] : [0.05, 0, def.innerLen];
 
     const board = new THREE.Mesh(
@@ -114,14 +122,14 @@ export function buildRoomShell(THREE, shadowTex) {
     // the scene.
     const band = new THREE.Mesh(
       new THREE.BoxGeometry(trimSize[0] || 0.07, bandH, trimSize[2] === 0.05 ? 0.07 : trimSize[2] || 0.07),
-      mat('#35251a', { roughness: 0.85 }),
+      mat('#4a3b2c', { roughness: 0.85 }),
     );
     band.position.set(innerX, height - bandH / 2, innerZ);
     wg.add(band);
 
     const cap = new THREE.Mesh(
       new THREE.BoxGeometry(def.size[0] + 0.02, 0.05, def.size[2] + 0.02),
-      mat('#2b1d13', { roughness: 0.9 }),
+      mat('#3a2d21', { roughness: 0.9 }),
     );
     cap.position.set(def.pos[0], height + 0.025, def.pos[2]);
     wg.add(cap);
@@ -261,14 +269,14 @@ export function buildRoomShell(THREE, shadowTex) {
   // ── round rug under the room's heart ─────────────────────────────────────
   const rug = new THREE.Mesh(
     new THREE.CircleGeometry(0.85, 56),
-    mat('#9b8570', { map: makeRugTexture(THREE), roughness: 0.98, transparent: true }),
+    mat('#a89584', { map: makeRugTexture(THREE), roughness: 0.98, transparent: true }),
   );
   rug.rotation.x = -Math.PI / 2;
   rug.position.set(-0.12, 0.006, 0.42);
   rug.receiveShadow = true;
   group.add(rug);
 
-  // ── empty cat bed at the cat anchor — a natural resting spot, no cat art ─
+  // ── cat bed at the cat anchor — the rig (catRig.js) rests on this pad ────
   {
     const { x, z } = CAT_ANCHOR.position;
     const base = solid(new THREE.Mesh(new THREE.CylinderGeometry(0.33, 0.36, 0.07, 32), mat(FABRIC_BED, { roughness: 1 })));
@@ -283,10 +291,10 @@ export function buildRoomShell(THREE, shadowTex) {
     group.add(base, rim, pad);
   }
 
-  // ── floor cushion by the east wall ───────────────────────────────────────
+  // ── floor cushion by the east wall — warm beige, reads soft against walnut
   {
     const { x, z } = SCENERY.cushion;
-    const body = solid(new THREE.Mesh(new RoundedBoxGeometry(0.44, 0.13, 0.38, 4, 0.055), mat('#57402e', { roughness: 1 })));
+    const body = solid(new THREE.Mesh(new RoundedBoxGeometry(0.44, 0.13, 0.38, 4, 0.055), mat('#7a6248', { roughness: 1 })));
     body.position.set(x, 0.065, z);
     group.add(body, ground(0.3, x, z, 0.55));
   }

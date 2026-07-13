@@ -3562,8 +3562,9 @@ check('v13 final handoff shell: palette, nav, structure, honesty labels pinned',
 // one PetRoom3D mount serves 감상 and 꾸미기 alike (same canvas, edit is a prop);
 // 3D placement writes through the SAME normalized placement handlers the 2.5D room
 // persists; item name labels stay an edit-mode affordance (the 감상 scene is one
-// finished composite, no labelled cards); and while the cat art is pending no frame
-// set / sprite is force-marked ready and no cat animation machinery ships.
+// finished composite, no labelled cards); and while the 2D cat frame art is pending
+// no frame set / sprite is force-marked ready and no clip-mixer machinery ships
+// (the Phase C procedural transform rig has its own contract, guard #111).
 check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contract', () => {
   const pkg = JSON.parse(read('package.json'));
   const screen = read('src/screens/PetRewardScreen.jsx');
@@ -3629,8 +3630,11 @@ check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contr
     'the 감상 stage renders labelled cards (names must stay edit-mode only)',
   );
 
-  // (h) cat honesty: readiness flags are never force-raised and no animation
-  //     machinery ships while the transparent cat frames are pending.
+  // (h) cat honesty: 2D readiness flags are never force-raised, and three's
+  //     clip machinery (AnimationMixer) stays out of pet-room-3d until an
+  //     approved rigged asset lands with its own QA (ASSET_CONTRACT §6). The
+  //     cat's real motion today is the procedural transform rig — pinned by
+  //     guard #111, not by raising any readiness flag.
   assert(domain.includes('frameSetReady: false'), 'roomDomain no longer seeds frameSetReady: false');
   const srcFiles = walk(join(ROOT, 'src'), ['.js', '.jsx']);
   for (const f of srcFiles) {
@@ -3640,8 +3644,102 @@ check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contr
       `${rel(f)} force-marks a cat/sprite frame set ready`,
     );
     if (f.includes('pet-room-3d')) {
-      assert(!body.includes('AnimationMixer'), `${rel(f)} ships cat animation machinery ahead of approved frames`);
+      assert(!body.includes('AnimationMixer'), `${rel(f)} ships clip-mixer machinery ahead of an approved rigged asset`);
     }
+  }
+});
+
+// 111 — Phase C living 3D cat. The ?room3d=1 room now rests a REAL procedural 3D
+// cat (catRig.js) on the bed: primitive geometry whose idle breath / blink / ear /
+// tail-joint motion and short tap·stroke reactions are actual per-frame transform
+// animation — never a 2D billboard, sprite or image shortcut. This pins the deal it
+// shipped under: the rig mounts at the cat anchor; the idle life loop runs ONLY when
+// the user allows motion (prefers-reduced-motion → static resting pose, no loop);
+// reactions exist in VIEW mode only (edit keeps every pointer for placement), run
+// under a shared cooldown, and route through the screen's existing gesture-gated
+// usePetSound handlers (no new audio path, no autoplay — silent until real files
+// land, guards #26/#33); mood is a pure LOCAL derivation (today's record + streak +
+// clock) that only tunes idle parameters; and no copy claims the cat has feelings —
+// the dev note introduces the model as 임시 3D 모형 and its reactions as 화면 연출.
+check('3D pet room living cat: real procedural rig, gated motion/interaction, honest copy', () => {
+  const rig = read('src/components/pet-room-3d/catRig.js');
+  const room3d = read('src/components/pet-room-3d/PetRoom3D.jsx');
+  const domain = read('src/components/pet-room-3d/roomDomain.js');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+
+  // (a) A real rig, mounted at the cat anchor — and no 2D shortcut anywhere in it.
+  assert(/export function buildCatRig/.test(rig), 'catRig.js lost buildCatRig()');
+  assert(
+    room3d.includes('buildCatRig(THREE)') && room3d.includes('catMount.add(catRig.group)'),
+    'PetRoom3D no longer mounts the cat rig on the cat anchor',
+  );
+  for (const bad of ['Sprite', 'TextureLoader', 'CanvasTexture', '.webp', '.png', '<img']) {
+    assert(!rig.includes(bad), `catRig.js reaches for a 2D/image shortcut: ${bad}`);
+  }
+  for (const required of ['MeshStandardMaterial', 'SphereGeometry', 'ConeGeometry', 'CylinderGeometry', 'CapsuleGeometry']) {
+    assert(rig.includes(required), `catRig.js lost real 3D rig geometry/material: ${required}`);
+  }
+  assert(
+    rig.includes('mesh.castShadow = true') && rig.includes('mesh.receiveShadow = true'),
+    'catRig.js meshes no longer share the room shadow contract',
+  );
+  for (const motion of ['breatheGroup.scale.y =', 'eyes.left.scale.y =', 'ears.left.rotation.x =', 'joint.rotation.y = restY +']) {
+    assert(rig.includes(motion), `catRig.js lost a real transform animation path: ${motion}`);
+  }
+
+  // (b) The idle life loop is gated on the user's motion preference; a
+  //     reduced-motion session gets a static resting pose instead of a loop.
+  assert(room3d.includes('const catLoopOn = !reduceMotion'), 'the cat idle loop is not gated on prefers-reduced-motion');
+  assert(
+    /if \(catLoopOn\) catRaf = requestAnimationFrame\(catLoop\)/.test(room3d),
+    'the cat life loop start is not behind the motion gate',
+  );
+  assert(room3d.includes('applyStaticPose'), 'reduced-motion sessions lost the static resting pose');
+
+  // (c) Cat gestures open in VIEW mode only and reactions share one cooldown —
+  //     edit mode keeps every pointer for placement.
+  assert(
+    /if \(!editingRef\.current\) \{\s*\n\s*if \(catAt\(e\)\)/.test(room3d),
+    'the cat gesture is not gated to view mode (edit must own the pointer)',
+  );
+  assert(room3d.includes('CAT_REACTION_COOLDOWN_MS'), 'PetRoom3D lost the shared reaction cooldown');
+  assert(/export const CAT_REACTION_COOLDOWN_MS = \d+/.test(domain), 'roomDomain no longer defines the reaction cooldown');
+  assert(room3d.includes('CAT_STROKE_MIN_MS'), 'cat petting no longer requires a deliberate slow stroke');
+  assert(
+    /cancelAnimationFrame\(catRaf\)/.test(room3d),
+    'the dedicated cat loop is not cancelled on unmount',
+  );
+
+  // (d) Reaction sound goes through the screen's gesture-gated usePetSound
+  //     handlers — the 3D room and the rig open no audio channel of their own.
+  assert(
+    /onCatTap=\{handleCatTap\}/.test(screen) && /onCatPet=\{handlePet\}/.test(screen),
+    'the 3D cat reactions are not wired back through the screen handlers',
+  );
+  for (const f of ['src/components/pet-room-3d/PetRoom3D.jsx', 'src/components/pet-room-3d/catRig.js']) {
+    const body = read(f);
+    assert(!/new Audio\(|\.play\(\)|autoplay/i.test(body), `${f} opens its own audio path (sound must stay in usePetSound)`);
+  }
+
+  // (e) Mood: four presets, derived purely from local signals, only tuning idle
+  //     parameters — the rig itself touches nothing outside the scene.
+  assert(/export function deriveCatMood/.test(domain), 'roomDomain lost deriveCatMood');
+  assert(
+    /CAT_MOODS = Object\.freeze\(\['neutral', 'calm', 'curious', 'sleepy'\]\)/.test(domain),
+    'the four cat idle-mood presets are gone',
+  );
+  assert(!/fetch|XMLHttpRequest|navigator\./.test(rig), 'catRig reaches outside the scene (motion must stay local)');
+  assert(
+    /deriveCatMood\(\{/.test(screen) && /mood=\{catRoomMood\}/.test(screen),
+    'the screen no longer derives the cat mood from local records',
+  );
+
+  // (f) Honest copy: the model is introduced as a temporary 3D model and its
+  //     reactions as screen presentation — never as feelings or being alive.
+  assert(room3d.includes('임시 3D 모형'), 'the dev note lost the honest 임시 3D 모형 label');
+  assert(room3d.includes('화면 연출'), 'the dev note lost the 화면 연출 honesty line');
+  for (const fake of ['감정을', '감정이', '진짜 살아', '살아 있어요', '살아있어요']) {
+    assert(!room3d.includes(fake) && !rig.includes(fake), `the 3D cat copy overclaims feelings/life: ${fake}`);
   }
 });
 

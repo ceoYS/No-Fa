@@ -39,18 +39,19 @@ function toTexture(THREE, canvas, { repeat, srgb = true } = {}) {
 }
 
 // Wood plank floor — horizontal boards with per-board value jitter, dark seam
-// lines and light grain streaks. Muted wood, never saturated orange.
+// lines and light grain streaks. Darker walnut (B-3): the floor sits a clear
+// value step BELOW the ivory walls so the two never blur into one brown.
 export function makeWoodFloorTexture(THREE) {
   const { canvas, ctx } = makeCanvas(512, 512);
   const rng = makeRng(20260713);
-  ctx.fillStyle = '#3b2b20';
+  ctx.fillStyle = '#2c1f16';
   ctx.fillRect(0, 0, 512, 512);
 
   const boardH = 64;
   for (let row = 0; row < 512 / boardH; row++) {
-    const jitter = (rng() - 0.5) * 14;
-    const base = 46 + jitter; // lightness anchor per board
-    ctx.fillStyle = `rgb(${Math.round(base + 14)}, ${Math.round(base + 1)}, ${Math.round(base - 12)})`;
+    const jitter = (rng() - 0.5) * 12;
+    const base = 34 + jitter; // lightness anchor per board — walnut range
+    ctx.fillStyle = `rgb(${Math.round(base + 12)}, ${Math.round(base - 1)}, ${Math.round(base - 12)})`;
     ctx.fillRect(0, row * boardH, 512, boardH);
 
     // grain streaks — long, low-alpha strokes along the board
@@ -75,12 +76,13 @@ export function makeWoodFloorTexture(THREE) {
   return toTexture(THREE, canvas, { repeat: [1.6, 1.35] });
 }
 
-// Warm plaster wall — soft mottled blotches over a deep warm base, slightly
-// darker toward the top so the room reads lit from within.
+// Plaster wall — soft mottled blotches over a warm ivory/taupe base (B-3),
+// slightly shaded toward the top so the room reads lit from within. The walls
+// carry the LIGHT value in the room; floor and furniture stay dark wood.
 export function makePlasterTexture(THREE) {
   const { canvas, ctx } = makeCanvas(512, 512);
   const rng = makeRng(9127001);
-  ctx.fillStyle = '#372a20';
+  ctx.fillStyle = '#6e6355';
   ctx.fillRect(0, 0, 512, 512);
 
   for (let i = 0; i < 260; i++) {
@@ -89,16 +91,16 @@ export function makePlasterTexture(THREE) {
     const r = 14 + rng() * 60;
     const g = ctx.createRadialGradient(x, y, 0, x, y, r);
     const warm = rng() > 0.5;
-    g.addColorStop(0, warm ? 'rgba(96, 74, 54, 0.055)' : 'rgba(24, 16, 10, 0.06)');
+    g.addColorStop(0, warm ? 'rgba(150, 132, 108, 0.06)' : 'rgba(50, 42, 33, 0.05)');
     g.addColorStop(1, 'rgba(0, 0, 0, 0)');
     ctx.fillStyle = g;
     ctx.fillRect(x - r, y - r, r * 2, r * 2);
   }
 
   const shade = ctx.createLinearGradient(0, 0, 0, 512);
-  shade.addColorStop(0, 'rgba(8, 5, 3, 0.22)');
+  shade.addColorStop(0, 'rgba(24, 19, 14, 0.14)');
   shade.addColorStop(0.45, 'rgba(0, 0, 0, 0)');
-  shade.addColorStop(1, 'rgba(10, 6, 3, 0.16)');
+  shade.addColorStop(1, 'rgba(30, 24, 18, 0.1)');
   ctx.fillStyle = shade;
   ctx.fillRect(0, 0, 512, 512);
   return toTexture(THREE, canvas, { repeat: [1.5, 1] });
@@ -118,8 +120,10 @@ export function makeRugTexture(THREE) {
     const r = (i / rings) * 250;
     ctx.beginPath();
     ctx.arc(cx, cx, r, 0, Math.PI * 2);
-    if (i >= rings - 1) ctx.fillStyle = '#3c2a1e';
-    else ctx.fillStyle = i % 2 === 0 ? '#63452f' : '#573c29';
+    // Muted terracotta rings (B-3) — clearly warmer than the walnut floor,
+    // clearly deeper than the ivory walls, never a loud game orange.
+    if (i >= rings - 1) ctx.fillStyle = '#41291d';
+    else ctx.fillStyle = i % 2 === 0 ? '#7d503a' : '#6e4432';
     ctx.fill();
   }
   // faint stitch ticks around a few rings
@@ -139,8 +143,22 @@ export function makeRugTexture(THREE) {
   // center medallion
   ctx.beginPath();
   ctx.arc(cx, cx, 36, 0, Math.PI * 2);
-  ctx.fillStyle = '#6d4c33';
+  ctx.fillStyle = '#84543b';
   ctx.fill();
+  return toTexture(THREE, canvas);
+}
+
+// Soft radial CONTACT GLOW disc — a white radial falloff meant to be tinted
+// by its material color (amber for selection / validity feedback). The quiet
+// replacement for the old thick selection hoop.
+export function makeContactGlowTexture(THREE, size = 128) {
+  const { canvas, ctx } = makeCanvas(size, size);
+  const g = ctx.createRadialGradient(size / 2, size / 2, 0, size / 2, size / 2, size / 2);
+  g.addColorStop(0, 'rgba(255, 255, 255, 0.5)');
+  g.addColorStop(0.55, 'rgba(255, 255, 255, 0.2)');
+  g.addColorStop(1, 'rgba(255, 255, 255, 0)');
+  ctx.fillStyle = g;
+  ctx.fillRect(0, 0, size, size);
   return toTexture(THREE, canvas);
 }
 

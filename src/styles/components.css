@@ -4499,3 +4499,41 @@ textarea.sheet-input {
   border-color: rgba(232, 176, 106, 0.75);
   background: rgba(185, 107, 42, 0.16);
 }
+
+/* B-3: blocked-spot notice — one short line under the help text, quiet clay
+   tone (an explanation, not an alarm). */
+.room-place-notice {
+  margin: 0;
+  padding: var(--sp-2) var(--sp-3);
+  border-radius: var(--r-md);
+  font-size: var(--fs-small);
+  color: #d8a58f;
+  background: rgba(143, 79, 67, 0.16);
+  border: 1px solid rgba(143, 79, 67, 0.35);
+}
+
+/* B-3: compact selected-item action bar for the 3D stage — a small row of
+   pill actions (rotate left/right, put away), not a tall panel. */
+.room-select-bar--compact {
+  flex-direction: row;
+  align-items: center;
+  gap: var(--sp-2);
+  padding: var(--sp-2) var(--sp-3);
+}
+
+.room-select-bar--compact .room-select-name {
+  flex: 0 0 auto;
+  font-weight: 600;
+}
+
+.room-select-bar--compact .room-select-actions {
+  flex: 1;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.room-select-bar--compact .room-select-btn {
+  flex: 0 0 auto;
+  padding: 6px 10px;
+  font-size: var(--fs-micro, 12px);
+}
