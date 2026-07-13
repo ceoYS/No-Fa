@@ -380,10 +380,13 @@ export default function PetRoom3D({
     // dropped (no queue). Reduced-motion sessions skip the rig motion but the
     // screen callback still runs — the message + gesture-gated sound remain.
     let lastCatReactionAt = -Infinity;
-    const fireCatReaction = (kind) => {
+    // dir.yaw (radians) is a gentle head-turn target toward the pointer's
+    // contact point — a screen lean, never real hand tracking. A stroke on the
+    // head reads as 'nuzzle', elsewhere as 'pet'; both answer through onCatPet.
+    const fireCatReaction = (kind, dir) => {
       const now = performance.now();
       if (now - lastCatReactionAt < CAT_REACTION_COOLDOWN_MS) return;
-      if (catLoopOn && !catRig.triggerReaction(kind)) return;
+      if (catLoopOn && !catRig.triggerReaction(kind, dir)) return;
       lastCatReactionAt = now;
       if (kind === 'tap') onCatTapRef.current?.();
       else onCatPetRef.current?.();
@@ -519,6 +522,24 @@ export default function PetRoom3D({
       return raycaster.intersectObject(catRig.group, true).length > 0;
     };
 
+    // Where on the cat the pointer is touching, in the rig's local space. Used
+    // to lean the head toward the contact point and to tell a head touch
+    // (→ nuzzle) from a body stroke (→ pet). Returns null when the ray misses
+    // the cat, so callers keep their existing "must be on the cat" gate.
+    const catLocalPoint = new THREE.Vector3();
+    const catContact = (e) => {
+      if (!setNdcFromEvent(e)) return null;
+      raycaster.setFromCamera(ndc, camera);
+      const hits = raycaster.intersectObject(catRig.group, true);
+      if (!hits.length) return null;
+      catLocalPoint.copy(hits[0].point);
+      catRig.group.worldToLocal(catLocalPoint);
+      // The cat faces +z (+x is its right). A touch to one side turns the head
+      // that way; the head sits well above the body centre in local y.
+      const yaw = Math.max(-0.5, Math.min(0.5, Math.atan2(catLocalPoint.x, Math.max(0.12, catLocalPoint.z + 0.2))));
+      return { yaw, onHead: catLocalPoint.y > 0.24 };
+    };
+
     const setNdcFromEvent = (e) => {
       const rect = renderer.domElement.getBoundingClientRect();
       if (!rect.width || !rect.height) return false;
@@ -593,11 +614,13 @@ export default function PetRoom3D({
         if (
           !catGesture.fired &&
           catGesture.dist >= CAT_STROKE_MIN_PX &&
-          elapsed >= CAT_STROKE_MIN_MS &&
-          catAt(e)
+          elapsed >= CAT_STROKE_MIN_MS
         ) {
-          catGesture.fired = true; // one stroke per gesture
-          fireCatReaction('pet');
+          const contact = catContact(e);
+          if (contact) {
+            catGesture.fired = true; // one stroke per gesture
+            fireCatReaction(contact.onHead ? 'nuzzle' : 'pet', { yaw: contact.yaw });
+          }
         }
         return;
       }
@@ -630,10 +653,11 @@ export default function PetRoom3D({
         controls.enabled = true;
         renderer.domElement.releasePointerCapture?.(e.pointerId);
         const elapsed = performance.now() - g.startedAt;
-        if (!g.fired && g.dist >= CAT_STROKE_MIN_PX && elapsed >= CAT_STROKE_MIN_MS && catAt(e)) {
-          fireCatReaction('pet');
+        const contact = catContact(e);
+        if (!g.fired && g.dist >= CAT_STROKE_MIN_PX && elapsed >= CAT_STROKE_MIN_MS && contact) {
+          fireCatReaction(contact.onHead ? 'nuzzle' : 'pet', { yaw: contact.yaw });
         } else if (!g.fired && g.dist <= TAP_SLOP_PX) {
-          fireCatReaction('tap');
+          fireCatReaction('tap', contact ? { yaw: contact.yaw } : undefined);
         }
         press = null;
         return;
@@ -882,6 +906,11 @@ export default function PetRoom3D({
           배치한 아이템은 아직 임시 3D 모형으로 보여요. 감상 중에 고양이를 살짝 탭하거나 천천히
           쓰다듬으면 작은 반응을 볼 수 있어요. 이 반응은 화면 연출이에요.
         </p>
+      ) : !editing ? (
+        // Non-debug product copy: a gentle invitation only. It promises no
+        // sound (no audio files are wired yet), no feelings, and no life — the
+        // reaction the user then sees is real on-screen motion, not a claim.
+        <p className="room-scene-note">고양이를 살짝 누르거나 천천히 쓰다듬어 보세요.</p>
       ) : null}
 
       {editing ? (

@@ -1,15 +1,16 @@
 /*
  * catRig — the procedural 3D cat that lives at the room's cat anchor.
  *
- * HONESTY CONTRACT (Phase C):
+ * HONESTY CONTRACT (Phase C / Phase D):
  *   - This is a real 3D object built from primitive geometry, in the same
  *     family as the item proxies: an honest stylized model, never a claim of
  *     finished character art. When an approved rigged cat asset lands (see
  *     ASSET_CONTRACT.md §6), buildCatRig() is the single swap point — the
  *     interaction, mood and render code above it stay untouched.
  *   - Every visible motion here is REAL transform animation computed each
- *     frame (breath scale, lid scale, ear/head/tail-joint rotation). Nothing
- *     is implied by copy that the rig does not actually do on screen.
+ *     frame (breath scale, lid scale, ear/head/tail-joint rotation, and the
+ *     short lean-toward-contact reactions). Nothing is implied by copy that
+ *     the rig does not actually do on screen.
  *   - Mood is a small idle-parameter preset derived from LOCAL signals only
  *     (roomDomain.deriveCatMood). It tunes timing and pose. It is never
  *     presented as the cat having feelings, and no copy may claim that.
@@ -44,11 +45,17 @@ const MOOD_PARAMS = {
   sleepy: { breathHz: 0.13, breathAmp: 0.02, blinkGapMs: [4200, 7000], lidRest: 0.45, headPitch: 0.12, tailAmp: 0.04, tailHz: 0.08, earLift: 0.05, wander: 0.03 },
 };
 
-// Reaction envelopes (ms). Both are single short answers to the user's own
+// Reaction envelopes (ms). Each is a single short answer to the user's own
 // gesture, then the rig settles back to its idle — no looping excitement.
+//   tap    — a quick look toward the touch, ears perk, one soft blink.
+//   pet    — eyes soften nearly shut, the head settles down into the stroke.
+//   nuzzle — the head (and a little of the chest) leans TOWARD the touch
+//            point, holds a beat, then eases back. This is a SCREEN reaction
+//            toward a pointer position, never real hand tracking.
 const REACTIONS = {
   tap: { durationMs: 950 },
   pet: { durationMs: 1350 },
+  nuzzle: { durationMs: 1150 },
 };
 
 const clamp = (v, lo, hi) => Math.min(hi, Math.max(lo, v));
@@ -199,7 +206,7 @@ export function buildCatRig(THREE, { seed = 20260713 } = {}) {
   let blinkT = -1; // seconds into the current blink, -1 = not blinking
   let earFlickAt = 5 + rng() * 5;
   let earFlick = null; // { side, t }
-  let reaction = null; // { kind, t }
+  let reaction = null; // { kind, t, yaw }
   const state = { mode: 'idle', blinks: 0 };
 
   const BLINK_CLOSE = 0.07;
@@ -219,9 +226,11 @@ export function buildCatRig(THREE, { seed = 20260713 } = {}) {
 
   // One short reaction at a time; the caller also holds a cooldown so the
   // cat answers a gesture once, quietly, instead of rattling on every tap.
-  const triggerReaction = (kind) => {
+  // `dir.yaw` (radians) is a gentle head-turn target toward the pointer's
+  // contact point — a screen lean, not hand tracking.
+  const triggerReaction = (kind, dir = {}) => {
     if (!REACTIONS[kind] || reaction) return false;
-    reaction = { kind, t: 0 };
+    reaction = { kind, t: 0, yaw: clamp(dir.yaw ?? 0, -0.5, 0.5) };
     state.mode = kind;
     return true;
   };
@@ -306,17 +315,30 @@ export function buildCatRig(THREE, { seed = 20260713 } = {}) {
       if (k >= 1) {
         reaction = null;
         state.mode = 'idle';
-      } else {
+      } else if (reaction.kind === 'tap') {
         const env = Math.sin(Math.min(1, k) * Math.PI); // 0 → 1 → 0
-        if (reaction.kind === 'tap') {
-          headPitch -= 0.11 * env; // lifts the head toward the viewer
-          headYaw = lerp(headYaw, clamp(camAz * 0.5, -0.4, 0.4), env);
-          earLift -= 0.14 * env;
-        } else {
-          lid = Math.min(lid, lerp(live.lidRest, 0.14, env)); // eyes soften shut
-          headPitch += 0.09 * env; // settles down into the touch
-          bodyRoll = 0.05 * env;
-        }
+        headPitch -= 0.11 * env; // lifts the head toward the viewer
+        headYaw = lerp(headYaw, reaction.yaw || clamp(camAz * 0.5, -0.4, 0.4), env);
+        earLift -= 0.14 * env; // ears perk forward
+      } else if (reaction.kind === 'pet') {
+        const env = Math.sin(Math.min(1, k) * Math.PI);
+        lid = Math.min(lid, lerp(live.lidRest, 0.14, env)); // eyes soften shut
+        headPitch += 0.09 * env; // settles down into the touch
+        headYaw = lerp(headYaw, reaction.yaw * 0.6, env);
+        bodyRoll = 0.05 * env;
+      } else {
+        // nuzzle — lean the head (and a little of the chest) TOWARD the touch,
+        // hold, then ease back. approach 0–0.28, hold 0.28–0.6, return 0.6–1.
+        let env;
+        if (k < 0.28) env = k / 0.28;
+        else if (k < 0.6) env = 1;
+        else env = 1 - (k - 0.6) / 0.4;
+        env = Math.max(0, Math.min(1, env));
+        headYaw = lerp(headYaw, reaction.yaw, env * 0.9);
+        headPitch += 0.06 * env; // dips forward into the nuzzle
+        lid = Math.min(lid, lerp(live.lidRest, 0.22, env)); // eyes soften
+        earLift -= 0.05 * env;
+        bodyRoll = reaction.yaw * 0.18 * env; // upper body tips the same way
       }
     }
 
