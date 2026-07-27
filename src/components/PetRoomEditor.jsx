@@ -5,6 +5,10 @@ import {
   resolveItemAsset,
   resolvePetStageRoomAsset,
   petStageArtReady,
+  petStageLayeredReady,
+  resolveCanonicalPlate,
+  resolveCanonicalKitten,
+  resolveCanonicalShadow,
   shouldUsePetSceneMode,
 } from '../constants/petAssets.js';
 import { ITEM_BY_ID } from '../constants/roomItems.js';
@@ -121,6 +125,14 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
 
   const roomSrc = resolvePetStageRoomAsset({ theme, sceneMode: resolvedSceneMode });
   const artReady = petStageArtReady({ theme, catState: catMotion, sceneMode: resolvedSceneMode });
+  // K2D-0 (fail-closed): a layered canonical-kitten scene replaces the baked
+  // composite ONLY when approved matched assets exist. petStageLayeredReady() is
+  // false today, so useLayered is false and the composite renders unchanged.
+  const layeredReady = resolvedSceneMode && petStageLayeredReady();
+  const plateSrc = layeredReady ? resolveCanonicalPlate() : null;
+  const kittenSrc = layeredReady ? resolveCanonicalKitten(catMotion) : null;
+  const shadowSrc = layeredReady ? resolveCanonicalShadow() : null;
+  const useLayered = Boolean(layeredReady && plateSrc && kittenSrc);
   const stageClass = [
     'pet-stage',
     'pet-room',
@@ -174,7 +186,35 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
       >
         {artReady ? (
           <>
-            <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />
+            {useLayered ? (
+              <>
+                {/* K2D-0 layered scene: matched clean plate + optional contact
+                    shadow + canonical kitten cutout, authored to ONE framing so
+                    they stack pixel-aligned and share the plate's static parallax.
+                    Inert until approved matched assets exist (fail-closed). */}
+                <img className="room-img" src={plateSrc} alt="" loading="lazy" decoding="async" />
+                {shadowSrc ? (
+                  <img
+                    className="canonical-kitten-shadow"
+                    src={shadowSrc}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                  />
+                ) : null}
+                <img
+                  className="canonical-kitten-layer"
+                  src={kittenSrc}
+                  alt=""
+                  aria-hidden="true"
+                  loading="lazy"
+                  decoding="async"
+                />
+              </>
+            ) : (
+              <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />
+            )}
             {resolvedSceneMode ? (
               <>
                 {/* Depth + ambient light over the finished scene. The scene is already

@@ -3743,6 +3743,119 @@ check('3D pet room living cat: real procedural rig, gated motion/interaction, ho
   }
 });
 
+// K2D-0 — Canonical Kitten Layered Asset Contract (fail-closed, dark by default).
+// The layered path (matched clean plate + canonical alpha cutout + optional separate
+// contact shadow) is SCAFFOLD ONLY and must stay inert until a human drops in
+// approved matched assets. This pins that: (a) every new layered entry is
+// present:false and the approval gate is false; (b) the readiness gate is provably
+// false today and keeps its four-way AND; (c) the fallback is EXACTLY the existing
+// baked composite; (d) the existing composite + cat/item honesty flags are untouched;
+// (e) the render wiring lives only in PetRoomEditor, gated, in the contract layer
+// order; (f) the feature does NOT leak into any protected file; (g) no test-runner
+// dependency was added and none of the not-yet-approved asset binaries were added.
+check('K2D-0 canonical-kitten layered contract is fail-closed and isolated', () => {
+  const assets = read('src/constants/petAssets.js');
+
+  // (a) the layered block exists and every declared asset entry is present:false.
+  const block = assets.match(/const CANONICAL_LAYERED = \{[\s\S]*?\n\};/);
+  assert(block, 'CANONICAL_LAYERED contract block not found in petAssets.js');
+  const blockBody = block[0];
+  for (const p of [
+    '/assets/rooms/ember_room_canonical_clean.webp',
+    '/assets/pets/white_kitten_idle_alpha.webp',
+    '/assets/pets/white_kitten_blink_alpha.webp',
+    '/assets/pets/white_kitten_shadow_alpha.webp',
+  ]) {
+    assert(blockBody.includes(p), `layered contract is missing the future asset path: ${p}`);
+  }
+  assert(!/present:\s*true/.test(blockBody), 'a layered asset entry is present:true — the scaffold must stay inert');
+  assert(/approved:\s*false/.test(blockBody), 'the layered approval gate must ship false (approved:false)');
+  assert(!/approved:\s*true/.test(blockBody), 'the layered approval gate must not be flipped true');
+
+  // (b) the readiness gate is present, keeps its four-way AND (approval + plate +
+  //     idle + composite fallback), and is therefore provably false while (a) holds.
+  assert(/export function petStageLayeredReady/.test(assets), 'petStageLayeredReady() gate is missing');
+  const gate = assets.match(/export function petStageLayeredReady\(\)\s*\{[\s\S]*?\n\}/);
+  assert(gate, 'petStageLayeredReady() body not found');
+  for (const need of ['approved', 'plate', 'idle', 'present', 'with_white_kitten']) {
+    assert(gate[0].includes(need), `the readiness gate dropped its "${need}" condition — it must stay a four-way AND`);
+  }
+
+  // (c) fallback is EXACTLY the existing baked composite, still returned by the scene resolver.
+  assert(
+    assets.includes('/assets/rooms/ember_room_with_white_kitten.webp'),
+    'the baked-composite fallback asset is no longer registered',
+  );
+  assert(
+    /resolveRoomSceneAsset[\s\S]*?with_white_kitten/.test(assets),
+    'resolveRoomSceneAsset no longer returns the composite fallback',
+  );
+
+  // (d) existing composite honesty flags + existing cat/item spriteReady:false intact.
+  assert(/with_white_kitten[\s\S]*?sceneReady:\s*true/.test(assets), 'composite entry lost sceneReady:true');
+  assert(/with_white_kitten[\s\S]*?containsCat:\s*true/.test(assets), 'composite entry lost containsCat:true');
+  assert(!/spriteReady:\s*true/.test(assets), 'a cat/item entry flipped spriteReady:true — it must stay false');
+  const catBlock = assets.match(/const CAT_ASSETS = \{[\s\S]*?\n\};/);
+  assert(
+    catBlock && (catBlock[0].match(/spriteReady:\s*false/g) || []).length >= 6,
+    'existing cat frames must keep spriteReady:false',
+  );
+
+  // (e) render wiring lives in PetRoomEditor only, gated fail-closed, in the contract
+  //     layer order (plate → shadow → cutout → scene-depth → scene-glow → tap).
+  const editor = read('src/components/PetRoomEditor.jsx');
+  assert(/petStageLayeredReady\(\)/.test(editor), 'PetRoomEditor does not consult petStageLayeredReady()');
+  assert(/const useLayered = /.test(editor), 'PetRoomEditor has no fail-closed useLayered gate');
+  assert(editor.includes('canonical-kitten-layer'), 'PetRoomEditor never renders the canonical kitten layer');
+  const shadowIdx = editor.indexOf('canonical-kitten-shadow');
+  const layerIdx = editor.indexOf('canonical-kitten-layer');
+  const depthIdx = editor.indexOf('scene-depth');
+  assert(shadowIdx > -1 && layerIdx > shadowIdx, 'the contact shadow must render before the kitten cutout');
+  assert(depthIdx > layerIdx, 'the canonical kitten layer must render BEFORE scene-depth (contract layer order)');
+
+  // (f) isolation: none of the layered fingerprints may appear in a protected file
+  //     (proves K2D-0 did not modify Home / CatCompanion / the 3D room / etc.).
+  const fingerprints = [
+    'canonical-kitten-layer', 'canonical-kitten-shadow', 'petStageLayeredReady',
+    'CANONICAL_LAYERED', 'canonical_clean', 'idle_alpha',
+  ];
+  const protectedFiles = [
+    'src/screens/HomeScreen.jsx',
+    'src/components/CatCompanion.jsx',
+    'src/screens/PetRewardScreen.jsx',
+    'src/components/EmberCat.jsx',
+    'src/components/PetRoomDecorator.jsx',
+    'src/components/PetRoomPreview.jsx',
+    'src/components/PetSceneViewer.jsx',
+    'src/components/pet-room-3d/PetRoom3D.jsx',
+    'src/components/pet-room-3d/catRig.js',
+  ];
+  for (const f of protectedFiles) {
+    const txt = read(f);
+    for (const fp of fingerprints) {
+      assert(!txt.includes(fp), `K2D-0 leaked into a protected file (${f}): ${fp}`);
+    }
+  }
+
+  // (g) no test-runner dependency was added, and no unapproved asset binary landed
+  //     (present:false must honestly reflect that the files are absent on disk).
+  const pkg = JSON.parse(read('package.json'));
+  const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
+  for (const banned of ['vitest', 'jest', 'mocha', '@testing-library/react', 'ava', 'jasmine']) {
+    assert(!(banned in deps), `a test-runner dependency was added (${banned}) — the contract forbids new test deps`);
+  }
+  for (const relPath of [
+    'public/assets/rooms/ember_room_canonical_clean.webp',
+    'public/assets/pets/white_kitten_idle_alpha.webp',
+    'public/assets/pets/white_kitten_blink_alpha.webp',
+    'public/assets/pets/white_kitten_shadow_alpha.webp',
+  ]) {
+    let exists = true;
+    try { statSync(join(ROOT, relPath)); } catch { exists = false; }
+    assert(!exists, `an unapproved layered asset binary was added (${relPath}); present:false must reflect real absence`);
+  }
+});
+
 let failed = 0;
 for (const r of results) {
   if (r.pass) {

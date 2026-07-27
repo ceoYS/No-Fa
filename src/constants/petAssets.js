@@ -50,6 +50,55 @@ const ITEM_ASSETS = {
   toy: { id: 'toy', label: '장난감', path: '/assets/items/toy.webp', present: true, spriteReady: false },
 };
 
+// ---------------------------------------------------------------------------
+// K2D-0 — Canonical Kitten Layered Asset Contract (fail-closed, dark by default).
+//
+// A FUTURE, honesty-first path: render the EXISTING canonical kitten as a real
+// transparent (alpha) cutout over a matched clean room plate — plus an optional
+// separate contact shadow — instead of one baked composite. None of these files
+// exist in the repo yet and none is generated here, so every entry stays
+// present:false and `approved` stays false. Until a matched clean plate AND the
+// approved canonical alpha cutout are dropped in by a human art step,
+// petStageLayeredReady() is false and the stage keeps rendering the existing baked
+// composite (ember_room_with_white_kitten.webp) byte-for-byte.
+//
+// This is a CONTRACT + wiring only: it adds no animation of any kind, changes no
+// current pixel, and never fabricates a kitten.
+// ---------------------------------------------------------------------------
+const CANONICAL_LAYERED = {
+  // Human approval gate. Flip true ONLY once real matched alpha assets are approved.
+  approved: false,
+  // Clean room plate authored to the SAME framing as the composite (no cat).
+  plate: {
+    id: 'canonical_clean',
+    label: '고양이 없는 정합 방',
+    path: '/assets/rooms/ember_room_canonical_clean.webp',
+    present: false,
+  },
+  // Canonical white kitten as a transparent (alpha) cutout — the EXISTING mascot,
+  // not a new design. Authored to the plate's framing so it overlays pixel-aligned
+  // and shares the plate's static parallax (it never drifts on its own).
+  idle: {
+    id: 'idle_alpha',
+    label: '기본 고양이(투명)',
+    path: '/assets/pets/white_kitten_idle_alpha.webp',
+    present: false,
+  },
+  blink: {
+    id: 'blink_alpha',
+    label: '눈 깜빡임(투명)',
+    path: '/assets/pets/white_kitten_blink_alpha.webp',
+    present: false,
+  },
+  // Optional separate contact shadow (its own alpha plate); purely grounding.
+  shadow: {
+    id: 'shadow_alpha',
+    label: '고양이 그림자(투명)',
+    path: '/assets/pets/white_kitten_shadow_alpha.webp',
+    present: false,
+  },
+};
+
 // motionState (EmberCat) → cat frame key. idle/tap reuse the main frame; their
 // liveliness is the CSS class, not a separate file.
 const MOTION_TO_CAT = {
@@ -87,6 +136,25 @@ export function resolvePetStageRoomAsset({ theme = 'empty', sceneMode = false } 
 
 export function resolveItemAsset(itemId) {
   const a = ITEM_ASSETS[itemId];
+  return a && a.present ? a.path : null;
+}
+
+// K2D-0 canonical layered resolvers — each returns a path ONLY when its approved
+// asset is registered present; otherwise null, so the stage falls back to the
+// baked composite. All return null today (every entry present:false).
+export function resolveCanonicalPlate() {
+  const a = CANONICAL_LAYERED.plate;
+  return a && a.present ? a.path : null;
+}
+
+export function resolveCanonicalKitten(state = 'idle') {
+  const key = state === 'blink' ? 'blink' : 'idle';
+  const a = CANONICAL_LAYERED[key];
+  return a && a.present ? a.path : null;
+}
+
+export function resolveCanonicalShadow() {
+  const a = CANONICAL_LAYERED.shadow;
   return a && a.present ? a.path : null;
 }
 
@@ -137,4 +205,18 @@ export function petStageArtReady({
   return hasRoomAsset(theme) && isCatSpriteReady(catState);
 }
 
-export { CAT_ASSETS, ROOM_ASSETS, ITEM_ASSETS };
+// K2D-0 layered readiness — fail-closed. True ONLY when a human has approved the
+// drop AND the matched clean plate AND the canonical idle cutout are both present
+// AND the baked composite fallback is still available. Miss ANY one → false → the
+// stage renders the existing composite (ember_room_with_white_kitten.webp) exactly.
+// It returns false today because `approved` is false and every layered entry is
+// present:false, so no current pixel changes.
+export function petStageLayeredReady() {
+  const c = CANONICAL_LAYERED;
+  const fallbackPresent = Boolean(
+    ROOM_ASSETS.with_white_kitten?.present && ROOM_ASSETS.with_white_kitten?.sceneReady,
+  );
+  return Boolean(c.approved && c.plate?.present && c.idle?.present && fallbackPresent);
+}
+
+export { CAT_ASSETS, ROOM_ASSETS, ITEM_ASSETS, CANONICAL_LAYERED };
