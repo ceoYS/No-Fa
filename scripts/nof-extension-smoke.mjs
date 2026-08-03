@@ -253,7 +253,7 @@ async function main() {
     const urgeHref = await c.eval('location.href');
     const urgeBody = await c.text();
     const onUrge = urgeHref.includes('from=shield') && urgeHref.includes('to=urge')
-      && urgeBody.includes('지금 충동을 멈춰요');
+      && urgeBody.includes('지금 멈추면');
     check('blocked.html → 잠깐 멈춤 opens the urge screen', onUrge, urgeHref);
     await c.shot('rc10_urge_handoff');
 
