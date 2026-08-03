@@ -79,6 +79,7 @@
  *      example.com test URL). The Shield screen stays planner-only / non-enforcing.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
+import { createHash } from 'node:crypto';
 import { join, dirname, extname } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -3743,45 +3744,100 @@ check('3D pet room living cat: real procedural rig, gated motion/interaction, ho
   }
 });
 
-// K2D-0 — Canonical Kitten Layered Asset Contract (fail-closed, dark by default).
-// The layered path (matched clean plate + canonical alpha cutout + optional separate
-// contact shadow) is SCAFFOLD ONLY and must stay inert until a human drops in
-// approved matched assets. This pins that: (a) every new layered entry is
-// present:false and the approval gate is false; (b) the readiness gate is provably
-// false today and keeps its four-way AND; (c) the fallback is EXACTLY the existing
-// baked composite; (d) the existing composite + cat/item honesty flags are untouched;
-// (e) the render wiring lives only in PetRoomEditor, gated, in the contract layer
-// order; (f) the feature does NOT leak into any protected file; (g) no test-runner
-// dependency was added and none of the not-yet-approved asset binaries were added.
-check('K2D-0 canonical-kitten layered contract is fail-closed and isolated', () => {
+// K2D-1K-A2 — bounded dual-authority runtime integration. Plate + idle
+// may run only through explicit loopback QA authority or the independently
+// approved production predicate. Both feed one detached-Image preload/decode/
+// fallback machine. Optional motion cannot weaken it; approved remains false.
+check('K2D-1K-A2 dual-authority integration remains fail-closed and isolated', () => {
   const assets = read('src/constants/petAssets.js');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const compact = (value) => value.replace(/\s+/g, '');
+  const sourceSha256 = (relPath) => createHash('sha256')
+    .update(readFileSync(join(ROOT, relPath)))
+    .digest('hex');
+  const functionBody = (source, name, exported = true) => {
+    const prefix = exported ? 'export function' : 'function';
+    const match = source.match(new RegExp(`${prefix} ${name}\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}`));
+    assert(match, `${name}() body not found`);
+    return match[0];
+  };
+  const constExpression = (source, name) => {
+    const match = source.match(new RegExp(`const ${name}\\s*=\\s*([\\s\\S]*?);`));
+    assert(match, `${name} expression not found`);
+    return match[1];
+  };
 
-  // (a) the layered block exists and every declared asset entry is present:false.
+  // Registry: exact installed paths, optional blink, unavailable shadow, and false approval.
   const block = assets.match(/const CANONICAL_LAYERED = \{[\s\S]*?\n\};/);
   assert(block, 'CANONICAL_LAYERED contract block not found in petAssets.js');
   const blockBody = block[0];
-  for (const p of [
-    '/assets/rooms/ember_room_canonical_clean.webp',
-    '/assets/pets/white_kitten_idle_alpha.webp',
-    '/assets/pets/white_kitten_blink_alpha.webp',
-    '/assets/pets/white_kitten_shadow_alpha.webp',
-  ]) {
-    assert(blockBody.includes(p), `layered contract is missing the future asset path: ${p}`);
-  }
-  assert(!/present:\s*true/.test(blockBody), 'a layered asset entry is present:true — the scaffold must stay inert');
-  assert(/approved:\s*false/.test(blockBody), 'the layered approval gate must ship false (approved:false)');
-  assert(!/approved:\s*true/.test(blockBody), 'the layered approval gate must not be flipped true');
+  const entry = (name) => {
+    const match = blockBody.match(new RegExp(`\\n  ${name}: \\{[\\s\\S]*?\\n  \\},`));
+    assert(match, `CANONICAL_LAYERED.${name} entry is missing`);
+    return match[0];
+  };
+  const plateEntry = entry('plate');
+  const idleEntry = entry('idle');
+  const blinkEntry = entry('blink');
+  const shadowEntry = entry('shadow');
+  assert(
+    plateEntry.includes("path: '/assets/rooms/ember_room_canonical_clean.png'")
+      && /present:\s*true/.test(plateEntry),
+    'the canonical clean plate must use the exact installed PNG and present:true',
+  );
+  assert(
+    idleEntry.includes("path: '/assets/pets/white_kitten_idle_alpha.png'")
+      && /present:\s*true/.test(idleEntry),
+    'the canonical idle cutout must use the exact installed PNG and present:true',
+  );
+  assert(
+    blinkEntry.includes("path: '/assets/pets/white_kitten_blink_alpha.png'")
+      && /present:\s*true/.test(blinkEntry),
+    'blink must use the exact staged PNG and present:true after A3',
+  );
+  assert(
+    shadowEntry.includes("path: '/assets/pets/white_kitten_shadow_alpha.webp'")
+      && /present:\s*false/.test(shadowEntry),
+    'the optional shadow entry must remain present:false',
+  );
+  assert(/approved:\s*true/.test(blockBody), 'the layered approval gate must reflect explicit final human approval (approved:true)');
+  assert(!/approved:\s*false/.test(blockBody), 'the layered approval gate must not remain fail-closed after A6 human approval');
+  assert(
+    !/(?:CANONICAL_LAYERED|\bc)\.approved\s*=/.test(assets + editor),
+    'A2 must not add code that mutates approved',
+  );
 
-  // (b) the readiness gate is present, keeps its four-way AND (approval + plate +
-  //     idle + composite fallback), and is therefore provably false while (a) holds.
-  assert(/export function petStageLayeredReady/.test(assets), 'petStageLayeredReady() gate is missing');
-  const gate = assets.match(/export function petStageLayeredReady\(\)\s*\{[\s\S]*?\n\}/);
-  assert(gate, 'petStageLayeredReady() body not found');
-  for (const need of ['approved', 'plate', 'idle', 'present', 'with_white_kitten']) {
-    assert(gate[0].includes(need), `the readiness gate dropped its "${need}" condition — it must stay a four-way AND`);
+  // Readiness predicates stay independent: candidate has no approval/blink/shadow
+  // dependency; production retains its exact approval + plate + idle + fallback AND.
+  const candidateGate = functionBody(assets, 'petStageLayeredCandidateReady');
+  for (const need of ['plate', 'idle', 'present', 'with_white_kitten', 'sceneReady', 'fallbackPresent']) {
+    assert(candidateGate.includes(need), `candidate readiness dropped its ${need} requirement`);
   }
+  for (const forbidden of ['approved', 'blink', 'shadow']) {
+    assert(!candidateGate.includes(forbidden), `candidate readiness must not reference ${forbidden}`);
+  }
+  assert(
+    compact(candidateGate).includes('returnBoolean(c.plate?.present&&c.idle?.present&&fallbackPresent);'),
+    'candidate readiness must be exactly plate + idle + baked fallback',
+  );
+  const productionGate = functionBody(assets, 'petStageLayeredReady');
+  assert(
+    compact(productionGate).includes(
+      'returnBoolean(c.approved&&c.plate?.present&&c.idle?.present&&fallbackPresent);',
+    ),
+    'production readiness must remain exactly approved + plate + idle + baked fallback',
+  );
+  const kittenResolver = functionBody(assets, 'resolveCanonicalKitten');
+  assert(
+    compact(kittenResolver).includes(
+      "constrequested=state==='blink'?CANONICAL_LAYERED.blink:CANONICAL_LAYERED.idle;",
+    ) && compact(kittenResolver).includes(
+      'consta=requested?.present?requested:CANONICAL_LAYERED.idle;',
+    ),
+    'an unavailable blink request must continue to resolve through the idle entry',
+  );
 
-  // (c) fallback is EXACTLY the existing baked composite, still returned by the scene resolver.
+  // The exact baked composite remains registered, scene-ready, present, and byte-identical.
   assert(
     assets.includes('/assets/rooms/ember_room_with_white_kitten.webp'),
     'the baked-composite fallback asset is no longer registered',
@@ -3790,34 +3846,327 @@ check('K2D-0 canonical-kitten layered contract is fail-closed and isolated', () 
     /resolveRoomSceneAsset[\s\S]*?with_white_kitten/.test(assets),
     'resolveRoomSceneAsset no longer returns the composite fallback',
   );
-
-  // (d) existing composite honesty flags + existing cat/item spriteReady:false intact.
+  assert(/with_white_kitten[\s\S]*?present:\s*true/.test(assets), 'composite entry lost present:true');
   assert(/with_white_kitten[\s\S]*?sceneReady:\s*true/.test(assets), 'composite entry lost sceneReady:true');
   assert(/with_white_kitten[\s\S]*?containsCat:\s*true/.test(assets), 'composite entry lost containsCat:true');
-  assert(!/spriteReady:\s*true/.test(assets), 'a cat/item entry flipped spriteReady:true — it must stay false');
-  const catBlock = assets.match(/const CAT_ASSETS = \{[\s\S]*?\n\};/);
   assert(
-    catBlock && (catBlock[0].match(/spriteReady:\s*false/g) || []).length >= 6,
-    'existing cat frames must keep spriteReady:false',
+    sourceSha256('public/assets/rooms/ember_room_with_white_kitten.webp')
+      === '08ca0cfe9bd0c7de9e79e3f74b8ce2c1c1f52e182d47d37043691c9d64595a3b',
+    'the baked composite fallback bytes changed',
   );
 
-  // (e) render wiring lives in PetRoomEditor only, gated fail-closed, in the contract
-  //     layer order (plate → shadow → cutout → scene-depth → scene-glow → tap).
-  const editor = read('src/components/PetRoomEditor.jsx');
-  assert(/petStageLayeredReady\(\)/.test(editor), 'PetRoomEditor does not consult petStageLayeredReady()');
-  assert(/const useLayered = /.test(editor), 'PetRoomEditor has no fail-closed useLayered gate');
-  assert(editor.includes('canonical-kitten-layer'), 'PetRoomEditor never renders the canonical kitten layer');
-  const shadowIdx = editor.indexOf('canonical-kitten-shadow');
-  const layerIdx = editor.indexOf('canonical-kitten-layer');
-  const depthIdx = editor.indexOf('scene-depth');
-  assert(shadowIdx > -1 && layerIdx > shadowIdx, 'the contact shadow must render before the kitten cutout');
-  assert(depthIdx > layerIdx, 'the canonical kitten layer must render BEFORE scene-depth (contract layer order)');
+  // Candidate request: browser-only, explicit/default-off, storage fail-closed,
+  // and authorized only on the exact three loopback hostname values.
+  const requestReader = functionBody(editor, 'readLayeredCandidateRequest', false);
+  assert(requestReader.includes("typeof window === 'undefined'"), 'candidate request must be browser-only');
+  assert(
+    requestReader.includes("new URLSearchParams(window.location.search).get('kitten') === '1'"),
+    'candidate query request must be exactly kitten=1',
+  );
+  assert(
+    requestReader.includes("window.localStorage.getItem('nof.kittenLayered') === '1'"),
+    'candidate storage request must be exactly nof.kittenLayered === 1',
+  );
+  assert(
+    /try\s*\{[\s\S]*?localStorage[\s\S]*?\}\s*catch\s*\{\s*storedRequested = false;\s*\}/.test(requestReader),
+    'localStorage access must fail closed to storedRequested=false',
+  );
+  assert(
+    compact(requestReader).includes('returnqueryRequested||storedRequested;'),
+    'candidate request must be the OR of the two explicit request sources',
+  );
+  assert(!/localStorage\.(?:setItem|removeItem|clear)\s*\(/.test(editor), 'A2 must not write localStorage');
+  const loopback = editor.match(/const LOOPBACK_HOSTNAMES = Object\.freeze\(\[([^\]]*)\]\);/);
+  assert(loopback, 'loopback hostname allowlist is missing');
+  const loopbackValues = [...loopback[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert(
+    JSON.stringify(loopbackValues) === JSON.stringify(['localhost', '127.0.0.1', '::1']),
+    'allowed review hostnames must be exactly localhost, 127.0.0.1, and ::1',
+  );
+  const hostnameNormalizer = functionBody(editor, 'normalizeLoopbackHostname', false);
+  assert(
+    compact(hostnameNormalizer).includes("returnhostname==='[::1]'?'::1':hostname;"),
+    'loopback hostname normalization must convert exactly [::1] to ::1',
+  );
+  assert(
+    compact(constExpression(editor, 'browserEnvironment')) === "typeofwindow!=='undefined'",
+    'candidate browser-environment check changed',
+  );
+  assert(
+    compact(constExpression(editor, 'browserHostname'))
+      === "browserEnvironment?normalizeLoopbackHostname(window.location.hostname):''",
+    'browser hostname must be derived through the loopback normalizer only in a browser environment',
+  );
+  assert(
+    compact(constExpression(editor, 'loopbackReviewOrigin'))
+      === 'browserEnvironment&&LOOPBACK_HOSTNAMES.includes(browserHostname)',
+    'loopback truth must compare the normalized browser hostname against the exact allowlist',
+  );
+  assert(
+    compact(constExpression(editor, 'candidateAuthorized'))
+      === 'browserEnvironment&&loopbackReviewOrigin&&candidateRequested',
+    'candidate authorization must be browser + loopback + explicit request',
+  );
+  const serializedIpv6Loopback = new URL('http://[::1]:4173/').hostname;
+  assert(serializedIpv6Loopback === '[::1]', 'platform URL serialization must expose bracketed IPv6 hostname');
+  const syntheticNormalizeLoopbackHostname = (hostname) => (
+    hostname === '[::1]' ? '::1' : hostname
+  );
+  assert(
+    syntheticNormalizeLoopbackHostname(serializedIpv6Loopback) === '::1',
+    'source-equivalent normalization must convert serialized [::1] to logical ::1',
+  );
+  assert(
+    syntheticNormalizeLoopbackHostname('localhost') === 'localhost'
+      && syntheticNormalizeLoopbackHostname('127.0.0.1') === '127.0.0.1'
+      && syntheticNormalizeLoopbackHostname('::1') === '::1'
+      && syntheticNormalizeLoopbackHostname('example.com') === 'example.com',
+    'loopback normalization must leave every non-[::1] hostname unchanged',
+  );
+  const logicalLoopbackHostnames = ['localhost', '127.0.0.1', '::1'];
+  const syntheticLoopbackAccepted = (hostname) => (
+    logicalLoopbackHostnames.includes(syntheticNormalizeLoopbackHostname(hostname))
+  );
+  assert(syntheticLoopbackAccepted('localhost'), 'localhost must remain accepted');
+  assert(syntheticLoopbackAccepted('127.0.0.1'), '127.0.0.1 must remain accepted');
+  assert(
+    syntheticLoopbackAccepted(serializedIpv6Loopback),
+    'serialized [::1] must normalize to ::1 and be accepted by the logical allowlist',
+  );
+  for (const rejectedHostname of [
+    'example.com', '[::2]', '0.0.0.0', '127.0.0.2', 'localhost.example.com',
+  ]) {
+    assert(
+      !syntheticLoopbackAccepted(rejectedHostname),
+      `non-loopback review hostname must remain rejected: ${rejectedHostname}`,
+    );
+  }
+  const syntheticCandidateAuthorized = ({ browser, hostname, query = '0', stored = '0' }) => (
+    browser
+    && syntheticLoopbackAccepted(hostname)
+    && (query === '1' || stored === '1')
+  );
+  assert(
+    !syntheticCandidateAuthorized({ browser: true, hostname: 'example.com', query: '1' }),
+    'a public-origin query parameter alone must not authorize the candidate',
+  );
+  assert(
+    !syntheticCandidateAuthorized({ browser: true, hostname: 'localhost' }),
+    'candidate request must be default-off',
+  );
 
-  // (f) isolation: none of the layered fingerprints may appear in a protected file
-  //     (proves K2D-0 did not modify Home / CatCompanion / the 3D room / etc.).
+  // Exact dual authorities, their OR, and one equal ready gate for visible output.
+  const qaExpression = compact(constExpression(editor, 'qaLayeredAuthorized'));
+  const productionExpression = compact(constExpression(editor, 'productionLayeredAuthorized'));
+  const preloadExpression = compact(constExpression(editor, 'layeredPreloadAuthorized'));
+  const useLayeredExpression = compact(constExpression(editor, 'useLayered'));
+  assert(
+    qaExpression === 'resolvedSceneMode&&candidateAuthorized&&petStageLayeredCandidateReady()',
+    'QA authority must be exactly scene mode + candidate authorization + candidate readiness',
+  );
+  assert(!qaExpression.includes('approved'), 'QA authority must not reference approved');
+  assert(
+    productionExpression === 'resolvedSceneMode&&petStageLayeredReady()',
+    'production authority must be exactly scene mode + production readiness',
+  );
+  for (const forbidden of ['query', 'localStorage', 'DEV', 'loopback', 'candidateAuthorized']) {
+    assert(!productionExpression.includes(forbidden), `production authority must not reference ${forbidden}`);
+  }
+  assert(
+    preloadExpression === 'qaLayeredAuthorized||productionLayeredAuthorized',
+    'preload authority must be the exact OR of QA and production authority',
+  );
+  assert(
+    useLayeredExpression === "layeredPreloadAuthorized&&preloadState==='ready'",
+    'both authorities must require the shared preload ready state before visible layering',
+  );
+  assert(!editor.includes('import.meta.env'), 'A2 authority must not use import.meta.env');
+  const syntheticProductionAuthorized = ({ scene, approved, plate, idle, fallback }) => (
+    scene && approved && plate && idle && fallback
+  );
+  assert(
+    !syntheticProductionAuthorized({ scene: true, approved: false, plate: true, idle: true, fallback: true }),
+    'production authority must remain dormant under approved:false',
+  );
+  const syntheticProduction = syntheticProductionAuthorized({
+    scene: true, approved: true, plate: true, idle: true, fallback: true,
+  });
+  const syntheticCandidate = false;
+  assert(
+    syntheticProduction && (syntheticCandidate || syntheticProduction),
+    'synthetic approved production must authorize preload with candidate authorization false',
+  );
+
+  // Candidate/production indicators are distinct, production-first, and visible
+  // only with the ready-gated layered branch.
+  assert(
+    compact(constExpression(editor, 'layeredIndicator'))
+      === "productionLayeredAuthorized?'production':qaLayeredAuthorized?'candidate':undefined",
+    'layered indicator must resolve production first, then candidate, then undefined',
+  );
+  assert(
+    editor.includes('data-layered={useLayered ? layeredIndicator : undefined}')
+      && !editor.includes('data-layered={layeredIndicator}'),
+    'data-layered must be absent until the ready-gated layered branch mounts',
+  );
+  const syntheticIndicator = (qa, production) => (production ? 'production' : qa ? 'candidate' : undefined);
+  assert(syntheticIndicator(true, false) === 'candidate', 'QA indicator must be candidate');
+  assert(syntheticIndicator(false, true) === 'production', 'production indicator must be production');
+  assert(syntheticIndicator(true, true) === 'production', 'production indicator must have priority');
+  assert(syntheticIndicator(false, false) === undefined, 'indicator must be absent without authority');
+
+  // One detached-Image state machine owns exactly four states and two idle-only URLs.
+  const preloadStart = editor.indexOf('useEffect(() => {');
+  const preloadEnd = editor.indexOf('}, [layeredPreloadAuthorized]);', preloadStart);
+  assert(preloadStart > -1 && preloadEnd > preloadStart, 'combined-authority preload effect not found');
+  assert(
+    (editor.match(/useEffect\(\(\) => \{/g) || []).length === 1,
+    'QA and production must share exactly one preload effect',
+  );
+  const preloader = editor.slice(preloadStart, preloadEnd);
+  const preloadStateCalls = [
+    ...editor.matchAll(/setPreloadState\(([^)]+)\)/g),
+  ].map((match) => compact(match[1]));
+  const allowedStates = ["'idle'", "'preloading'", "'ready'", "'failed'"];
+  assert(editor.includes("useState('idle')"), 'preloader must initialize in idle');
+  assert(
+    preloadStateCalls.every((state) => allowedStates.includes(state))
+      && allowedStates.every((state) => preloadStateCalls.includes(state)),
+    'preloader state set must be exactly idle, preloading, ready, and failed',
+  );
+  const urlBlock = editor.match(/const LAYERED_PRELOAD_URLS = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  assert(urlBlock, 'layered preload URL set is missing');
+  const preloadUrls = [...urlBlock[1].matchAll(/'([^']+)'/g)].map((match) => match[1]);
+  assert(
+    JSON.stringify(preloadUrls) === JSON.stringify([
+      '/assets/rooms/ember_room_canonical_clean.png',
+      '/assets/pets/white_kitten_idle_alpha.png',
+    ]),
+    'preloader URL set must contain exactly the plate and idle PNGs',
+  );
+  assert((preloader.match(/new Image\(\)/g) || []).length === 1, 'required preloader must have one Image constructor site');
+  assert(preloader.includes('for (const url of LAYERED_PRELOAD_URLS)'), 'preloader must create one Image per required URL');
+  const newImageIndex = preloader.indexOf('const image = new Image()');
+  const pushIndex = preloader.indexOf('images.push(image)', newImageIndex);
+  const errorIndex = preloader.indexOf('image.onerror = fail', pushIndex);
+  const loadIndex = preloader.indexOf('image.onload = async', errorIndex);
+  const srcIndex = preloader.indexOf('image.src = url', loadIndex);
+  assert(
+    newImageIndex > -1 && newImageIndex < pushIndex && pushIndex < errorIndex
+      && errorIndex < loadIndex && loadIndex < srcIndex,
+    'each Image must be owned and receive onerror/onload before src assignment',
+  );
+  assert(
+    compact(preloader).includes("if(typeofimage.decode==='function')awaitimage.decode();"),
+    'preloader must await decode when decode exists',
+  );
+  assert(
+    /catch\s*\{\s*fail\(\);\s*return;\s*\}/.test(preloader),
+    'decode rejection or throw must fail the preload run',
+  );
+  assert(
+    /await image\.decode\(\);[\s\S]*?if \(stale\(\) \|\| failed\) return;[\s\S]*?completeOne\(\);/.test(preloader),
+    'post-decode continuation must recheck stale/failure before completion',
+  );
+  assert(
+    compact(preloader).includes(
+      "if(completed===LAYERED_PRELOAD_URLS.length)setPreloadState('ready');",
+    ),
+    'ready must require both exact URL entries to complete',
+  );
+  assert(
+    compact(preloader).includes("failed=true;setPreloadState('failed');"),
+    'either required-asset failure must set failed',
+  );
+  assert(
+    compact(preloader).includes('constmyRun=++preloadRunRef.current;')
+      && compact(preloader).includes('letcancelled=false;')
+      && compact(preloader).includes(
+        'conststale=()=>cancelled||myRun!==preloadRunRef.current;',
+      ),
+    'each preload run must own a fresh token and cancelled/stale state',
+  );
+  assert(
+    compact(preloader).includes(
+      "constcleanup=()=>{++preloadRunRef.current;cancelled=true;for(constimageofimages){image.onload=null;image.onerror=null;image.src='';}};",
+    ),
+    'cleanup must invalidate, cancel, detach handlers, and clear only each owned Image src',
+  );
+  const inactiveIndex = preloader.indexOf('if (!layeredPreloadAuthorized)');
+  assert(
+    inactiveIndex > -1
+      && preloader.indexOf("setPreloadState('idle')", inactiveIndex) < newImageIndex
+      && preloader.indexOf('return cleanup', inactiveIndex) < newImageIndex,
+    'inactive authorization must set idle and return before creating any Image',
+  );
+  assert(
+    editor.includes('}, [layeredPreloadAuthorized]);'),
+    'preloader must not retry during an unchanged authorization run',
+  );
+
+  // Visible plate/idle stay unmounted until ready and both defend back to the
+  // baked composite on error; existing contract layer order is preserved.
+  assert(
+    /className=\{canonicalKittenClassName\}[\s\S]*?src=\{kittenSrc\}/.test(editor),
+    'PetRoomEditor never renders the canonical kitten layer',
+  );
+  assert(
+    /className="room-img"[\s\S]*?src=\{plateSrc\}[\s\S]*?onError=\{handleLayeredImageError\}/.test(editor)
+      && /className=\{canonicalKittenClassName\}[\s\S]*?src=\{kittenSrc\}[\s\S]*?onError=\{handleCanonicalKittenError\}/.test(editor)
+      && editor.includes("const handleLayeredImageError = () => setPreloadState('failed');")
+      && editor.includes("setPreloadState('failed');\n  };"),
+    'visible plate and idle must both fail immediately back to preloadState=failed',
+  );
+  assert(
+    editor.includes('<img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />'),
+    'the baked composite must remain the startup and failure branch',
+  );
+  // Render order is judged from the real <img> nodes: the class-name construction
+  // array near the top of the component also holds the bare 'canonical-kitten-layer'
+  // token, so a bare-token indexOf resolves to that array, not the render node.
+  const shadowNode = editor.match(/<img\s+className="canonical-kitten-shadow"[\s\S]*?src=\{shadowSrc\}[\s\S]*?\/>/);
+  const kittenNode = editor.match(/<img\s+className=\{canonicalKittenClassName\}[\s\S]*?src=\{kittenSrc\}[\s\S]*?\/>/);
+  assert(shadowNode, 'the contact shadow <img> render node was not found');
+  assert(kittenNode, 'the canonical kitten <img> render node was not found');
+  const shadowIdx = editor.indexOf(shadowNode[0]);
+  const kittenRenderIdx = editor.indexOf(kittenNode[0]);
+  const depthIdx = editor.indexOf('scene-depth');
+  assert(shadowIdx > -1 && kittenRenderIdx > shadowIdx, 'the contact shadow must render before the kitten cutout');
+  assert(depthIdx > kittenRenderIdx, 'the canonical kitten layer must render BEFORE scene-depth (contract layer order)');
+
+  // Isolation boundaries: exact installed bytes, unchanged CSS/routes/config/
+  // dependencies, and no feature leakage outside the authorized source paths.
+  assert(
+    sourceSha256('public/assets/rooms/ember_room_canonical_clean.png')
+      === '5adceab2d1a8835d621f35dec698d836407154d6b201e99a45ab4c95b9ad401c'
+      && sourceSha256('public/assets/pets/white_kitten_idle_alpha.png')
+      === '4ef94bb3329ae49ca3299b5005725e86393a3cfc4b4521b0f7ee9a68bee51e8c'
+      && sourceSha256('public/assets/pets/white_kitten_blink_alpha.png')
+      === 'ba9bbdabc33d9c16a19fea326a5b77c7f8e8ccdfa85eddffb259a4c278e247c8',
+    'installed plate/idle/blink PNG bytes changed',
+  );
+  const cssWithAuthorizedA5Motion = read('src/styles/components.css');
+  const cssBeforeAuthorizedA5Motion = cssWithAuthorizedA5Motion.replace(
+    /\n\/\* K2D-1K-A5:[\s\S]*?\/\* K2D-1K-A5 canonical breathing refinement end\. \*\/\n/,
+    '',
+  );
+  assert(
+    createHash('sha256').update(cssBeforeAuthorizedA5Motion).digest('hex')
+      === 'bccb037e98d69cb62c901661a3703c8fecdf400874f2ec9290d350e17b91b463',
+    'components.css changed outside the exact authorized A5 breathing block',
+  );
+  const protectedHashes = {
+    'src/App.jsx': '4bb32739e3bb1b2640a45d8256cf34b5443870e13dcf9d5228a68b3289924760',
+    'package.json': '504597bdbade6f380f08482c1d1e929ebb47c84eeeca971533d3a0e0a4811784',
+    'package-lock.json': 'b117adcf27d18c5d06cc0497ae2e9aca58dfee4cfee4451e8ea5749d18402c94',
+    'vite.config.js': '40ac0dd6fd8721a966fc4d1db087164ec10a148f43511094ca8c955826dd0391',
+  };
+  for (const [relPath, expected] of Object.entries(protectedHashes)) {
+    assert(sourceSha256(relPath) === expected, `${relPath} changed across the A2 isolation boundary`);
+  }
   const fingerprints = [
-    'canonical-kitten-layer', 'canonical-kitten-shadow', 'petStageLayeredReady',
-    'CANONICAL_LAYERED', 'canonical_clean', 'idle_alpha',
+    'petStageLayeredCandidateReady', 'candidateAuthorized', 'layeredPreloadAuthorized',
+    'nof.kittenLayered', 'white_kitten_idle_alpha.png',
   ];
   const protectedFiles = [
     'src/screens/HomeScreen.jsx',
@@ -3833,27 +4182,197 @@ check('K2D-0 canonical-kitten layered contract is fail-closed and isolated', () 
   for (const f of protectedFiles) {
     const txt = read(f);
     for (const fp of fingerprints) {
-      assert(!txt.includes(fp), `K2D-0 leaked into a protected file (${f}): ${fp}`);
+      assert(!txt.includes(fp), `K2D-1K-A2 leaked into a protected file (${f}): ${fp}`);
     }
   }
+});
 
-  // (g) no test-runner dependency was added, and no unapproved asset binary landed
-  //     (present:false must honestly reflect that the files are absent on disk).
-  const pkg = JSON.parse(read('package.json'));
-  const deps = { ...(pkg.dependencies || {}), ...(pkg.devDependencies || {}) };
-  for (const banned of ['vitest', 'jest', 'mocha', '@testing-library/react', 'ava', 'jasmine']) {
-    assert(!(banned in deps), `a test-runner dependency was added (${banned}) — the contract forbids new test deps`);
-  }
-  for (const relPath of [
-    'public/assets/rooms/ember_room_canonical_clean.webp',
-    'public/assets/pets/white_kitten_idle_alpha.webp',
-    'public/assets/pets/white_kitten_blink_alpha.webp',
-    'public/assets/pets/white_kitten_shadow_alpha.webp',
+check('K2D-1K-A3 canonical blink product motion is optional, deterministic, and fail-closed', () => {
+  const assets = read('src/constants/petAssets.js');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const compact = (value) => value.replace(/\s+/g, '');
+  const functionBody = (source, name) => {
+    const match = source.match(new RegExp(`export function ${name}\\([^)]*\\)\\s*\\{[\\s\\S]*?\\n\\}`));
+    assert(match, `${name}() body not found`);
+    return match[0];
+  };
+
+  const layeredBlock = assets.match(/const CANONICAL_LAYERED = \{[\s\S]*?\n\};/);
+  assert(layeredBlock, 'CANONICAL_LAYERED contract block not found');
+  const blinkEntry = layeredBlock[0].match(/\n  blink: \{[\s\S]*?\n  \},/);
+  const shadowEntry = layeredBlock[0].match(/\n  shadow: \{[\s\S]*?\n  \},/);
+  assert(
+    blinkEntry
+      && blinkEntry[0].includes("path: '/assets/pets/white_kitten_blink_alpha.png'")
+      && /present:\s*true/.test(blinkEntry[0]),
+    'A3 blink registry must select the staged PNG with present:true',
+  );
+  assert(/approved:\s*true/.test(layeredBlock[0]) && !/approved:\s*false/.test(layeredBlock[0]), 'approved must be true after explicit A6 human approval activation');
+  assert(shadowEntry && /present:\s*false/.test(shadowEntry[0]), 'shadow must remain present:false');
+
+  const motionBlock = assets.match(/const CANONICAL_BLINK_MOTION = Object\.freeze\(\{[\s\S]*?\n\}\);/);
+  assert(motionBlock, 'immutable canonical blink motion contract is missing');
+  assert(
+    compact(motionBlock[0]).includes(
+      'initialDelayMs:4800,intervalsMs:Object.freeze([6200,7800,5400,8900]),durationMs:260',
+    ),
+    'blink motion must be exactly 4800 then 6200/7800/5400/8900 with refined duration 260',
+  );
+
+  const candidateReady = functionBody(assets, 'petStageLayeredCandidateReady');
+  const productionReady = functionBody(assets, 'petStageLayeredReady');
+  assert(!candidateReady.includes('blink') && !productionReady.includes('blink'), 'blink must not gate plate+idle readiness');
+  assert(
+    compact(candidateReady).includes('returnBoolean(c.plate?.present&&c.idle?.present&&fallbackPresent);')
+      && compact(productionReady).includes('returnBoolean(c.approved&&c.plate?.present&&c.idle?.present&&fallbackPresent);'),
+    'plate+idle candidate/production readiness formulas changed',
+  );
+
+  assert(editor.includes("window.matchMedia('(prefers-reduced-motion: no-preference)')"), 'no-preference matchMedia gate is missing');
+  assert(editor.includes("document.visibilityState === 'visible'"), 'document visibility gate is missing');
+  assert(editor.includes("document.addEventListener('visibilitychange', syncVisibility)"), 'visibility change listener is missing');
+  assert(!editor.includes('setInterval('), 'setInterval is forbidden for canonical blink');
+  assert(!editor.includes('Math.random') && !editor.includes('crypto.getRandomValues'), 'canonical blink cadence must stay deterministic');
+  assert(
+    editor.includes('const scheduleStart = (delayMs) => {')
+      && editor.includes('scheduleStart(nextDelay);')
+      && editor.includes('scheduleStart(CANONICAL_BLINK_MOTION.initialDelayMs);'),
+    'canonical blink must use recursive timeout scheduling',
+  );
+  assert(
+    editor.includes('clearTimeout(blinkStartTimerRef.current)')
+      && editor.includes('clearTimeout(blinkEndTimerRef.current)')
+      && editor.includes('cancelled = true;\n      clearOwnedTimers();\n      setBlinkActive(false);'),
+    'canonical blink must clear all owned timers and return to idle on cleanup',
+  );
+
+  const blinkPreload = editor.match(/useEffect\(function preloadCanonicalBlink\(\) \{[\s\S]*?\n  \}, \[useLayered, motionAllowed, documentVisible, blinkReady, blinkUnavailable\]\);/);
+  assert(blinkPreload, 'optional detached blink preload effect is missing');
+  assert(
+    compact(blinkPreload[0]).includes('!useLayered||!CANONICAL_LAYERED.blink.present||!motionAllowed||!documentVisible||blinkReady||blinkUnavailable'),
+    'blink preload must require layered mount, registry presence, motion permission, and visibility',
+  );
+  assert(
+    blinkPreload[0].includes('image.onerror = failBlink;')
+      && blinkPreload[0].includes('image.onload = async () => {')
+      && blinkPreload[0].indexOf('image.onerror = failBlink;') < blinkPreload[0].indexOf('image.src = CANONICAL_LAYERED.blink.path;')
+      && blinkPreload[0].indexOf('image.onload = async () => {') < blinkPreload[0].indexOf('image.src = CANONICAL_LAYERED.blink.path;')
+      && compact(blinkPreload[0]).includes("if(typeofimage.decode==='function')awaitimage.decode();"),
+    'blink preload must attach handlers before src and await decode when available',
+  );
+  assert(
+    blinkPreload[0].includes('myRun !== blinkPreloadRunRef.current')
+      && blinkPreload[0].includes('image.onload = null;')
+      && blinkPreload[0].includes('image.onerror = null;')
+      && blinkPreload[0].includes("image.src = '';"),
+    'blink preload needs stale-run protection and exact owned-image cleanup',
+  );
+
+  assert(
+    editor.includes('const kittenSrc = showCanonicalBlink ? blinkKittenSrc : idleKittenSrc;')
+      && (editor.match(/src=\{kittenSrc\}/g) || []).length === 1
+      && /className=\{canonicalKittenClassName\}[\s\S]*?src=\{kittenSrc\}[\s\S]*?onError=\{handleCanonicalKittenError\}/.test(editor),
+    'blink must switch one canonical kitten image between blink and idle sources',
+  );
+  assert(
+    editor.includes('if (showCanonicalBlink) {')
+      && editor.includes('setBlinkUnavailable(true);')
+      && editor.includes('setBlinkReady(false);')
+      && editor.includes('setBlinkActive(false);')
+      && editor.includes("setPreloadState('failed');"),
+    'blink failure must return to idle while plate/idle failure still returns to the baked composite',
+  );
+  assert(
+    editor.includes('data-layered={useLayered ? layeredIndicator : undefined}'),
+    'ready-gated data-layered contract must remain intact',
+  );
+  const cssWithAuthorizedA5Motion = read('src/styles/components.css');
+  const cssBeforeAuthorizedA5Motion = cssWithAuthorizedA5Motion.replace(
+    /\n\/\* K2D-1K-A5:[\s\S]*?\/\* K2D-1K-A5 canonical breathing refinement end\. \*\/\n/,
+    '',
+  );
+  assert(
+    createHash('sha256').update(cssBeforeAuthorizedA5Motion).digest('hex')
+      === 'bccb037e98d69cb62c901661a3703c8fecdf400874f2ec9290d350e17b91b463',
+    'A3 base CSS changed outside the authorized A5 breathing refinement',
+  );
+});
+
+check('K2D-1K-A5 blink timing and subtle breathing refinement is exact and motion-safe', () => {
+  const assets = read('src/constants/petAssets.js');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const css = read('src/styles/components.css');
+  const compact = (value) => value.replace(/\s+/g, '');
+
+  const breathingContract = assets.match(
+    /const CANONICAL_BREATHING_MOTION = Object\.freeze\(\{[\s\S]*?\n\}\);/,
+  );
+  assert(breathingContract, 'immutable canonical breathing motion contract is missing');
+  assert(
+    compact(breathingContract[0]).includes('durationMs:4600,scaleY:1.0045'),
+    'breathing contract must be exactly 4600 ms and scaleY 1.0045',
+  );
+  assert(
+    /export \{[\s\S]*?CANONICAL_BREATHING_MOTION,[\s\S]*?\};/.test(assets),
+    'canonical breathing motion contract must be exported',
+  );
+
+  const classGate = editor.match(
+    /const canonicalKittenClassName = \[[\s\S]*?\n    \.join\(' '\);/,
+  );
+  assert(classGate, 'canonical kitten breathing class gate is missing');
+  assert(
+    compact(classGate[0]).includes(
+      "'canonical-kitten-layer',useLayered&&motionAllowed&&documentVisible&&'canonical-kitten-layer--breathing'",
+    ),
+    'breathing class must require useLayered + motionAllowed + documentVisible',
+  );
+  assert(
+    (editor.match(/src=\{kittenSrc\}/g) || []).length === 1
+      && /<img\s+[\s\S]*?className=\{canonicalKittenClassName\}[\s\S]*?src=\{kittenSrc\}/.test(editor),
+    'breathing and blink must retain the same single canonical kitten image',
+  );
+  assert(!editor.includes('CANONICAL_BREATHING_MOTION'), 'breathing must not add a React/JavaScript timer');
+  assert(!editor.includes('setInterval('), 'setInterval remains forbidden for canonical motion');
+  assert(!editor.includes('Math.random') && !editor.includes('crypto.getRandomValues'), 'canonical motion must remain deterministic');
+
+  const breathingRule = css.match(
+    /\.pet-room--scene \.canonical-kitten-layer--breathing \{[\s\S]*?\n\}/,
+  );
+  assert(breathingRule, 'scoped canonical breathing CSS rule is missing');
+  for (const required of [
+    'transform-origin:50%100%',
+    'animation-duration:4600ms',
+    'animation-timing-function:ease-in-out',
+    'animation-iteration-count:infinite',
   ]) {
-    let exists = true;
-    try { statSync(join(ROOT, relPath)); } catch { exists = false; }
-    assert(!exists, `an unapproved layered asset binary was added (${relPath}); present:false must reflect real absence`);
+    assert(compact(breathingRule[0]).includes(required), `canonical breathing rule lost ${required}`);
   }
+
+  const breathingFrames = css.match(
+    /@keyframes canonical-kitten-breathing \{[\s\S]*?\n\}\n\n@media/,
+  );
+  assert(breathingFrames, 'canonical breathing keyframes are missing');
+  assert(
+    /0%,\s*\n\s*100%\s*\{\s*\n\s*transform:\s*scaleY\(1\);/.test(breathingFrames[0])
+      && /50%\s*\{\s*\n\s*transform:\s*scaleY\(1\.0045\);/.test(breathingFrames[0]),
+    'breathing keyframes must be neutral at 0/100 and scaleY(1.0045) at 50%',
+  );
+  assert(
+    !/translate|rotate|scaleX|opacity|filter|blur|brightness|drop-shadow/.test(breathingFrames[0]),
+    'breathing keyframes must not translate, rotate, scaleX, pulse opacity, or add filters',
+  );
+  assert(
+    /@media \(prefers-reduced-motion: reduce\) \{\s*\.canonical-kitten-layer--breathing \{\s*animation:\s*none;\s*transform:\s*none;\s*\}/.test(css),
+    'reduced-motion CSS must suppress breathing animation and transform',
+  );
+
+  const layeredBlock = assets.match(/const CANONICAL_LAYERED = \{[\s\S]*?\n\};/);
+  assert(layeredBlock && /approved:\s*true/.test(layeredBlock[0]) && !/approved:\s*false/.test(layeredBlock[0]), 'approved must be true after explicit A6 human approval activation');
+  assert(
+    editor.includes('data-layered={useLayered ? layeredIndicator : undefined}'),
+    'ready-gated data-layered contract must remain intact',
+  );
 });
 
 let failed = 0;

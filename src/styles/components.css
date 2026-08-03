@@ -1890,6 +1890,44 @@
   transition: transform 240ms var(--ease-soft);
 }
 
+/* K2D-1K-A5: one restrained, bottom-anchored breath on the canonical layered
+ * kitten only. The neutral transform compensates for the bottom origin so the
+ * existing authored 1.06 scene framing remains pixel-aligned with the plate. */
+.pet-room--scene .canonical-kitten-layer--breathing {
+  transform-origin: 50% 100%;
+  transform:
+    scale(1.06)
+    translate(
+      calc(var(--par-x, 0) * -6px),
+      calc(var(--par-y, 0) * -5px + 2.547169811%)
+    );
+  animation-name: canonical-kitten-breathing;
+  animation-duration: 4600ms;
+  animation-timing-function: ease-in-out;
+  animation-iteration-count: infinite;
+  animation-composition: accumulate;
+}
+
+@keyframes canonical-kitten-breathing {
+  0%,
+  100% {
+    transform: scaleY(1);
+  }
+
+  50% {
+    transform: scaleY(1.0045);
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .canonical-kitten-layer--breathing {
+    animation: none;
+    transform: none;
+  }
+}
+
+/* K2D-1K-A5 canonical breathing refinement end. */
+
 @media (prefers-reduced-motion: reduce) {
   /* match the composite: freeze the layered scene perfectly still */
   .pet-room--scene .canonical-kitten-shadow,
