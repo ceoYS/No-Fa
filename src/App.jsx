@@ -245,6 +245,13 @@ export default function App() {
   // no-network storage box as the rest of the bundle (src/utils/storage.js, guard #38).
   const [checkinLedger, setCheckinLedger] = useState(() => persisted?.checkinLedger ?? {});
 
+  // Future diary entries are their own local-only domain, deliberately separate from
+  // today's reflective check-in and its calendar ledger. Each entry describes a desired
+  // future self / day / emotional environment and is never surfaced as a "today" record.
+  const [futureDiaryEntries, setFutureDiaryEntries] = useState(() =>
+    Array.isArray(persisted?.futureDiaryEntries) ? persisted.futureDiaryEntries : [],
+  );
+
   // Shield blocklist planner (P0.5). Persisted, but it still does NOT block
   // anything — it is the abstract plan (no URLs) a future P1 engine will consume.
   const [blocklist, setBlocklist] = useState(() => persisted?.blocklist ?? DEFAULT_BLOCKLIST);
@@ -311,6 +318,7 @@ export default function App() {
       todayRecord,
       todayRecordDay: todayRecord ? dayKey(Date.now()) : null,
       checkinLedger,
+      futureDiaryEntries,
       blocklist,
       protectionPlan,
       emberShards,
@@ -332,6 +340,7 @@ export default function App() {
     categories,
     todayRecord,
     checkinLedger,
+    futureDiaryEntries,
     blocklist,
     protectionPlan,
     emberShards,
@@ -503,15 +512,31 @@ export default function App() {
     setProtectionPlan(empty ? null : next);
   };
 
+  // Future diary save — intentionally separate from completeCheckin/checkinLedger.
+  // The user is visualizing a desired future, not reporting what happened today.
+  const saveFutureDiary = (draft = {}) => {
+    const entry = {
+      futureSelf: (draft.futureSelf ?? '').trim(),
+      idealDay: (draft.idealDay ?? '').trim(),
+      feelingsEnvironment: (draft.feelingsEnvironment ?? '').trim(),
+    };
+    if (!entry.futureSelf && !entry.idealDay && !entry.feelingsEnvironment) return;
+    setFutureDiaryEntries((prev) => [
+      { ...entry, id: `future-${Date.now()}`, createdAt: Date.now(), type: 'future-diary' },
+      ...prev,
+    ].slice(0, 50));
+  };
+
   // Reset the user's locally-stored activity (C25). Clears the logged data the app keeps
-  // on THIS device — today's record, the check-in history ledger, the protection plan, and
-  // the once-per-day reward-day guards — then routes home. The save-on-change effect then
+  // on THIS device — today's record, check-in history, future diary, the protection plan,
+  // and the once-per-day reward-day guards — then routes home. The save-on-change effect then
   // persists this cleared state, so the new protectionPlan is cleaned alongside the rest
   // (the same data clearState() would drop wholesale). There is no account and no cloud, so
   // nothing leaves or is deleted off-device; this only empties local storage on this device.
   const resetLocalData = () => {
     setTodayRecord(null);
     setCheckinLedger({});
+    setFutureDiaryEntries([]);
     setProtectionPlan(null);
     setCheckinRewardDay(null);
     setCrisisRewardDay(null);
@@ -852,6 +877,8 @@ export default function App() {
             reflectionCtx={reflectionCtx}
             todayRecord={todayRecord}
             checkinLedger={checkinLedger}
+            futureDiaryEntries={futureDiaryEntries}
+            onSaveFutureDiary={saveFutureDiary}
             emberShards={emberShards}
             inventory={inventory}
             ownedItems={ownedItems}

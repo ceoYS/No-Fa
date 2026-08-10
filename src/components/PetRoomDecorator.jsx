@@ -6,10 +6,10 @@ import { ITEM_BY_ID } from '../constants/roomItems.js';
  * PetRoomDecorator — the REAL room-decorating surface (PRD §0.6.9, RC-2B).
  *
  * HONESTY MODEL: the decor art is rectangular, non-transparent crops, NOT
- * transparent overlay sprites (petAssets keeps every spriteReady:false). So a
- * placed item is shown as a deliberately FRAMED, LABELLED card — never pasted as
- * if it were a seamless sprite composited into the scene. A framed card is an
- * honest "you put this here" token, so real placement needs no fake sprite claim.
+ * transparent overlay sprites (petAssets keeps every spriteReady:false). A placed
+ * item therefore remains a labelled thumbnail, but C2-B removes the heavy outer
+ * card frame and feathers the placed crop into a circle. The UI never marks these assets as
+ * transparent sprites or claims a seamless composite.
  *
  * Placement is coordinate-based: every card sits at a normalized (x, y) fraction
  * of the stage, so the layout survives the 390px mobile form factor. Coordinates
@@ -27,8 +27,8 @@ const TAP_SLOP = 6; // px of travel under which a press is a tap, not a drag
 
 const clamp01 = (v) => Math.min(1 - PAD, Math.max(PAD, v));
 
-// Honest framed item card — the real (rectangular) art as a thumbnail plus the
-// item name. Clearly a card, not a transparent sprite pretending to be in-scene.
+// Lightweight item overlay — the real rectangular art plus its readable name.
+// CSS removes the heavy container frame while retaining selection/focus affordance.
 function ItemCardFace({ item, className = 'room-card-face' }) {
   const src = resolveItemAsset(item.assetId);
   return (
@@ -216,7 +216,7 @@ export default function PetRoomDecorator({
       {editable ? (
         <>
           <p className="room-decorator-help" aria-live="polite">
-            아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요. 놓인 카드는 다시 끌어 옮길 수 있어요.
+            아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요. 놓인 소품은 다시 끌어 옮길 수 있어요.
           </p>
           {selectedId && placedIds.has(selectedId) ? (
             <div className="room-select-bar">

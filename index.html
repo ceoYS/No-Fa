@@ -4,11 +4,16 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <meta name="theme-color" content="#F4F6F7" />
+    <link
+      rel="preload"
+      href="/fonts/PretendardVariable.woff2"
+      as="font"
+      type="font/woff2"
+      crossorigin
+    />
     <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
     <title>NoF · P0 Prototype</title>
-    <!-- R-9: external font CDNs removed for deterministic offline/managed-network
-         rendering. Type resolves from the system font stack in tokens.css
-         (Pretendard/Inter are used only when locally installed). -->
+    <!-- Pretendard is self-hosted for deterministic offline/managed-network rendering. -->
   </head>
   <body>
     <div id="root"></div>

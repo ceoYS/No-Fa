@@ -172,13 +172,12 @@ check('no discipline delete affordance (only comments may mention it)', () => {
 });
 
 // 5 — RC-2B: room placement is REAL now, but it stays honest — placed items are
-// framed CARDS (real art thumbnail + name), never a claim that transparent overlay
-// sprites exist. So no petAssets entry may flip spriteReady, and the decorator must
-// place via pointer events on a normalized (percent) coordinate stage.
-check('real room placement stays honest (framed cards, no transparent-sprite claim)', () => {
+// labelled opaque-crop overlays, never a claim that transparent sprites exist. C2-B
+// also keeps their outer UI frame visually transparent so the room stays primary.
+check('real room placement stays honest (lightweight overlays, no transparent-sprite claim)', () => {
   assert(
     !/spriteReady:\s*true/.test(read('src/constants/petAssets.js')),
-    'a petAssets entry sets spriteReady:true — real placement must use honest framed cards, not a fake sprite claim',
+    'a petAssets entry sets spriteReady:true — real placement must use labelled crop overlays, not a fake sprite claim',
   );
   const dec = read('src/components/PetRoomDecorator.jsx');
   assert(/onPointerDown=\{/.test(dec), 'decorator has no pointer-event drag handler (onPointerDown)');
@@ -189,8 +188,14 @@ check('real room placement stays honest (framed cards, no transparent-sprite cla
   // normalized (percent) coordinates, clamped inside the stage rect — layout-safe on mobile.
   assert(/clamp01/.test(dec) && /getBoundingClientRect\(\)/.test(dec), 'decorator placement is not normalized to the stage rect');
   assert(/\* 100\}%/.test(dec), 'placed cards are not positioned by percent coordinates');
-  // honest framed item cards (thumbnail + name), never a raw transparent-sprite overlay.
-  assert(dec.includes('room-card-face') && dec.includes('room-card-name'), 'decorator does not render honest framed item cards');
+  // Honest thumbnail + name, never a raw transparent-sprite overlay. The outer face
+  // deliberately has no heavy card chrome after Founder C2-B feedback.
+  assert(dec.includes('room-card-face') && dec.includes('room-card-name'), 'decorator does not render labelled item overlays');
+  const css = read('src/styles/components.css');
+  const face = css.match(/(?:^|\n)\.room-card-face\s*\{[\s\S]*?\}/)?.[0] ?? '';
+  assert(/background:\s*transparent/.test(face), 'placed item overlay restored a visible rectangular background');
+  assert(/border:\s*0/.test(face), 'placed item overlay restored a visible rectangular border');
+  assert(/box-shadow:\s*none/.test(face), 'placed item overlay restored a heavy outer shadow');
 });
 
 // 6 — forbidden fake-motion / emoji-furniture / blob-cat tokens absent from source.
@@ -1334,6 +1339,37 @@ check('pet-room scene viewer stays a disclosed static preset display', () => {
   );
   const screen = read('src/screens/PetRewardScreen.jsx');
   assert(screen.includes('PetSceneViewer'), 'PetRewardScreen does not render the scene viewer');
+  // C2-B-R1C: the three-state cat is integrated into the ACTUAL room. A small,
+  // product-like selector drives catState into the live room layer (PetRoomEditor);
+  // the old large three-image preview workaround (CatStatePreview / catPose /
+  // resolveCatAsset figure) must be gone as the primary state implementation.
+  assert(
+    screen.includes('CatStateSelector') && screen.includes('catState'),
+    'main pet-room flow must expose the small cat-state selector wired to catState',
+  );
+  assert(
+    /<CatStateSelector[\s\S]*?onChange=\{setCatState\}/.test(screen),
+    'the cat-state selector must set the room catState',
+  );
+  assert(
+    /<PetRoomEditor[\s\S]*?catState=\{catState\}[\s\S]*?\/>/.test(screen),
+    'the actual room (PetRoomEditor) must receive catState',
+  );
+  assert(
+    !screen.includes('CatStatePreview') && !viewer.includes('CatStatePreview'),
+    'the old large three-image cat preview workaround must be removed',
+  );
+  assert(
+    !viewer.includes('cat-state-image') && !viewer.includes('resolveCatAsset'),
+    'the cat-state selector must not resurrect the big preview image / opaque pose art',
+  );
+  for (const state of ["id: 'default'", "id: 'happy'", "id: 'rest'"]) {
+    assert(viewer.includes(state), `cat-state selector is missing canonical state: ${state}`);
+  }
+  for (const label of ['기본', '기쁨', '휴식']) {
+    assert(viewer.includes(`label: '${label}'`), `cat-state selector is missing visible state: ${label}`);
+  }
+  assert(viewer.includes('data-cat-state={v.id}'), 'cat-state buttons do not expose a testable state mapping');
 });
 
 // Check-in / Journal v1: the daily capture flow writes the user's mood, urge,
@@ -2426,7 +2462,7 @@ check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluf
 // placement (pointer events, normalized coords) that persists across reload, items
 // are repositionable + removable, the snack hand-off is a real travel that updates
 // real fed state, and NONE of it makes a fake cat motion/eating claim (the cat art is
-// still a static composite — placement uses honest framed cards, not fake sprites).
+// still a static composite — placement uses honest labelled crop overlays, not fake sprites).
 check('RC-2B real cat room: drag placement persists, snack handoff animates, honest copy', () => {
   const dec = read('src/components/PetRoomDecorator.jsx');
   const screen = read('src/screens/PetRewardScreen.jsx');
@@ -3540,13 +3576,17 @@ check('v13 final handoff shell: palette, nav, structure, honesty labels pinned',
     'Home reintroduced the old 절제 시간 hero heading',
   );
 
-  // (d) Honesty labels: diary tab is 준비 중 (no fake save), blocking row stays 준비 중,
-  //     and Settings keeps the working language control with no paywall/subscription rows.
+  // (d) Future diary is now a REAL, separate local writing domain (Founder C2-B),
+  //     while blocking stays 준비 중 and Settings keeps the working language control.
   const diary = read('src/screens/FutureDiaryScreen.jsx');
-  assert(diary.includes('준비 중'), '미래일기 tab lost its 준비 중 honesty label');
-  for (const fake of ['일기 저장', '저장됐어요', 'saveDiary']) {
-    assert(!diary.includes(fake), `미래일기 tab claims an unimplemented save: ${fake}`);
+  const app = read('src/App.jsx');
+  for (const prompt of ['되고 싶은 미래의 나', '미래의 어느 하루', '감정 · 관계 · 환경']) {
+    assert(diary.includes(prompt), `미래일기 is missing its distinct visualization prompt: ${prompt}`);
   }
+  assert(!/onNavigate\?\.\('checkin'\)|onNavigate\('checkin'\)/.test(diary), '미래일기 still routes its primary experience into 오늘 기록');
+  assert(diary.includes('onSaveFutureDiary') && app.includes('saveFutureDiary'), '미래일기 save action is not wired to App');
+  assert(app.includes('futureDiaryEntries') && app.includes("type: 'future-diary'"), '미래일기 has no separate typed storage slice');
+  assert(diary.includes('일반 기록과 섞이지 않고') && diary.includes('이 기기에만'), '미래일기 does not disclose separate local-only storage');
   assert(home.includes('차단 설정 (준비 중)'), 'Home blocking row lost its 준비 중 honesty label');
   const settings = read('src/screens/SettingsScreen.jsx');
   assert(settings.includes('segmented') && settings.includes('onSetLocale'), 'Settings lost the working language control');
@@ -3830,11 +3870,13 @@ check('K2D-1K-A2 dual-authority integration remains fail-closed and isolated', (
   const kittenResolver = functionBody(assets, 'resolveCanonicalKitten');
   assert(
     compact(kittenResolver).includes(
-      "constrequested=state==='blink'?CANONICAL_LAYERED.blink:CANONICAL_LAYERED.idle;",
+      "constbyState={blink:CANONICAL_LAYERED.blink,happy:CANONICAL_LAYERED.happy,rest:CANONICAL_LAYERED.rest};",
+    ) && compact(kittenResolver).includes(
+      'constrequested=byState[state]??CANONICAL_LAYERED.idle;',
     ) && compact(kittenResolver).includes(
       'consta=requested?.present?requested:CANONICAL_LAYERED.idle;',
     ),
-    'an unavailable blink request must continue to resolve through the idle entry',
+    'the kitten resolver must map blink/happy/rest and fail closed to the idle entry',
   );
 
   // The exact baked composite remains registered, scene-ready, present, and byte-identical.
@@ -4152,11 +4194,11 @@ check('K2D-1K-A2 dual-authority integration remains fail-closed and isolated', (
   );
   assert(
     createHash('sha256').update(cssBeforeAuthorizedA5Motion).digest('hex')
-      === 'bccb037e98d69cb62c901661a3703c8fecdf400874f2ec9290d350e17b91b463',
+      === '1e44f6dd5649fb7f49b65092f831040aed7949b3c340dde2f84fb4b739d97da8',
     'components.css changed outside the exact authorized A5 breathing block',
   );
   const protectedHashes = {
-    'src/App.jsx': '4bb32739e3bb1b2640a45d8256cf34b5443870e13dcf9d5228a68b3289924760',
+    'src/App.jsx': '01d6c72238a164b1e4defd4c26adedc804b623caa8b55cbdc6c1b23e21d7968e',
     'package.json': '504597bdbade6f380f08482c1d1e929ebb47c84eeeca971533d3a0e0a4811784',
     'package-lock.json': 'b117adcf27d18c5d06cc0497ae2e9aca58dfee4cfee4451e8ea5749d18402c94',
     'vite.config.js': '40ac0dd6fd8721a966fc4d1db087164ec10a148f43511094ca8c955826dd0391',
@@ -4293,7 +4335,7 @@ check('K2D-1K-A3 canonical blink product motion is optional, deterministic, and 
   );
   assert(
     createHash('sha256').update(cssBeforeAuthorizedA5Motion).digest('hex')
-      === 'bccb037e98d69cb62c901661a3703c8fecdf400874f2ec9290d350e17b91b463',
+      === '1e44f6dd5649fb7f49b65092f831040aed7949b3c340dde2f84fb4b739d97da8',
     'A3 base CSS changed outside the authorized A5 breathing refinement',
   );
 });
@@ -4372,6 +4414,104 @@ check('K2D-1K-A5 blink timing and subtle breathing refinement is exact and motio
   assert(
     editor.includes('data-layered={useLayered ? layeredIndicator : undefined}'),
     'ready-gated data-layered contract must remain intact',
+  );
+});
+
+check('C2-B-R1C three-state cat integrates into the actual room with default idle authority', () => {
+  const assets = read('src/constants/petAssets.js');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const viewer = read('src/components/PetSceneViewer.jsx');
+  const compact = (v) => v.replace(/\s+/g, '');
+  const sourceSha256 = (rel) => createHash('sha256').update(readFileSync(join(ROOT, rel))).digest('hex');
+
+  // (1) Registry: happy + rest registered present at their promoted paths, ADDED
+  // ALONGSIDE (never replacing) the canonical idle + blink authority.
+  const block = assets.match(/const CANONICAL_LAYERED = \{[\s\S]*?\n\};/);
+  assert(block, 'CANONICAL_LAYERED block not found');
+  const b = block[0];
+  assert(
+    /idle:\s*\{[\s\S]*?white_kitten_idle_alpha\.png[\s\S]*?present:\s*true/.test(b)
+      && /blink:\s*\{[\s\S]*?white_kitten_blink_alpha\.png[\s\S]*?present:\s*true/.test(b),
+    'default idle + blink authority must remain registered present',
+  );
+  assert(
+    /happy:\s*\{[\s\S]*?path:\s*'\/assets\/pets\/white_kitten_happy_alpha\.png'[\s\S]*?present:\s*true/.test(b),
+    'approved HAPPY pose must be registered present at its promoted path',
+  );
+  assert(
+    /rest:\s*\{[\s\S]*?path:\s*'\/assets\/pets\/white_kitten_rest_alpha\.png'[\s\S]*?present:\s*true/.test(b),
+    'approved REST pose must be registered present at its promoted path',
+  );
+
+  // (2) Promoted assets are byte-identical to the approved R1B artifacts; canonical
+  // idle/blink bytes are untouched.
+  assert(
+    sourceSha256('public/assets/pets/white_kitten_happy_alpha.png')
+      === '9248b04ab42b5c5bf95b222a920b8999c0dc8efa58a352289ba86c06d1339a16',
+    'promoted HAPPY png is not byte-identical to the approved R1B artifact',
+  );
+  assert(
+    sourceSha256('public/assets/pets/white_kitten_rest_alpha.png')
+      === '4647b9f565c8ba9e3db0d7dba8582592c480f22992a31d79d6283e1942055225',
+    'promoted REST png is not byte-identical to the approved R1B artifact',
+  );
+  assert(
+    sourceSha256('public/assets/pets/white_kitten_idle_alpha.png')
+      === '4ef94bb3329ae49ca3299b5005725e86393a3cfc4b4521b0f7ee9a68bee51e8c'
+      && sourceSha256('public/assets/pets/white_kitten_blink_alpha.png')
+      === 'ba9bbdabc33d9c16a19fea326a5b77c7f8e8ccdfa85eddffb259a4c278e247c8',
+    'canonical idle/blink png bytes must not change under R1C',
+  );
+
+  // (3) Approved in-room placement + the REST ×0.60 room-scale relationship. HAPPY
+  // renders at the canonical seated (idle) height; REST is the approved ×0.60 of it
+  // and keeps its own wide/low bbox — never forced up to the seated-idle height.
+  assert(
+    compact(assets).includes('happy:Object.freeze({x:631,y:360,w:433,h:551})')
+      && compact(assets).includes('rest:Object.freeze({x:592,y:580,w:512,h:331})'),
+    'approved happy/rest in-room placement rects must be pinned exactly',
+  );
+  assert(Math.round((331 / 551) * 100) === 60, 'REST must preserve the approved ×0.60 room-scale relationship');
+  assert(/CANONICAL_REST_SCALE\s*=\s*0\.6\b/.test(assets), 'the REST ×0.60 scale must stay an explicit named constant');
+  assert(
+    compact(assets).includes("byState={blink:CANONICAL_LAYERED.blink,happy:CANONICAL_LAYERED.happy,rest:CANONICAL_LAYERED.rest}"),
+    'resolveCanonicalKitten must map all three canonical states',
+  );
+
+  // (4) The ACTUAL room renders the poses. PetRoomEditor swaps to the approved pose
+  // cutout for happy/rest, positioned by the approved rect, and keeps the default
+  // idle (+ blink) cutout for the default state (never overwritten by a pose).
+  assert(editor.includes("catState = 'default'"), 'PetRoomEditor must accept catState with a default');
+  assert(
+    compact(editor).includes("constposeActive=useLayered&&(catState==='happy'||catState==='rest')"),
+    'pose layer must be gated to the layered scene and the happy/rest states only',
+  );
+  assert(
+    editor.includes('resolveCanonicalPosePlacement(catState)') && editor.includes('className="canonical-kitten-pose"'),
+    'the actual room must render the approved pose cutout via the pose layer',
+  );
+  assert(
+    editor.includes('{poseActive ? null : (') && editor.includes('src={kittenSrc}'),
+    'the default state must keep the canonical idle/blink cutout',
+  );
+  // The pose layer reproduces the plate framing in CSS so the pose sits on the same
+  // floor; SIZE survives reduced-motion (only motion overscale is dropped).
+  const css = read('src/styles/components.css');
+  assert(
+    /\.pet-room--scene \.canonical-kitten-pose-stage \{[\s\S]*?aspect-ratio: 1448 \/ 1086;[\s\S]*?\}/.test(css),
+    'pose stage must reproduce the plate content box (1448/1086)',
+  );
+
+  // (5) No fallback to the old large preview workaround as the primary room state.
+  assert(
+    !screen.includes('CatStatePreview') && !viewer.includes('CatStatePreview') && !viewer.includes('CAT_POSE_VIEWS'),
+    'the old large three-image preview workaround must not remain the room state path',
+  );
+  assert(
+    viewer.includes('CatStateSelector') && viewer.includes('CAT_STATE_VIEWS')
+      && /<PetRoomEditor[\s\S]*?catState=\{catState\}/.test(screen),
+    'the small selector must drive catState into the actual room layer',
   );
 });
 

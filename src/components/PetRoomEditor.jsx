@@ -11,6 +11,7 @@ import {
   petStageLayeredReady,
   resolveCanonicalPlate,
   resolveCanonicalKitten,
+  resolveCanonicalPosePlacement,
   resolveCanonicalShadow,
   shouldUsePetSceneMode,
 } from '../constants/petAssets.js';
@@ -75,6 +76,7 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     editable = true,
     selectedId = null,
     catMotion = 'idle',
+    catState = 'default',
     onSelect,
     onMove,
     onPlaceAt,
@@ -403,6 +405,12 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     && documentVisible
     && blinkActive;
   const kittenSrc = showCanonicalBlink ? blinkKittenSrc : idleKittenSrc;
+  // C2-B-R1C — the actual in-room three-state pose layer. DEFAULT keeps the
+  // canonical idle (+ blink) cutout above untouched; HAPPY / REST swap to their
+  // Founder-approved cutout, placed by the approved plate rect. Layered scene only.
+  const poseActive = useLayered && (catState === 'happy' || catState === 'rest');
+  const poseKittenSrc = poseActive ? resolveCanonicalKitten(catState) : null;
+  const posePlacement = poseActive ? resolveCanonicalPosePlacement(catState) : null;
   const canonicalKittenClassName = [
     'canonical-kitten-layer',
     useLayered
@@ -414,6 +422,9 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     .join(' ');
   const shadowSrc = useLayered ? resolveCanonicalShadow() : null;
   const handleLayeredImageError = () => setPreloadState('failed');
+  // A failed pose cutout falls the whole layered path back to the baked composite,
+  // exactly like a failed plate/idle — never a broken <img>, never a fabricated cat.
+  const handleCanonicalPoseError = () => setPreloadState('failed');
   const handleCanonicalKittenError = () => {
     if (showCanonicalBlink) {
       setBlinkUnavailable(true);
@@ -500,15 +511,41 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
                     decoding="async"
                   />
                 ) : null}
-                <img
-                  className={canonicalKittenClassName}
-                  src={kittenSrc}
-                  alt=""
-                  aria-hidden="true"
-                  loading="lazy"
-                  decoding="async"
-                  onError={handleCanonicalKittenError}
-                />
+                {poseActive ? null : (
+                  <img
+                    className={canonicalKittenClassName}
+                    src={kittenSrc}
+                    alt=""
+                    aria-hidden="true"
+                    loading="lazy"
+                    decoding="async"
+                    onError={handleCanonicalKittenError}
+                  />
+                )}
+                {poseActive && poseKittenSrc && posePlacement ? (
+                  /* HAPPY / REST — the approved cutout placed inside a frame that
+                     reproduces the plate's cover-fit + scene overscale, so the pose
+                     sits on the same floor as idle. Positioned by its approved plate
+                     rect; REST keeps the ×0.60 relationship from CANONICAL_POSE_PLACEMENT. */
+                  <div className="canonical-kitten-pose-frame" aria-hidden="true">
+                    <div className="canonical-kitten-pose-stage">
+                      <img
+                        className="canonical-kitten-pose"
+                        src={poseKittenSrc}
+                        alt=""
+                        loading="lazy"
+                        decoding="async"
+                        style={{
+                          left: `${posePlacement.left}%`,
+                          top: `${posePlacement.top}%`,
+                          width: `${posePlacement.width}%`,
+                          height: `${posePlacement.height}%`,
+                        }}
+                        onError={handleCanonicalPoseError}
+                      />
+                    </div>
+                  </div>
+                ) : null}
               </>
             ) : (
               <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />

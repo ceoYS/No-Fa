@@ -8,6 +8,14 @@
  * base re-skins coherently; only the VALUES moved to v13.
  */
 
+@font-face {
+  font-family: "Pretendard Variable";
+  src: url('/fonts/PretendardVariable.woff2') format('woff2');
+  font-weight: 45 920;
+  font-style: normal;
+  font-display: swap;
+}
+
 :root {
   /* Ink — v13 deep cool ink (hero card, primary CTA, dark screens).
    * Scale runs darkest(900) → lighter, all in the #1B2024 family. */
@@ -66,26 +74,16 @@
 
   --text-primary: #1b2024;
   --text-secondary: #525b62;
-  --text-muted: #8a929a;
-  --text-quiet: #a6adb3;
+  --text-muted: #747e86;
+  --text-quiet: #929aa1;
   --text-ember: #7e5f33;
 
   --accent-ember: #b0894f;
   --accent-ember-soft: rgba(176, 137, 79, 0.14);
   --accent-ember-glow: rgba(176, 137, 79, 0.3);
 
-  /* Typography */
-  /* R-9: external font CDN <link>s (Pretendard via jsdelivr, Inter via rsms.me)
-   * were removed so the app renders deterministically in local preview, on managed
-   * company networks, and offline — with zero external runtime dependency. The
-   * stack below is now the real face everywhere; 'Pretendard Variable', Pretendard
-   * and 'Inter' are honored only when locally installed. 'Malgun Gothic' makes the
-   * Windows Hangul fallback deterministic (Segoe UI via system-ui has no Hangul;
-   * Noto Sans KR is usually absent on Windows). True woff2 self-host stays HOLD
-   * until licensed font files land in the repo (downloading them is out of scope).
-   * v13 uses Pretendard alone — no display serif, no mono timer face; timers use
-   * font-variant-numeric: tabular-nums on the base stack. */
-  --font-kr: 'Pretendard Variable', Pretendard, -apple-system, BlinkMacSystemFont,
+  /* Typography — Pretendard Variable is self-hosted; platform faces remain fallbacks. */
+  --font-kr: "Pretendard Variable", Pretendard, -apple-system, BlinkMacSystemFont,
     system-ui, 'Apple SD Gothic Neo', Roboto, 'Noto Sans KR', 'Malgun Gothic',
     sans-serif;
   --font-en: 'Inter', -apple-system, BlinkMacSystemFont, system-ui, sans-serif;
@@ -119,6 +117,19 @@
   --sp-7: 32px;
   --sp-8: 40px;
   --sp-9: 56px;
+
+  /* C2-A bounded layout/depth polish. */
+  --content-gutter: clamp(var(--sp-5), 5.65vw, var(--sp-6));
+  --shadow-card:
+    0 1px 2px rgba(27, 32, 36, 0.05),
+    0 12px 28px -22px rgba(27, 32, 36, 0.42);
+  --shadow-card-hover:
+    0 2px 4px rgba(27, 32, 36, 0.06),
+    0 16px 30px -20px rgba(27, 32, 36, 0.46);
+  --shadow-cta:
+    0 5px 12px -8px rgba(27, 32, 36, 0.72),
+    0 16px 28px -20px rgba(27, 32, 36, 0.72);
+  --shadow-nav: 0 -10px 24px -22px rgba(27, 32, 36, 0.5);
 
   /* Motion */
   --ease-soft: cubic-bezier(0.22, 0.61, 0.36, 1);

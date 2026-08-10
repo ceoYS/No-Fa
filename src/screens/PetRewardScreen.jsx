@@ -1,7 +1,7 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
 import PetRoomEditor from '../components/PetRoomEditor.jsx';
 import PetRoomDecorator from '../components/PetRoomDecorator.jsx';
-import PetSceneViewer from '../components/PetSceneViewer.jsx';
+import PetSceneViewer, { CatStateSelector } from '../components/PetSceneViewer.jsx';
 import usePetSound from '../hooks/usePetSound.js';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import {
@@ -146,7 +146,7 @@ export default function PetRewardScreen({
   const [selectedId, setSelectedId] = useState(null);
   const [sheet, setSheet] = useState(null); // 'inventory' | 'shop' | null
   // 방 꾸미기 — explicit opt-in editing mode (RC-2B). Owned items are tapped or
-  // dragged from a tray onto the room as honest framed cards; coordinates persist.
+  // dragged from a tray onto the room as labelled, lightweight overlays; coordinates persist.
   const [placementMode, setPlacementMode] = useState(false);
   // 3D experiment flag — one-shot read on mount; room3dBlocked flips true when
   // WebGL (or the lazy chunk) is unavailable so the 2.5D stage always shows.
@@ -154,6 +154,10 @@ export default function PetRewardScreen({
   const [room3dDebug] = useState(room3dDebugRequested);
   const [room3dBlocked, setRoom3dBlocked] = useState(false);
   const [catMotion, setCatMotion] = useState('idle');
+  // C2-B-R1C: the LIVE in-room cat state (default / happy / rest), chosen by the
+  // small selector below and rendered by the actual room layer (PetRoomEditor).
+  // This is not the transient tap/feed motion and it is not saved.
+  const [catState, setCatState] = useState('default');
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
   // A small snack token that rises from the feed button toward the scene on a
@@ -193,6 +197,8 @@ export default function PetRewardScreen({
   };
 
   // Briefly play a motion state, then settle back to idle. Fixed, never random.
+  // This drives only the non-scene CatFigure fallback; the layered room's visible
+  // state is the manual catState selection, never an auto-reaction to a gesture.
   const triggerMotion = (state, ms = 1400) => {
     setCatMotion(state);
     clearTimeout(motionTimer.current);
@@ -423,6 +429,7 @@ export default function PetRewardScreen({
               placements={placements}
               tone="bright"
               catMotion={catMotion}
+              catState={catState}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onMove={onMoveItem}
@@ -433,6 +440,8 @@ export default function PetRewardScreen({
               label="지금 꾸미는 고양이 방"
             />
           )}
+
+          <CatStateSelector value={catState} onChange={setCatState} />
 
           {canControlSelected ? (
             <div className="room-select-bar">

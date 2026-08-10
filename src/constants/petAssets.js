@@ -90,6 +90,23 @@ const CANONICAL_LAYERED = {
     path: '/assets/pets/white_kitten_blink_alpha.png',
     present: true,
   },
+  // C2-B-R1C — the two Founder-approved three-state poses (normalized/padded R1B
+  // artifacts), promoted byte-identical. These are NOT authored to the plate
+  // framing like idle/blink; they are independent centred cutouts placed in-room
+  // by CANONICAL_POSE_PLACEMENT below. Default state never uses these — it stays
+  // the canonical idle (+ blink). Fail-closed: absent → resolver falls to idle.
+  happy: {
+    id: 'happy_alpha',
+    label: '기쁨(투명)',
+    path: '/assets/pets/white_kitten_happy_alpha.png',
+    present: true,
+  },
+  rest: {
+    id: 'rest_alpha',
+    label: '휴식(투명)',
+    path: '/assets/pets/white_kitten_rest_alpha.png',
+    present: true,
+  },
   // Optional separate contact shadow (its own alpha plate); purely grounding.
   shadow: {
     id: 'shadow_alpha',
@@ -109,6 +126,22 @@ const CANONICAL_BREATHING_MOTION = Object.freeze({
   durationMs: 4600,
   scaleY: 1.0045,
 });
+
+// C2-B-R1C — Founder-approved in-room placement of the happy/rest pose cutouts,
+// measured from the approved R1B room composites over the canonical clean plate.
+// FRAME is the plate's authored pixel size; each rect is the FULL pose cutout
+// placed over that frame. All three canonical states share one floor line
+// (bottom ≈ 911) and centre column (≈ 847). HAPPY renders at the canonical seated
+// IDLE height (551); REST is the approved ×0.60 of it (331) — REST keeps its own
+// wide, low resting bbox and is never forced up to the seated-IDLE height.
+const CANONICAL_POSE_FRAME = Object.freeze({ w: 1448, h: 1086 });
+const CANONICAL_POSE_PLACEMENT = Object.freeze({
+  happy: Object.freeze({ x: 631, y: 360, w: 433, h: 551 }),
+  rest: Object.freeze({ x: 592, y: 580, w: 512, h: 331 }),
+});
+// The approved REST room-scale relationship, kept as an explicit named constant so
+// it stays visible and regressable: REST height ÷ HAPPY(default) height.
+const CANONICAL_REST_SCALE = 0.6;
 
 // motionState (EmberCat) → cat frame key. idle/tap reuse the main frame; their
 // liveliness is the CSS class, not a separate file.
@@ -158,9 +191,26 @@ export function resolveCanonicalPlate() {
 }
 
 export function resolveCanonicalKitten(state = 'idle') {
-  const requested = state === 'blink' ? CANONICAL_LAYERED.blink : CANONICAL_LAYERED.idle;
+  const byState = { blink: CANONICAL_LAYERED.blink, happy: CANONICAL_LAYERED.happy, rest: CANONICAL_LAYERED.rest };
+  const requested = byState[state] ?? CANONICAL_LAYERED.idle;
   const a = requested?.present ? requested : CANONICAL_LAYERED.idle;
   return a && a.present ? a.path : null;
+}
+
+// C2-B-R1C — CSS-percent geometry (of the plate frame) for a pose cutout, or null
+// for the default/idle state which is rendered full-frame like blink. The in-room
+// pose layer places the cutout inside a frame that reproduces the plate's cover-fit
+// and scene overscale, so these percentages are of the 1448×1086 plate content box.
+export function resolveCanonicalPosePlacement(state) {
+  const rect = CANONICAL_POSE_PLACEMENT[state];
+  if (!rect) return null;
+  const { w: fw, h: fh } = CANONICAL_POSE_FRAME;
+  return {
+    left: (rect.x / fw) * 100,
+    top: (rect.y / fh) * 100,
+    width: (rect.w / fw) * 100,
+    height: (rect.h / fh) * 100,
+  };
 }
 
 export function resolveCanonicalShadow() {
@@ -243,4 +293,7 @@ export {
   CANONICAL_LAYERED,
   CANONICAL_BLINK_MOTION,
   CANONICAL_BREATHING_MOTION,
+  CANONICAL_POSE_FRAME,
+  CANONICAL_POSE_PLACEMENT,
+  CANONICAL_REST_SCALE,
 };
