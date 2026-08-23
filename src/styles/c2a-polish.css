@@ -312,6 +312,87 @@ button.v13-card--row {
   height: 19px;
 }
 
+/* -------------------------------------------------------------------------
+ * 상점 (shop sheet) readability on the v13 light shell.
+ *
+ * components.css styles the shop from the ORIGINAL dark palette — .shop-tab and
+ * .catalog-row sit on --ink-700 (a dark slate) and .catalog-thumb on --ink-600 —
+ * but the shell they now open over is light paper, and --text-primary is near-black.
+ * Founder device video showed exactly that collision: dark item names and
+ * descriptions on dark cards. components.css is a pinned canonical authority, so
+ * the repair lands in this bounded repair layer, which loads after it and exists
+ * for precisely this. Every value below is an existing light-shell token — no new
+ * palette, no layout change, no behaviour change.
+ * ------------------------------------------------------------------------- */
+
+.shop-tab {
+  background: var(--bg-surface);
+  border-color: var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.shop-tab[data-selected='true'] {
+  background: var(--tint-warm);
+  border-color: var(--tint-warm-border);
+  color: var(--tint-warm-text);
+  font-weight: 600;
+}
+
+.catalog-row {
+  background: var(--bg-surface);
+  border-color: var(--border-medium);
+}
+
+.catalog-row[data-active='true'] {
+  background: var(--tint-warm);
+  border-color: var(--tint-warm-border);
+}
+
+.catalog-thumb {
+  background: var(--bg-surface-raised);
+  border-color: var(--border-medium);
+}
+
+.catalog-thumb-pending {
+  border-color: var(--border-medium);
+  background: var(--bg-surface-strong);
+}
+
+.catalog-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* The blurb is real product copy, not a caption: --text-muted is a pale grey on white
+ * that a 390px phone loses. It takes the secondary ink instead. */
+.catalog-blurb {
+  color: var(--text-secondary);
+}
+
+/* The buy/use button kept the old ember gradient with near-black text (~4:1 on the
+ * bronze). It follows the v13 light shell's own primary CTA instead. */
+.catalog-action {
+  background: var(--ink-900);
+  color: #f4f6f7;
+  border-color: var(--ink-900);
+}
+
+.catalog-action:hover:not(:disabled) {
+  background: var(--ink-800);
+  border-color: var(--ink-800);
+}
+
+/* Unaffordable is a READABLE state, not a faded one — a 0.45-opacity label over an
+ * already-marginal gradient was unreadable on device. It reads clearly and still
+ * looks plainly inactive. */
+.catalog-action:disabled {
+  background: var(--bg-surface-strong);
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+  box-shadow: none;
+  cursor: default;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .device-viewport {
     animation: none;

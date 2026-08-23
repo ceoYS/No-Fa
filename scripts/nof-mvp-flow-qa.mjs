@@ -80,6 +80,9 @@ const BEHAVIORS = {
   B37: 'RC-10 shield→app deep link: ?from=shield&to=urge opens 잠깐 멈춤, &to=record opens 오늘 기록, invalid destination falls back home, blocked target never passed, no 체크인/금욕/fake AI/device-wide/full-block claim',
   B38: 'RC-11 extension setup is compressed + honest: reachable setup flow (Chrome 확장 준비/압축해제 설치/확장 ID/연결 확인/이 브라우저 차단 규칙에 반영/차단 테스트), states Chrome 웹 스토어 not yet + this-Chrome-only + not device-wide/other-app, no connected/complete state without a real extension reply, 잠깐 멈춤+오늘 기록 exits, no 체크인/금욕/fake AI/device-wide/full-block claim',
   B40: 'placed decor stays VISIBLE in the normal room after 배치 마치기 (same position, no labels/outlines/handles), survives reopen + reload',
+  B41: 'a decor card dragged onto the cat / the feeder is re-aimed to clear floor (real pointer drag, asserted on saved coordinates)',
+  B42: 'the empty placement tray says what is TRUE of the tray, and still names the props that are in the room',
+  B43: '상점 item name / description / category tab / action all clear 4.5:1 against their real rendered background',
   B39: 'RC-13 danger-signal input is product-like + honest: 위험 신호 정리 with a concrete 피하고 싶은 사이트나 검색어 field + an abstract 자주 흔들리는 상황 note, only user-confirmed 브라우저 차단 규칙 후보 are sent (situation note never sent), no rule-success/연결됨/설정 완료 without a real extension reply, this-Chrome-only + not device-wide, no 체크인/금욕/AI/자동 탐지/성인 사이트 목록 claim',
 };
 
@@ -670,6 +673,50 @@ async function runFlow(c) {
   // Hand back to B30 in placement mode, exactly as it expects to find the room.
   await c.click('아이템 배치하기'); await sleep(300);
 
+  // 41 · P1 SAFE PLACEMENT (Founder video QA, defect 1) — a decor card can no longer be
+  //      dropped onto the cat or over the feeder. Two REAL pointer drags aim straight at
+  //      the middle of the cat and then at the bowl tray; both must come to rest outside
+  //      the protected boxes. Asserted on the coordinates the component actually saved,
+  //      not on a hover state. The boxes below are the stage-space zones from
+  //      src/constants/roomZones.js (cat = the approved 기쁨/휴식 pose rects mapped through
+  //      the plate's cover-fit + 1.06 scene overscale; feeder = the measured bowl tray).
+  const CAT_BOX = { x0: 37.69, x1: 81.67, y0: 29.84, y1: 87.62 };
+  const FEEDER_BOX = { x0: 63.7, x1: 104.79, y0: 73.76, y1: 101.67 };
+  const inBox = (p, b) => !!p && p.left > b.x0 && p.left < b.x1 && p.top > b.y0 && p.top < b.y1;
+  const ontoCat = await c.pointerDrag(lampSel, 0.55, 0.55);
+  const afterCat = await c.eval(lampPos);
+  const ontoFeeder = await c.pointerDrag(lampSel, 0.86, 0.9);
+  const afterFeeder = await c.eval(lampPos);
+  const safeOk =
+    ontoCat && ontoFeeder
+    && !!afterCat && !!afterFeeder
+    && !inBox(afterCat, CAT_BOX) && !inBox(afterCat, FEEDER_BOX)
+    && !inBox(afterFeeder, CAT_BOX) && !inBox(afterFeeder, FEEDER_BOX);
+  check('B41', safeOk, safeOk ? '' : `cat:${ontoCat}/${JSON.stringify(afterCat)} feeder:${ontoFeeder}/${JSON.stringify(afterFeeder)}`);
+  await c.shot('room_placement_safe_zone');
+
+  // 42 · P1 EMPTY-STATE SEMANTICS (Founder video QA, defect 4) — with every owned prop
+  //      already placed, the tray is empty but the ROOM is not. The line must describe the
+  //      tray ("nothing new to place") and name the props that are in the room; it must
+  //      never read as "your room is empty" while the user's own props are on screen.
+  const trayState = await c.eval(`(() => {
+    const note = document.querySelector('.room-tray .hairline-note');
+    return {
+      trayItems: document.querySelectorAll('.room-tray-item').length,
+      placed: document.querySelectorAll('.room-card').length,
+      note: note ? note.textContent.trim() : null,
+    };
+  })()`);
+  const emptyCopyOk =
+    trayState.trayItems === 0
+    && trayState.placed > 0
+    && typeof trayState.note === 'string'
+    && trayState.note.includes('새로 배치할 아이템이 없어요')
+    && trayState.note.includes(`방에 놓은 소품 ${trayState.placed}개는 그대로 있어요`)
+    && !trayState.note.startsWith('방에 놓을 아이템이 없어요');
+  check('B42', emptyCopyOk, emptyCopyOk ? '' : JSON.stringify(trayState));
+  await c.shot('room_tray_empty_copy');
+
   // 30 · The snack hand-off is a REAL visible motion that updates real state. Leave 배치
   //      mode, press 간식 놓아주기 → the snack token animates (data-active) and the fed state
   //      appears (지금까지 놓아준 간식 + 오늘 간식 놓아주기 완료), gated on a real feed.
@@ -683,6 +730,61 @@ async function runFlow(c) {
   const feedOk = fed && !fedBefore && tossActive && fedAfter && fedTodayShown;
   check('B30', feedOk, feedOk ? '' : `fed:${fed} before:${fedBefore} toss:${tossActive} after:${fedAfter} today:${fedTodayShown}`);
   await c.shot('room_snack_handoff');
+
+  // 43 · P1 SHOP READABILITY (Founder video QA, defect 3) — the 상점 sheet kept the
+  //      ORIGINAL dark palette under the v13 light shell, so item names and descriptions
+  //      rendered dark-on-dark and the unaffordable action was faded to 0.45 opacity.
+  //      This measures the REAL rendered contrast: the element's computed colour against
+  //      the first opaque background behind it, as WCAG relative luminance. Everything the
+  //      Founder named — item name, description, category tab, action/price state — must
+  //      clear 4.5:1. Measured on two tabs so a decor row is covered too, not only 간식.
+  const CONTRAST_EVAL = `(() => {
+    const parse = (c) => { const m = String(c).match(/[0-9.]+/g); return m ? m.map(Number) : null; };
+    const lin = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+    const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+    const bgOf = (el) => {
+      let n = el;
+      while (n) {
+        const c = parse(getComputedStyle(n).backgroundColor);
+        if (c && (c.length < 4 || c[3] > 0.5)) return c;
+        n = n.parentElement;
+      }
+      return [255, 255, 255];
+    };
+    const ratio = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      const fg = parse(cs.color);
+      if (!fg) return null;
+      // A faded label is exactly the defect, so opacity counts against the ratio.
+      const alpha = parseFloat(cs.opacity);
+      if (Number.isFinite(alpha) && alpha < 0.95) return 0;
+      const a = lum(fg), b = lum(bgOf(el));
+      return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
+    };
+    return {
+      name: ratio('.catalog-name'),
+      blurb: ratio('.catalog-blurb'),
+      tabOn: ratio('.shop-tab[data-selected="true"]'),
+      tabOff: ratio('.shop-tab:not([data-selected="true"])'),
+      action: ratio('.catalog-action'),
+    };
+  })()`;
+  const shopOpen = await c.clickExact('상점'); await sleep(400);
+  const shopSnack = await c.eval(CONTRAST_EVAL);
+  await c.shot('shop_contrast_snack');
+  await c.clickExact('가구'); await sleep(300);
+  const shopDecor = await c.eval(CONTRAST_EVAL);
+  await c.shot('shop_contrast_decor');
+  const READABLE = 4.5;
+  const allReadable = (m) =>
+    !!m
+    && Object.entries(m).every(([, v]) => v === null || v >= READABLE)
+    && m.name !== null && m.blurb !== null && m.tabOn !== null && m.tabOff !== null;
+  const shopOk = shopOpen && allReadable(shopSnack) && allReadable(shopDecor);
+  check('B43', shopOk, shopOk ? '' : `open:${shopOpen} snack:${JSON.stringify(shopSnack)} decor:${JSON.stringify(shopDecor)}`);
+  await c.clickExact('닫기'); await sleep(300);
 
   // 31 · RC-6 protection clarity. The 보호 설정 screen the user actually reaches (Home →
   //      보호 설정 관리 row) must be HONEST about scope — it is a self-opened protection plan, NOT

@@ -10,12 +10,15 @@
  * Placement is COORDINATE-based (drag editor): a placement is
  * { itemId, x, y, scale, z } where x/y are normalized 0..1 stage fractions and z
  * is the stacking order. `defaultPlacement` seeds where an item first lands — it
- * must be CLEAR FLOOR. Measured off the rendered room plate, the cat occupies roughly
- * x 0.41–0.72, y 0.30–0.90, so a default inside that box drops the item on the cat on
- * the very first tap-to-place, which is exactly what makes a placement read as a pasted
- * sticker instead of an object in the room. This matters more now that placed decor
- * stays drawn in the NORMAL room (PlacedDecorLayer), not only while editing: a bad
- * default is no longer a momentary edit-mode glitch, it is the room the user lives with.
+ * must be CLEAR FLOOR: outside the cat's box and off the feeder, both derived from the
+ * approved canonical geometry in roomZones.js (CAT_EXCLUSION_ZONE / FEEDER_EXCLUSION_ZONE).
+ * A default inside either box drops the item on the cat on the very first tap-to-place,
+ * which is exactly what makes a placement read as a pasted sticker instead of an object
+ * in the room. This matters more now that placed decor stays drawn in the NORMAL room
+ * (PlacedDecorLayer), not only while editing: a bad default is no longer a momentary
+ * edit-mode glitch, it is the room the user lives with. The decorator resolves every
+ * coordinate through roomZones anyway, so a stale default is corrected rather than
+ * honoured — these values are kept true so nothing has to be corrected.
  *
  * Item lifecycle (derived in the screen, not stored):
  *   locked — not owned (needs 잔불 조각으로 데려오기)
@@ -32,7 +35,7 @@ export const ROOM_ITEMS = [
   { id: 'cushion', name: '포근한 쿠션', kind: 'decor', category: 'comfort', cost: 6, assetId: 'cushion', seedOwned: true, defaultPlacement: { x: 0.3, y: 0.76, scale: 1 }, blurb: '부드러운 분위기를 더해요.' },
   { id: 'rug', name: '러그', kind: 'decor', category: 'comfort', cost: 7, assetId: 'rug', defaultPlacement: { x: 0.34, y: 0.87, scale: 1.1 }, blurb: '바닥을 따뜻하게 덮어요.' },
   { id: 'cat_house', name: '고양이집', kind: 'decor', category: 'furniture', cost: 14, assetId: 'cat_house', defaultPlacement: { x: 0.22, y: 0.66, scale: 1.2 }, blurb: '방 한쪽을 아늑하게 채워요.' },
-  { id: 'plant', name: '화분', kind: 'decor', category: 'furniture', cost: 9, assetId: 'plant', defaultPlacement: { x: 0.8, y: 0.7, scale: 1 }, blurb: '초록 식물이 공기를 바꿔요.' },
+  { id: 'plant', name: '화분', kind: 'decor', category: 'furniture', cost: 9, assetId: 'plant', defaultPlacement: { x: 0.88, y: 0.66, scale: 1 }, blurb: '초록 식물이 공기를 바꿔요.' },
   { id: 'toy', name: '장난감', kind: 'decor', category: 'furniture', cost: 5, assetId: 'toy', defaultPlacement: { x: 0.17, y: 0.66, scale: 0.9 }, blurb: '작은 포인트를 더해요.' },
 ];
 

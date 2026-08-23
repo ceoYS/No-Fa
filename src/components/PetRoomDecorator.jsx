@@ -2,6 +2,7 @@ import { useRef, useState } from 'react';
 import { resolveItemAsset, resolveRoomSceneAsset } from '../constants/petAssets.js';
 import { ITEM_BY_ID } from '../constants/roomItems.js';
 import { PLACED_IMG_STYLE, SELECTED_IMG_STYLE } from './PlacedDecorLayer.jsx';
+import { STAGE_PAD, safePlacement } from '../constants/roomZones.js';
 
 /*
  * PetRoomDecorator — the REAL room-decorating surface (PRD §0.6.9, RC-2B).
@@ -25,10 +26,22 @@ import { PLACED_IMG_STYLE, SELECTED_IMG_STYLE } from './PlacedDecorLayer.jsx';
  * scrolls the page). Repositioning an already-placed card lands in the next commit.
  */
 
-const PAD = 0.1; // keep card centres inside the stage edges (normalized)
+const PAD = STAGE_PAD; // keep card centres inside the stage edges (normalized)
 const TAP_SLOP = 6; // px of travel under which a press is a tap, not a drag
 
 const clamp01 = (v) => Math.min(1 - PAD, Math.max(PAD, v));
+
+/*
+ * SAFE PLACEMENT (Founder video QA, P1 defect 1). The stage edge pad above was the only
+ * constraint, so a cushion could be dropped across the cat's body and 고양이집 could be
+ * dragged onto its face. Every coordinate this surface produces — tap-to-place default,
+ * tray drop, live drag preview and the committed move — now goes through the shared
+ * protected-zone resolver (roomZones.js), which pushes a blocked centre to the nearest
+ * valid floor position instead of refusing the gesture. Applied to the LIVE preview too,
+ * so the object visibly slides around the cat while the finger is still down: what the
+ * user sees during the drag is exactly what gets saved.
+ */
+const safeSpot = (x, y, fallback) => safePlacement(clamp01(x), clamp01(y), fallback);
 
 /*
  * The placed look (feathered crop + contact shadow, and the shape-following halo
@@ -81,16 +94,16 @@ export default function PetRoomDecorator({
   const trayItems = ownedDecor.filter((it) => !placedIds.has(it.id));
   const roomSrc = resolveRoomSceneAsset(theme);
 
-  const normalizeFromClient = (clientX, clientY) => {
+  // Pointer → normalized stage coordinates, already resolved against the protected
+  // zones. `fallback` is the placement's current spot when repositioning, so a drop
+  // with no valid escape leaves the object where it was rather than teleporting it.
+  const normalizeFromClient = (clientX, clientY, fallback = null) => {
     const rect = stageRef.current?.getBoundingClientRect();
     if (!rect) return null;
     const inside =
       clientX >= rect.left && clientX <= rect.right && clientY >= rect.top && clientY <= rect.bottom;
-    return {
-      inside,
-      x: clamp01((clientX - rect.left) / rect.width),
-      y: clamp01((clientY - rect.top) / rect.height),
-    };
+    const spot = safeSpot((clientX - rect.left) / rect.width, (clientY - rect.top) / rect.height, fallback);
+    return { inside, x: spot.x, y: spot.y };
   };
 
   const endDrag = (e) => {
@@ -114,8 +127,8 @@ export default function PetRoomDecorator({
       setSelectedId((cur) => (cur === drag.id ? null : drag.id)); // a tap selects / deselects
       return;
     }
-    const pos = normalizeFromClient(e.clientX, e.clientY);
-    if (pos) onMove?.(drag.id, pos.x, pos.y); // clamped → never falls off the stage
+    const pos = normalizeFromClient(e.clientX, e.clientY, drag.from);
+    if (pos) onMove?.(drag.id, pos.x, pos.y); // clamped + off the cat → never falls off the stage
   };
 
   const onDragMove = (e) => {
@@ -126,7 +139,7 @@ export default function PetRoomDecorator({
       setGhost((g) => (g ? { ...g, x: e.clientX, y: e.clientY } : g));
       return;
     }
-    const pos = normalizeFromClient(e.clientX, e.clientY); // live-follow the moving card
+    const pos = normalizeFromClient(e.clientX, e.clientY, drag.from); // live-follow the moving card
     if (pos) setLivePos({ id: drag.id, x: pos.x, y: pos.y });
   };
 
@@ -144,7 +157,14 @@ export default function PetRoomDecorator({
   const beginCardDrag = (placement, e) => {
     if (!editable) return;
     e.preventDefault();
-    dragRef.current = { mode: 'move', id: placement.itemId, startX: e.clientX, startY: e.clientY, moved: false };
+    dragRef.current = {
+      mode: 'move',
+      id: placement.itemId,
+      from: { x: placement.x ?? 0.5, y: placement.y ?? 0.6 },
+      startX: e.clientX,
+      startY: e.clientY,
+      moved: false,
+    };
     window.addEventListener('pointermove', onDragMove);
     window.addEventListener('pointerup', endDrag);
   };
@@ -158,7 +178,8 @@ export default function PetRoomDecorator({
       return; // this click trailed a real drag that already committed
     }
     const d = item.defaultPlacement;
-    onPlace?.(item.id, clamp01(d?.x ?? 0.5), clamp01(d?.y ?? 0.62));
+    const spot = safeSpot(d?.x ?? 0.5, d?.y ?? 0.62);
+    onPlace?.(item.id, spot.x, spot.y);
   };
 
   const stageClass = [
@@ -235,6 +256,7 @@ export default function PetRoomDecorator({
         <>
           <p className="room-decorator-help" aria-live="polite">
             아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요. 놓인 소품은 눌러서 고르고, 끌어서 옮길 수 있어요.
+            {' '}고양이가 있는 자리와 밥그릇 위에는 놓이지 않고, 가장 가까운 빈자리로 옮겨져요.
           </p>
           {selectedId && placedIds.has(selectedId) ? (
             <div className="room-select-bar">
@@ -262,7 +284,15 @@ export default function PetRoomDecorator({
           ) : null}
           <div className="room-tray" role="list" aria-label="배치할 아이템">
             {trayItems.length === 0 ? (
-              <p className="hairline-note">방에 놓을 아이템이 없어요. 상점에서 데려오면 여기에 모여요.</p>
+              /* The tray holds what is left to place, NOT what the room contains. The old
+                 line said 방에 놓을 아이템이 없어요 while the room was visibly full of the
+                 user's own props — it read as "your room is empty". It now says only what
+                 is true of the TRAY, and names the placed items separately. */
+              <p className="hairline-note">
+                {placements.length > 0
+                  ? `새로 배치할 아이템이 없어요. 방에 놓은 소품 ${placements.length}개는 그대로 있어요. 상점에서 데려오면 여기에 모여요.`
+                  : '아직 방에 놓을 아이템이 없어요. 상점에서 데려오면 여기에 모여요.'}
+              </p>
             ) : (
               trayItems.map((it) => (
                 <button

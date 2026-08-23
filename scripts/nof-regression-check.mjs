@@ -77,6 +77,14 @@
  *      blocking, never says the app itself blocks browsing, and adds no network /
  *      remote-code / external-API sink (the one address shown is the reserved
  *      example.com test URL). The Shield screen stays planner-only / non-enforcing.
+ *  38. Placed decor can never be dropped on the cat or the feeder: one shared resolver
+ *      (roomZones.js), derived from the approved canonical pose geometry, re-aims every
+ *      coordinate the decorating surface produces — including the live drag preview.
+ *  39. The room cat never fakes locomotion. Autonomous motion is only what the art
+ *      supports (blink / breathing / idle pose beat) plus action-earned reactions.
+ *  40. The 상점 sheet is readable on the v13 light shell (no dark-on-dark item cards,
+ *      no unreadable faded action), repaired in the bounded layer, not in the pinned CSS.
+ *  41. The empty placement tray describes the TRAY, never the room.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -4598,122 +4606,305 @@ check('P1-A placed decor stays visible after 배치 마치기 through one shared
     assert(!layer.includes(overclaim) && !screen.includes(overclaim), `placement copy overclaims: ${overclaim}`);
   }
 
-  // (g) first-run/tap-to-place defaults must be CLEAR FLOOR. Now that placed decor is
-  //     drawn in the normal room, a default inside the cat's box is not a momentary
-  //     edit-mode glitch — it is the room the user lives with. Cat box measured off the
-  //     rendered plate: x 0.41–0.72, y 0.30–0.90.
+  // (g) first-run/tap-to-place defaults must be CLEAR FLOOR — now that placed decor is
+  //     drawn in the normal room, a default on the cat is the room the user lives with.
+  //     The geometry itself is asserted by P1-C against the approved canonical pose
+  //     rects; this only pins that the catalogue still declares defaults at all, and
+  //     that the room catalogue points at the shared zone module for what "clear" means.
   const defaults = [...items.matchAll(/id: '([a-z_]+)'[\s\S]*?defaultPlacement: \{ x: ([0-9.]+), y: ([0-9.]+)/g)];
   assert(defaults.length >= 6, 'catalogue default placements are missing');
-  for (const [, id, x, y] of defaults) {
-    const onCat = Number(x) > 0.41 && Number(x) < 0.72 && Number(y) > 0.3 && Number(y) < 0.9;
-    assert(!onCat, `${id} first lands on the cat (${x}, ${y}) — defaults must be clear floor`);
-  }
-  const seed = items.match(/export const DEFAULT_PLACEMENTS = \[[\s\S]*?\];/);
-  assert(seed, 'DEFAULT_PLACEMENTS seed is missing');
-  for (const [, x, y] of seed[0].matchAll(/x: ([0-9.]+), y: ([0-9.]+)/g)) {
-    const onCat = Number(x) > 0.41 && Number(x) < 0.72 && Number(y) > 0.3 && Number(y) < 0.9;
-    assert(!onCat, `the first-paint seed lands on the cat (${x}, ${y})`);
-  }
+  assert(items.includes('roomZones.js'), 'the catalogue no longer names the shared clear-floor authority');
+  assert(items.match(/export const DEFAULT_PLACEMENTS = \[[\s\S]*?\];/), 'DEFAULT_PLACEMENTS seed is missing');
 });
 
-// P1-B — THE CAT MOVES ON ITS OWN. Founder P1-2: swapping pose every 18s still left an
-// untouched room reading as a still image, so the cat now strolls between a few fixed
-// resting spots. This pins what it shipped under: the walk is DETERMINISTIC (a frozen
-// cycle, never random), BOUNDED (single-digit-to-mid-teens px, so it can never leave the
-// room or climb over UI), gated exactly like the canonical blink/breathing motion
-// (prefers-reduced-motion off + visible tab, cleared on unmount), it YIELDS to any
-// reaction the user earned, and it moves the CAT ONLY — the room plate never moves.
-// The canonical motion contract in PetRoomEditor is untouched: no setInterval, no
-// randomness, and the pinned CSS transform (1.06 overscale + parallax + A5 breathing)
-// is composed through a wrapper rather than overwritten.
-check('P1-B autonomous cat movement is deterministic, bounded, gated, and yields to the user', () => {
+// P1-B — CAT MOTION HONESTY. Founder video QA reversed the previous pass here. Sliding
+// the whole cat cutout between fixed offsets was supposed to make the room feel alive;
+// on device it read as an image SLIDING across the floor, because a still PNG has no
+// gait and no weight shift. Faking locomotion with the art we have is a worse product
+// than a cat that sits still, and it claims motion this layer cannot deliver. The
+// positional wander was therefore REMOVED, not tuned. This guard pins that decision and
+// keeps the motion that is genuinely asset-backed: canonical blink, A5 breathing, the
+// slow 휴식 idle beat, and the 기쁨/휴식 poses the user's own actions earn.
+check('P1-B the cat never fakes locomotion, and its honest motion is intact', () => {
   const screen = read('src/screens/PetRewardScreen.jsx');
   const editor = read('src/components/PetRoomEditor.jsx');
+  const code = (body) => body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const screenCode = code(screen);
+  const editorCode = code(editor);
 
-  // (a) a frozen waypoint cycle — never random, never generated.
-  const steps = screen.match(/const CAT_WANDER_STEPS = Object\.freeze\(\[[\s\S]*?\]\);/);
-  assert(steps, 'the fixed cat wander waypoints are missing');
-  assert(
-    !/Math\.random|crypto\.getRandomValues|Date\.now\(\)/.test(steps[0]),
-    'cat movement must stay deterministic (no random / clock-derived waypoints)',
-  );
-  const offsets = [...steps[0].matchAll(/x: (-?[0-9.]+), y: (-?[0-9.]+)/g)];
-  assert(offsets.length >= 3, 'the wander needs at least three resting spots to read as movement');
-  for (const [, x, y] of offsets) {
-    assert(
-      Math.abs(Number(x)) <= 20 && Math.abs(Number(y)) <= 20,
-      `wander offset (${x}, ${y}) is large enough to walk the cat out of the room`,
-    );
+  // (a) no positional wander machinery survives anywhere in the room path.
+  for (const [name, body] of [['PetRewardScreen', screenCode], ['PetRoomEditor', editorCode]]) {
+    for (const token of ['CAT_WANDER', 'catWanderStep', 'catDrift', 'canonical-kitten-wander']) {
+      assert(!body.includes(token), `${name} still carries the removed positional wander (${token})`);
+    }
   }
+
+  // (b) the cat cutout is not translated by any inline transform. The pinned CSS
+  //     transform (1.06 scene overscale + parallax + A5 breathing) is the only one.
   assert(
-    offsets.some(([, x, y]) => Number(x) !== 0 || Number(y) !== 0),
-    'every wander waypoint is neutral — the cat would never move',
+    !/translate3d|translateX|translateY/.test(editorCode),
+    'the room layer translates the cat again — a sliding PNG is not walking',
   );
 
-  // (b) gated and cleaned up exactly like the idle beat.
+  // (c) the motion that IS backed by real art must still be running.
   assert(
-    /if \(!catIdleAllowed\) \{\s*\n\s*setCatWanderStep\(0\);/.test(screen),
-    'the wander does not pin the cat at its neutral spot when motion is disallowed',
+    editor.includes('CANONICAL_BLINK_MOTION') && editor.includes('canonical-kitten-layer--breathing'),
+    'the canonical blink / breathing motion was lost with the wander',
   );
   assert(
-    /return \(\) => clearInterval\(walk\);/.test(screen),
-    'the wander loop is not cleared on unmount / gate change',
+    /const CAT_IDLE_EVERY_MS = \d+/.test(screen) && /setCatState\('rest'\)/.test(screen),
+    'the slow idle beat (the honest autonomous life) was lost with the wander',
   );
+  assert(
+    /const CAT_HAPPY_MS = \d+/.test(screen) && /const CAT_PET_MS = \d+/.test(screen)
+      && /reactCat\('happy', CAT_HAPPY_MS\)/.test(screen) && /reactCat\('rest', CAT_PET_MS\)/.test(screen),
+    'the action-driven 기쁨 / 휴식 reactions were lost with the wander',
+  );
+
+  // (d) the idle beat keeps its gates and still yields to the user's own action.
   assert(
     screen.includes("matchMedia('(prefers-reduced-motion: reduce)')")
       && screen.includes("document.visibilityState === 'visible'"),
-    'the wander gate lost prefers-reduced-motion or tab-visibility',
+    'the idle gate lost prefers-reduced-motion or tab-visibility',
+  );
+  assert(
+    /const beat = setInterval\(\(\) => \{\s*\n\s*if \(catReactingRef\.current\) return;/.test(screen),
+    'the idle beat no longer yields to the reaction the user earned',
   );
 
-  // (c) the user wins: a reaction in flight holds the cat in place.
-  assert(
-    /const walk = setInterval\(\(\) => \{\s*\n\s*if \(catReactingRef\.current\) return;/.test(screen),
-    'the wander no longer yields to the reaction the user earned',
-  );
-
-  // (d) the offset reaches the room layer, and the room layer double-gates it.
-  assert(/catDrift=\{catDrift\}/.test(screen), 'the wander offset is not handed to the room layer');
-  assert(
-    /const wanderActive = useLayered && motionAllowed && documentVisible;/.test(editor),
-    'the room layer no longer double-gates the wander on the canonical motion conditions',
-  );
-  assert(
-    /const wanderX = wanderActive \? catDrift\?\.x \?\? 0 : 0;/.test(editor)
-      && /const wanderY = wanderActive \? catDrift\?\.y \?\? 0 : 0;/.test(editor),
-    'the room layer no longer zeroes the wander when motion is disallowed',
-  );
-  assert(
-    /transition: wanderActive \? `transform \$\{CAT_WANDER_GLIDE_MS\}ms/.test(editor),
-    'the wander must glide (and must not transition at all when motion is off)',
-  );
-
-  // (e) the CAT moves, the ROOM does not: the wrapper sits below the cat layers and the
-  //     plate stays outside it, so the scene itself never slides.
-  const scene = editor.match(/<img\s+className="room-img"\s+src=\{plateSrc\}[\s\S]*?<\/div>\s*\n\s*<\/>/);
-  assert(scene, 'the layered scene block could not be read');
-  const wrapperAt = scene[0].indexOf('className="canonical-kitten-wander"');
-  assert(wrapperAt > 0, 'the cat wander wrapper is missing from the layered scene');
-  assert(
-    scene[0].indexOf('src={plateSrc}') < wrapperAt,
-    'the room plate must stay OUTSIDE the wander wrapper (only the cat strolls)',
-  );
-  for (const inside of ['className={canonicalKittenClassName}', 'canonical-kitten-pose-frame']) {
-    assert(
-      scene[0].indexOf(inside) > wrapperAt,
-      `${inside} must sit inside the wander wrapper so the cat keeps the spot it walked to`,
-    );
-  }
-
-  // (f) the canonical motion contract is composed, never overwritten.
+  // (e) the canonical room layer stays free of its own timers / randomness.
   assert(!editor.includes('setInterval('), 'setInterval remains forbidden in the canonical room layer');
   assert(
     !editor.includes('Math.random') && !editor.includes('crypto.getRandomValues'),
     'canonical room motion must remain deterministic',
   );
+
+  // (f) no copy may claim the cat walks, strolls or plays by itself. 놀아주기 is the
+  //     USER's 쓰다듬기 action and stays allowed; an autonomous claim does not.
+  for (const claim of ['혼자 걸어', '방을 돌아다', '스스로 움직', '산책']) {
+    assert(!screen.includes(claim), `the room copy claims autonomous locomotion: ${claim}`);
+  }
+});
+
+/*
+ * The cat / feeder exclusion boxes, re-derived here from the SAME approved source the
+ * product derives them from (the canonical pose rects in petAssets.js) but with the
+ * mapping written out independently, so a silent edit to roomZones.js cannot quietly
+ * shrink the protected area. Mirrors roomZones.js: cover-fit a 1448×1086 plate into the
+ * 5:4 stage, then the scene's static 1.06 overscale about (50%, 55%).
+ */
+function derivedRoomZones() {
+  const assets = read('src/constants/petAssets.js');
+  const frame = assets.match(/CANONICAL_POSE_FRAME = Object\.freeze\(\{ w: (\d+), h: (\d+) \}\)/);
+  assert(frame, 'the canonical plate frame could not be read from petAssets.js');
+  const fw = Number(frame[1]);
+  const fh = Number(frame[2]);
+  const rects = [...assets.matchAll(/(happy|rest): Object\.freeze\(\{ x: (\d+), y: (\d+), w: (\d+), h: (\d+) \}\)/g)];
+  assert(rects.length === 2, 'the approved happy/rest pose rects could not be read from petAssets.js');
+
+  const spanX = (fw / fh) / (5 / 4);
+  const toStage = (px, py) => ({
+    x: 0.5 + (px * spanX - (spanX - 1) / 2 - 0.5) * 1.06,
+    y: 0.55 + (py - 0.55) * 1.06,
+  });
+  const pad = 0.02;
+  const box = (l, t, r, b) => {
+    const a = toStage(l, t);
+    const c = toStage(r, b);
+    return { x0: a.x - pad, x1: c.x + pad, y0: a.y - pad, y1: c.y + pad };
+  };
+  let l = 1;
+  let t = 1;
+  let r = 0;
+  let b = 0;
+  for (const [, , x, y, w, h] of rects) {
+    l = Math.min(l, Number(x) / fw);
+    t = Math.min(t, Number(y) / fh);
+    r = Math.max(r, (Number(x) + Number(w)) / fw);
+    b = Math.max(b, (Number(y) + Number(h)) / fh);
+  }
+  return [box(l, t, r, b), box(925 / fw, 810 / fh, 1400 / fw, 1055 / fh)];
+}
+
+// P1-C — DECOR CANNOT BE DROPPED ON THE CAT. Founder video QA, defect 1: the cushion crop
+// overlapped the cat's body and 고양이집 could be dragged squarely onto its face, because
+// placement was free coordinates with nothing but a stage-edge pad. Placed decor is drawn
+// in the NORMAL room now, so burying the pet is not a momentary edit-mode glitch — it is
+// the room the user lives with. This pins what the fix ships under: ONE shared resolver,
+// derived from the approved canonical geometry (never hand-tuned magic numbers), applied
+// to EVERY coordinate this surface can produce — including the live drag preview, so what
+// the user sees under their finger is what gets saved — and clear-floor catalogue defaults.
+check('P1-C placed decor can never be dropped onto the cat or the feeder', () => {
+  const zones = read('src/constants/roomZones.js');
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  const items = read('src/constants/roomItems.js');
+
+  // (a) the zones are DERIVED from the approved pose geometry, not typed in by hand.
   assert(
-    /className="canonical-kitten-wander"[^>]*style=\{catWanderStyle\}/.test(editor.replace(/\s+/g, ' ')),
-    'the wander must ride its own wrapper (an inline transform on the cutout would wipe the pinned CSS transform)',
+    /import \{ resolveCanonicalPosePlacement \} from '\.\/petAssets\.js'/.test(zones),
+    'roomZones no longer derives the cat box from the approved canonical pose geometry',
   );
+  for (const literal of ['1448 / 1086', '5 / 4', 'SCENE_OVERSCALE = 1.06', 'SCENE_ORIGIN_Y = 0.55']) {
+    assert(zones.includes(literal), `roomZones lost the pinned stage geometry: ${literal}`);
+  }
+  for (const name of ['CAT_EXCLUSION_ZONE', 'FEEDER_EXCLUSION_ZONE', 'PROTECTED_ZONES', 'safePlacement', 'isBlockedPlacement', 'STAGE_PAD']) {
+    assert(new RegExp(`export (const|function) ${name}\\b`).test(zones), `roomZones no longer exports ${name}`);
+  }
+  // Fail-closed: missing approved geometry must fall back to a real box, never to none.
+  assert(/catZone\(\) \?\? \{ \.\.\.CAT_FALLBACK_ZONE \}/.test(zones), 'the cat box no longer fails closed');
+
+  // (b) the escape never pushes a prop UP the back wall (that is worse than the drop the
+  //     user made) and never leaves the stage margin.
+  assert(
+    /const escapeCeiling = Math\.min\(ROOM_FLOOR_Y, cy\);/.test(zones)
+      && /if \(c\.y < escapeCeiling\) continue;/.test(zones),
+    'a blocked drop can be pushed up onto the back wall again',
+  );
+  assert(/if \(isBlockedPlacement\(c\.x, c\.y\)\) continue;/.test(zones), 'an escape is no longer re-tested against every zone');
+
+  // (c) EVERY coordinate the decorator produces goes through the resolver: tap-to-place,
+  //     tray drop, live drag preview and the committed move all share one path.
+  assert(
+    /import \{ STAGE_PAD, safePlacement \} from '\.\.\/constants\/roomZones\.js'/.test(dec),
+    'PetRoomDecorator no longer imports the shared safe-placement resolver',
+  );
+  assert(/const PAD = STAGE_PAD;/.test(dec), 'the decorator re-declares its own stage pad (it will drift)');
+  assert(
+    /const safeSpot = \(x, y, fallback\) => safePlacement\(clamp01\(x\), clamp01\(y\), fallback\);/.test(dec),
+    'the decorator no longer resolves placements against the protected zones',
+  );
+  assert(
+    /const spot = safeSpot\(d\?\.x \?\? 0\.5, d\?\.y \?\? 0\.62\);\s*\n\s*onPlace\?\.\(item\.id, spot\.x, spot\.y\);/.test(dec),
+    'tap-to-place bypasses the protected zones',
+  );
+  assert(
+    /const spot = safeSpot\(\(clientX - rect\.left\) \/ rect\.width, \(clientY - rect\.top\) \/ rect\.height, fallback\);/.test(dec),
+    'pointer drops bypass the protected zones',
+  );
+  assert(
+    /const pos = normalizeFromClient\(e\.clientX, e\.clientY, drag\.from\); \/\/ live-follow/.test(dec),
+    'the LIVE drag preview no longer shows the resolved position (what you see is not what is saved)',
+  );
+  assert(
+    /from: \{ x: placement\.x \?\? 0\.5, y: placement\.y \?\? 0\.6 \}/.test(dec),
+    'a move with no valid escape can no longer fall back to where the object already was',
+  );
+
+  // (d) every catalogue default and first-paint seed is CLEAR FLOOR against the
+  //     independently re-derived boxes.
+  const [cat, feeder] = derivedRoomZones();
+  const blocked = (x, y) =>
+    [cat, feeder].some((z) => x > z.x0 && x < z.x1 && y > z.y0 && y < z.y1);
+  const defaults = [...items.matchAll(/id: '([a-z_]+)'[\s\S]*?defaultPlacement: \{ x: ([0-9.]+), y: ([0-9.]+)/g)];
+  assert(defaults.length >= 6, 'catalogue default placements are missing');
+  for (const [, id, x, y] of defaults) {
+    assert(!blocked(Number(x), Number(y)), `${id} first lands on the cat/feeder (${x}, ${y}) — defaults must be clear floor`);
+  }
+  const seed = items.match(/export const DEFAULT_PLACEMENTS = \[[\s\S]*?\];/);
+  assert(seed, 'DEFAULT_PLACEMENTS seed is missing');
+  for (const [, x, y] of seed[0].matchAll(/x: ([0-9.]+), y: ([0-9.]+)/g)) {
+    assert(!blocked(Number(x), Number(y)), `the first-paint seed lands on the cat/feeder (${x}, ${y})`);
+  }
+});
+
+// P1-D — THE SHOP IS READABLE ON THE LIGHT SHELL. Founder video QA, defect 3: the 상점
+// sheet still carried the ORIGINAL dark palette (.shop-tab / .catalog-row on --ink-700,
+// .catalog-thumb on --ink-600) under the v13 light shell, where --text-primary is
+// near-black — dark item names and descriptions on dark cards, with the unaffordable
+// action faded to 0.45 opacity on top of that. components.css is a pinned canonical
+// authority, so the repair lives in the bounded repair layer that loads after it.
+check('P1-D the 상점 sheet is readable on the v13 light shell', () => {
+  const polish = read('src/styles/c2a-polish.css');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const main = read('src/main.jsx');
+
+  // (a) the repair layer really does load after the pinned authority.
+  assert(
+    main.indexOf("styles/components.css") < main.indexOf("styles/c2a-polish.css"),
+    'the repair layer no longer loads after components.css (its overrides would not apply)',
+  );
+
+  // (b) every dark-palette shop surface is repainted onto a light-shell token.
+  const rule = (selector) => {
+    const m = polish.match(new RegExp(`\\n${selector.replace(/[.[\]'=]/g, '\\$&')} \\{([\\s\\S]*?)\\n\\}`));
+    assert(m, `the shop readability layer lost its ${selector} rule`);
+    return m[1];
+  };
+  assert(/background: var\(--bg-surface\)/.test(rule('.catalog-row')), 'catalogue cards are dark again');
+  assert(/background: var\(--bg-surface\)/.test(rule('.shop-tab')), 'the category tabs are dark again');
+  assert(/background: var\(--bg-surface-raised\)/.test(rule('.catalog-thumb')), 'the item thumbnails are dark again');
+  assert(/color: var\(--text-primary\)/.test(rule('.catalog-name')), 'the item name lost its readable ink');
+  assert(/color: var\(--text-secondary\)/.test(rule('.catalog-blurb')), 'the item description lost its readable ink');
+  assert(/color: #f4f6f7/.test(rule('.catalog-action')), 'the buy action lost its readable label');
+  assert(
+    /color: var\(--text-secondary\)/.test(rule('.catalog-action:disabled')),
+    'the unaffordable action is unreadable again',
+  );
+  // No new palette: the repair uses tokens the shell already defines.
+  assert(
+    !/#(?!f4f6f7\b)[0-9a-fA-F]{3,8}/.test(
+      ['.shop-tab', '.catalog-row', '.catalog-thumb', '.catalog-name', '.catalog-blurb'].map(rule).join(''),
+    ),
+    'the shop readability layer introduced a raw colour instead of a shell token',
+  );
+
+  // (c) the unreadable inline fade is gone from the component.
+  assert(
+    !/opacity: 0\.45/.test(screen),
+    'the shop action is faded to an unreadable opacity again',
+  );
+});
+
+// P1-E — PLACED AND PLACEABLE ARE DIFFERENT THINGS. Founder video QA, defect 4: the tray
+// showed "방에 놓을 아이템이 없어요" while the room was visibly full of the user's own
+// props, because the line described the TRAY but read as a statement about the ROOM.
+check('P1-E the empty tray never claims the room is empty', () => {
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  assert(
+    dec.includes('새로 배치할 아이템이 없어요'),
+    'the empty tray no longer distinguishes "nothing left to place" from "nothing in the room"',
+  );
+  assert(
+    /placements\.length > 0[\s\S]{0,200}방에 놓은 소품 \$\{placements\.length\}개는 그대로 있어요/.test(dec),
+    'the empty tray no longer names the props that ARE in the room',
+  );
+  assert(
+    !/'방에 놓을 아이템이 없어요/.test(dec) && !/`방에 놓을 아이템이 없어요/.test(dec),
+    'the tray-empty line reads as a claim about the room again',
+  );
+});
+
+// P1-F — THE UNSOLVABLE-BY-CODE BLOCKERS STAY RECORDED. Founder video QA: the decor
+// visual problem is the ART, not the rendering — the room plate ships already decorated
+// and every decor asset is an opaque photo crop, so placing one duplicates baked
+// furniture. Three passes have now been spent making that less wrong in code. The record
+// exists so a fourth is not, and this guard keeps the record honest: the flags stay YES
+// exactly as long as the code state that justifies them holds.
+check('P1-F the clean-room / alpha-sprite blockers stay recorded and match the code', () => {
+  const doc = read('docs/NOF_DECOR_ASSET_BLOCKERS.md');
+  const assets = read('src/constants/petAssets.js');
+
+  for (const flag of [
+    'DECOR_CLEAN_ROOM_REQUIRED       = YES',
+    'TRANSPARENT_DECOR_SPRITES_REQUIRED = YES',
+    'CAT_WALK_CYCLE_ART_REQUIRED = YES',
+  ]) {
+    assert(doc.includes(flag), `the decor/motion blocker record lost: ${flag}`);
+  }
+
+  // The record and the code must agree. If decor sprites are ever really approved, the
+  // flag flips in the same change that raises spriteReady — never silently in one of them.
+  const itemBlock = assets.match(/const ITEM_ASSETS = \{[\s\S]*?\n\};/);
+  assert(itemBlock, 'ITEM_ASSETS could not be read from petAssets.js');
+  assert(
+    !/spriteReady:\s*true/.test(itemBlock[0]),
+    'a decor sprite was marked ready while the record still says alpha sprites are required',
+  );
+
+  // The modules that defer to the record must keep pointing at it.
+  for (const rel of ['src/constants/roomZones.js', 'src/components/PetRoomEditor.jsx', 'src/screens/PetRewardScreen.jsx']) {
+    assert(read(rel).includes('NOF_DECOR_ASSET_BLOCKERS.md'), `${rel} no longer points at the blocker record`);
+  }
 });
 
 let failed = 0;

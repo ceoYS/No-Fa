@@ -130,24 +130,17 @@ const CAT_TAP_MS = 1500; // 방을 톡 누르기 → 짧은 기쁨
 const CAT_IDLE_EVERY_MS = 18000; // how often the resting idle beat comes round
 const CAT_IDLE_HOLD_MS = 3600; // how long the cat stays in that resting beat
 
-// Autonomous positional life (Founder P1-2). Swapping pose every 18s still left an
-// untouched room reading as a still image, so the cat now also MOVES: it strolls
-// between a few fixed resting spots near where it already sits, glides there over
-// CAT_WANDER_GLIDE_MS in PetRoomEditor, then settles until the next step.
+// NO AUTONOMOUS POSITIONAL WANDER (Founder video QA, P1 defect 2). A previous pass slid
+// the cat between fixed offsets so an untouched room would not read as a still image.
+// On device video it read as SLIDING, not walking: a fixed PNG has no gait and no weight
+// shift, so translating it announces motion the art cannot deliver. It was removed rather
+// than tuned — believable reaction beats fake locomotion, and nothing in this screen may
+// claim the cat walks or plays on its own while the art is three still cutouts.
 //
-// A FIXED CYCLE, never random — same determinism rule the canonical blink/breathing
-// motion ships under. Offsets are single-digit-to-mid-teens pixels against a 390px
-// room, which is a cat shifting its spot, not an image jittering; the cat is drawn
-// mid-frame in an already-overscaled cover-fit layer, so this can never walk it out
-// of the room or over any UI. The room plate itself never moves — only the cat.
-const CAT_WANDER_STEPS = Object.freeze([
-  Object.freeze({ x: 0, y: 0 }),
-  Object.freeze({ x: 13, y: -3 }),
-  Object.freeze({ x: 5, y: 3 }),
-  Object.freeze({ x: -12, y: -2 }),
-  Object.freeze({ x: -4, y: 4 }),
-]);
-const CAT_WANDER_EVERY_MS = 5200; // one unhurried step, then a rest
+// What remains is real and asset-backed: the canonical blink loop, the A5 breathing
+// scale, the slow 휴식 idle beat below, and the 기쁨/휴식 poses the user's own 간식 /
+// 쓰다듬기 actions earn. Authored walk frames (or the rigged 3D cat) are what real
+// locomotion would need — see docs/NOF_DECOR_ASSET_BLOCKERS.md.
 
 // Character growth v1 — DERIVED warmth labels read from LOCAL records (today's
 // check-in + the abstinence streak). This is a calm summary, NOT a pet evolution
@@ -216,8 +209,6 @@ export default function PetRewardScreen({
   // The idle loop runs under the same three gates the canonical blink loop uses:
   // motion must be allowed, the tab must be visible, and it stops on unmount.
   const [catIdleAllowed, setCatIdleAllowed] = useState(false);
-  // Which resting spot the cat has strolled to. Index only — the offsets are fixed.
-  const [catWanderStep, setCatWanderStep] = useState(0);
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
   // A small snack token that rises from the feed button toward the scene on a
@@ -277,25 +268,6 @@ export default function PetRewardScreen({
       clearTimeout(holdTimer);
     };
   }, [catIdleAllowed]);
-
-  // The stroll itself. Same three gates as the idle beat (motion allowed, tab visible,
-  // stops on unmount) and it YIELDS to the user: while a snack/pet reaction is playing
-  // the cat holds its spot rather than walking away mid-answer.
-  useEffect(() => {
-    if (!catIdleAllowed) {
-      setCatWanderStep(0);
-      return undefined;
-    }
-    const walk = setInterval(() => {
-      if (catReactingRef.current) return;
-      setCatWanderStep((step) => (step + 1) % CAT_WANDER_STEPS.length);
-    }, CAT_WANDER_EVERY_MS);
-    return () => clearInterval(walk);
-  }, [catIdleAllowed]);
-
-  // The offset handed to the room layer. Reduced motion or a hidden tab pins the cat
-  // at its neutral spot, so the scene is exactly as still as it was before.
-  const catDrift = catIdleAllowed ? CAT_WANDER_STEPS[catWanderStep] : CAT_WANDER_STEPS[0];
 
   // Play the pose the user's action earned, then settle back to the default pose.
   // Fixed durations, never random; the pose is one of the three approved cutouts.
@@ -577,7 +549,6 @@ export default function PetRewardScreen({
               tone="bright"
               catMotion={catMotion}
               catState={catState}
-              catDrift={catDrift}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onMove={onMoveItem}
@@ -1065,7 +1036,9 @@ function CatalogCard({
             className="catalog-action"
             onClick={action.onClick}
             disabled={action.disabled}
-            style={action.disabled ? { opacity: 0.45, pointerEvents: 'none' } : undefined}
+            /* The disabled look is a real readable state in c2a-polish.css now; the old
+               inline opacity:0.45 was the unreadable half of the Founder contrast defect,
+               and `disabled` already blocks the pointer without an inline override. */
             title={action.disabled ? '잔불 조각이 조금 더 필요해요' : undefined}
           >
             {action.label}
