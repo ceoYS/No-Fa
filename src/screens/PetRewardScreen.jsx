@@ -18,6 +18,7 @@ import {
   milestoneReward,
   isMilestoneClaimable,
   nextLockedMilestone,
+  SAMPLE_REWARD_NOTE,
 } from '../constants/rewards.js';
 import {
   DECOR_ITEMS,
@@ -104,6 +105,50 @@ function room3dDebugRequested() {
   }
 }
 
+// The manual 고양이 모습 selector is a REVIEW affordance, not the product's cat UX.
+// The room's cat state is driven by what the user actually does (간식 → 기쁨,
+// 쓰다듬기 → 휴식) plus a calm idle loop, so the selector only renders behind the
+// same kind of explicit opt-in the rest of the debug surface uses.
+function catDebugRequested() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    if (params.get('dev') === '1' || params.get('catdebug') === '1') return true;
+    return window.localStorage.getItem('nof.catDebug') === '1';
+  } catch {
+    return false;
+  }
+}
+
+// Cat state machine timings (fixed, never random). A user action holds its pose
+// long enough to read as an answer, then the cat settles back to its default pose
+// on its own. The idle loop is much slower than either reaction so it never
+// competes with one.
+const CAT_HAPPY_MS = 2600; // 간식 놓아주기 → 기쁨
+const CAT_PET_MS = 2400; // 쓰다듬기 → 휴식
+const CAT_TAP_MS = 1500; // 방을 톡 누르기 → 짧은 기쁨
+const CAT_IDLE_EVERY_MS = 18000; // how often the resting idle beat comes round
+const CAT_IDLE_HOLD_MS = 3600; // how long the cat stays in that resting beat
+
+// Autonomous positional life (Founder P1-2). Swapping pose every 18s still left an
+// untouched room reading as a still image, so the cat now also MOVES: it strolls
+// between a few fixed resting spots near where it already sits, glides there over
+// CAT_WANDER_GLIDE_MS in PetRoomEditor, then settles until the next step.
+//
+// A FIXED CYCLE, never random — same determinism rule the canonical blink/breathing
+// motion ships under. Offsets are single-digit-to-mid-teens pixels against a 390px
+// room, which is a cat shifting its spot, not an image jittering; the cat is drawn
+// mid-frame in an already-overscaled cover-fit layer, so this can never walk it out
+// of the room or over any UI. The room plate itself never moves — only the cat.
+const CAT_WANDER_STEPS = Object.freeze([
+  Object.freeze({ x: 0, y: 0 }),
+  Object.freeze({ x: 13, y: -3 }),
+  Object.freeze({ x: 5, y: 3 }),
+  Object.freeze({ x: -12, y: -2 }),
+  Object.freeze({ x: -4, y: 4 }),
+]);
+const CAT_WANDER_EVERY_MS = 5200; // one unhurried step, then a rest
+
 // Character growth v1 — DERIVED warmth labels read from LOCAL records (today's
 // check-in + the abstinence streak). This is a calm summary, NOT a pet evolution
 // level and NOT a live reaction. The default 2.5D cat stays a static composite;
@@ -125,6 +170,9 @@ export default function PetRewardScreen({
   petFedToday = false,
   petPettedToday = false,
   streakDays = 0,
+  counters = [],
+  selectedCounterId = null,
+  futureDiaryEntries = [],
   todayRecord = null,
   claimedRewardIds = [],
   lastEarn = null,
@@ -154,10 +202,22 @@ export default function PetRewardScreen({
   const [room3dDebug] = useState(room3dDebugRequested);
   const [room3dBlocked, setRoom3dBlocked] = useState(false);
   const [catMotion, setCatMotion] = useState('idle');
-  // C2-B-R1C: the LIVE in-room cat state (default / happy / rest), chosen by the
-  // small selector below and rendered by the actual room layer (PetRoomEditor).
-  // This is not the transient tap/feed motion and it is not saved.
+  // The LIVE in-room cat state (default / happy / rest), rendered by the actual room
+  // layer (PetRoomEditor) as one of the three approved canonical poses. It is DRIVEN
+  // BY THE USER'S ACTIONS — 간식 → 기쁨, 쓰다듬기 → 휴식 — and by a slow resting idle
+  // beat, then returns to the default pose on its own. The manual selector that used
+  // to be the only way to change it is now review-only (catDebugRequested): a pet the
+  // user has to toggle by hand reads as a debug object, not a companion. Not saved.
   const [catState, setCatState] = useState('default');
+  const catStateTimer = useRef(null);
+  // True while a user-earned reaction is playing, so the idle loop never talks over it.
+  const catReactingRef = useRef(false);
+  const [catDebug] = useState(catDebugRequested);
+  // The idle loop runs under the same three gates the canonical blink loop uses:
+  // motion must be allowed, the tab must be visible, and it stops on unmount.
+  const [catIdleAllowed, setCatIdleAllowed] = useState(false);
+  // Which resting spot the cat has strolled to. Index only — the offsets are fixed.
+  const [catWanderStep, setCatWanderStep] = useState(0);
   const [tapMsg, setTapMsg] = useState(null);
   const [sceneReacting, setSceneReacting] = useState(false);
   // A small snack token that rises from the feed button toward the scene on a
@@ -178,7 +238,76 @@ export default function PetRewardScreen({
     clearTimeout(sceneReactionTimer.current);
     clearTimeout(snackTossTimer.current);
     clearTimeout(affectionTossTimer.current);
+    clearTimeout(catStateTimer.current);
   }, []);
+
+  // Idle-beat gating. prefers-reduced-motion and a hidden tab both switch the loop
+  // off, and both are re-read live so a mid-session change takes effect at once.
+  useEffect(() => {
+    if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') return undefined;
+    const reduced = window.matchMedia('(prefers-reduced-motion: reduce)');
+    const sync = () => setCatIdleAllowed(!reduced.matches && document.visibilityState === 'visible');
+    sync();
+    reduced.addEventListener?.('change', sync);
+    document.addEventListener('visibilitychange', sync);
+    return () => {
+      reduced.removeEventListener?.('change', sync);
+      document.removeEventListener('visibilitychange', sync);
+    };
+  }, []);
+
+  // Lightweight autonomous idle so the room is not frozen between taps: every
+  // CAT_IDLE_EVERY_MS the cat settles into its 휴식 pose for a moment, then returns
+  // to default. It yields to any reaction the user earned (catReactingRef) rather
+  // than interrupting it, and it re-uses the SAME three approved poses — no new art
+  // and no simulated emotion, just a pose that changes on its own like a resting cat.
+  useEffect(() => {
+    if (!catIdleAllowed) return undefined;
+    let holdTimer = null;
+    const beat = setInterval(() => {
+      if (catReactingRef.current) return;
+      setCatState('rest');
+      clearTimeout(holdTimer);
+      holdTimer = setTimeout(() => {
+        if (!catReactingRef.current) setCatState('default');
+      }, CAT_IDLE_HOLD_MS);
+    }, CAT_IDLE_EVERY_MS);
+    return () => {
+      clearInterval(beat);
+      clearTimeout(holdTimer);
+    };
+  }, [catIdleAllowed]);
+
+  // The stroll itself. Same three gates as the idle beat (motion allowed, tab visible,
+  // stops on unmount) and it YIELDS to the user: while a snack/pet reaction is playing
+  // the cat holds its spot rather than walking away mid-answer.
+  useEffect(() => {
+    if (!catIdleAllowed) {
+      setCatWanderStep(0);
+      return undefined;
+    }
+    const walk = setInterval(() => {
+      if (catReactingRef.current) return;
+      setCatWanderStep((step) => (step + 1) % CAT_WANDER_STEPS.length);
+    }, CAT_WANDER_EVERY_MS);
+    return () => clearInterval(walk);
+  }, [catIdleAllowed]);
+
+  // The offset handed to the room layer. Reduced motion or a hidden tab pins the cat
+  // at its neutral spot, so the scene is exactly as still as it was before.
+  const catDrift = catIdleAllowed ? CAT_WANDER_STEPS[catWanderStep] : CAT_WANDER_STEPS[0];
+
+  // Play the pose the user's action earned, then settle back to the default pose.
+  // Fixed durations, never random; the pose is one of the three approved cutouts.
+  const reactCat = (state, ms) => {
+    catReactingRef.current = true;
+    setCatState(state);
+    clearTimeout(catStateTimer.current);
+    catStateTimer.current = setTimeout(() => {
+      catReactingRef.current = false;
+      setCatState('default');
+    }, ms);
+  };
 
   // Fire the snack hand-off token, then clear it so it can replay on the next feed.
   // Matches the snack-toss animation length so the token stays mounted as it travels
@@ -210,8 +339,21 @@ export default function PetRewardScreen({
   const fedCount = petCareState.fedCount ?? 0;
   // Cumulative 쓰다듬기 count, read straight from persisted petCareState (RC-1).
   const pettedCount = petCareState.pettedCount ?? 0;
-  const reachedMilestones = MILESTONES.filter((m) => streakDays >= m.day);
-  const lockedNext = nextLockedMilestone(streakDays);
+  // RC-4 first-run honesty, reward edge. streakDays is derived from the hero counter,
+  // and a cleared install seeds 예시 SAMPLE counters carrying a plausible elapsed time so
+  // a new user can see the app's shape. That time is DEMO SHAPE, not abstinence the user
+  // did — but the milestone rows read it, so a brand-new device offered 절제 1·3·7일 for
+  // free and 받기 really moved the balance. streakIsReal is read from the SAME counter
+  // list Home labels 예시 with (isSample), so the two surfaces can never disagree; taking
+  // ownership (내 기록으로 시작, or editing the counter) clears isSample and restarts the
+  // run at 0일, from which milestones unlock on real elapsed time only.
+  const heroCounter = counters.find((c) => c.id === selectedCounterId) ?? counters[0] ?? null;
+  const streakIsReal = !heroCounter || !heroCounter.isSample;
+  // A 예시 sample streak reaches no claimable milestone (isMilestoneClaimable agrees, so
+  // the button and the claim guard can never disagree). The rows stay VISIBLE but honestly
+  // locked below, with the one real way to open them, instead of paying out demo data.
+  const reachedMilestones = streakIsReal ? MILESTONES.filter((m) => streakDays >= m.day) : [];
+  const lockedNext = streakIsReal ? nextLockedMilestone(streakDays) : MILESTONES[0];
 
   // Character growth v1 — derive the room's warmth from LOCAL records only: today's
   // saved check-in (todayRecord.checkin) and the abstinence streak. Summary label
@@ -267,6 +409,8 @@ export default function PetRewardScreen({
     // Visual hand-off cue — a snack token rises toward the scene (a delivery, not
     // a feeding motion).
     triggerSnackToss();
+    // …and the cat answers the snack with its 기쁨 pose before settling back.
+    reactCat('happy', CAT_HAPPY_MS);
     if (sceneMode) {
       setTapMsg(SCENE_FEED_MESSAGE);
       triggerSceneReaction();
@@ -283,6 +427,8 @@ export default function PetRewardScreen({
     onPetPet?.();
     playSound('purr'); // gesture-triggered, silent until a real audio file is wired
     triggerAffectionToss();
+    // A different answer from the snack's 기쁨: petting settles the cat into 휴식.
+    reactCat('rest', CAT_PET_MS);
     setTapMsg(PET_MESSAGE);
     if (sceneMode) {
       triggerSceneReaction();
@@ -300,6 +446,7 @@ export default function PetRewardScreen({
     tapCount.current += 1;
     // Soft meow on tap (gesture-triggered, silent if asset absent).
     playSound('meow');
+    reactCat('happy', CAT_TAP_MS);
     if (sceneMode) {
       triggerSceneReaction();
       return;
@@ -311,7 +458,7 @@ export default function PetRewardScreen({
     const milestone = MILESTONES.find((m) => m.id === id);
     // Only react when the claim is actually eligible — re-pressing an already
     // claimed or not-yet-reached reward must give no warm feedback and no grant.
-    if (!isMilestoneClaimable(milestone, streakDays, claimedRewardIds)) return;
+    if (!isMilestoneClaimable(milestone, streakDays, claimedRewardIds, streakIsReal)) return;
     onClaimReward?.(id);
     if (sceneMode) {
       setTapMsg(SCENE_REWARD_MESSAGE);
@@ -430,6 +577,7 @@ export default function PetRewardScreen({
               tone="bright"
               catMotion={catMotion}
               catState={catState}
+              catDrift={catDrift}
               selectedId={selectedId}
               onSelect={setSelectedId}
               onMove={onMoveItem}
@@ -441,7 +589,28 @@ export default function PetRewardScreen({
             />
           )}
 
-          <CatStateSelector value={catState} onChange={setCatState} />
+          {/* SECONDARY to the objects themselves. The placed props are now drawn in the
+              room above (PlacedDecorLayer), so this row no longer stands in for them —
+              it is just the shortcut back into 배치, and it names the count so the user
+              can tell at a glance that nothing was dropped. */}
+          {placements.length > 0 ? (
+            <button
+              type="button"
+              className="v13-card v13-card--flat v13-flat-row"
+              style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-3)' }}
+              onClick={() => setPlacementMode(true)}
+            >
+              <span className="v13-muted">
+                방에 놓은 소품 {placements.length}개가 그대로 있어요
+              </span>
+              <span className="v13-muted v13-muted--acc" style={{ whiteSpace: 'nowrap' }}>배치 바꾸기</span>
+            </button>
+          ) : null}
+
+          {/* Review-only. The product's cat state comes from the user's own actions and the
+              idle beat above — a pet you have to toggle by hand is a debug object, not a
+              companion (Founder feedback). Reachable with ?dev=1 for pose review. */}
+          {catDebug ? <CatStateSelector value={catState} onChange={setCatState} /> : null}
 
           {canControlSelected ? (
             <div className="room-select-bar">
@@ -491,41 +660,6 @@ export default function PetRewardScreen({
             : `방금 ${lastEarn.reason} · ${RESOURCE.name} ${lastEarn.amount}${RESOURCE.unit}을 모았어요.`
           : '오늘의 절제로 방이 조금 더 따뜻해졌어요.'}
       </p>
-
-      <section className="card">
-        <div className="card-row">
-          <span className="card-label">고양이 방 온기</span>
-          <span className={`pill ${warmth.tone}`} style={{ fontSize: 'var(--fs-small)' }}>
-            {warmth.label}
-          </span>
-        </div>
-        <p className="discipline-summary">{warmth.note}</p>
-        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
-          <p className="hairline-note">
-            ·{' '}
-            {checkinDoneToday
-              ? `오늘 기록을 남겨서 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모았어요.`
-              : `오늘 기록을 남기면 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모을 수 있어요.`}
-          </p>
-          <p className="hairline-note">
-            · 지금까지 모은 {RESOURCE.name} {emberShards}{RESOURCE.unit}
-          </p>
-          <p className="hairline-note">· {nextRoomNote}</p>
-        </div>
-        <p className="hairline-note text-quiet">
-          이 온기는 기기에 저장된 오늘의 기록으로 표시해요. 고양이가 실시간으로 반응하거나 저절로 자라는 건
-          아니에요.
-        </p>
-      </section>
-
-      <div className="room-action-row">
-        <button type="button" className="btn btn-primary" onClick={() => setSheet('inventory')}>
-          아이템 보관함
-        </button>
-        <button type="button" className="btn btn-ghost" onClick={() => setSheet('shop')}>
-          상점
-        </button>
-      </div>
 
       <section className="card">
         <div className="card-row">
@@ -591,9 +725,80 @@ export default function PetRewardScreen({
         </div>
       </section>
 
+      <div className="room-action-row">
+        <button type="button" className="btn btn-primary" onClick={() => setSheet('inventory')}>
+          아이템 보관함
+        </button>
+        <button type="button" className="btn btn-ghost" onClick={() => setSheet('shop')}>
+          상점
+        </button>
+      </div>
+
+      {/* 미래일기 return link — the diary sends the user here after a save, so the room
+          sends them back. Counts REAL saved entries from the same local slice the diary
+          writes (futureDiaryEntries); with none saved it invites the first one instead of
+          showing a fabricated number. No reward, no growth claim — a route, not a payout. */}
+      {/* .v13-flat-row only sets justify-content, so the flex context is declared inline
+          here — otherwise the label and the accent collide at 390px. components.css is a
+          pinned canonical authority (K2D-1K-A2/A3) and is deliberately left untouched. */}
+      <button
+        type="button"
+        className="v13-card v13-card--flat v13-flat-row"
+        style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 'var(--sp-3)' }}
+        onClick={() => onNavigate?.('diary')}
+      >
+        <span className="v13-muted">
+          {futureDiaryEntries.length > 0
+            ? `내가 그린 미래 ${futureDiaryEntries.length}편`
+            : '아직 그린 미래가 없어요'}
+        </span>
+        <span className="v13-muted v13-muted--acc" style={{ whiteSpace: 'nowrap' }}>미래일기</span>
+      </button>
+
+      <section className="card">
+        <div className="card-row">
+          <span className="card-label">고양이 방 온기</span>
+          <span className={`pill ${warmth.tone}`} style={{ fontSize: 'var(--fs-small)' }}>
+            {warmth.label}
+          </span>
+        </div>
+        <p className="discipline-summary">{warmth.note}</p>
+        <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+          <p className="hairline-note">
+            ·{' '}
+            {checkinDoneToday
+              ? `오늘 기록을 남겨서 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모았어요.`
+              : `오늘 기록을 남기면 ${RESOURCE.name} ${EARN.checkin}${RESOURCE.unit}을 모을 수 있어요.`}
+          </p>
+          <p className="hairline-note">
+            · 지금까지 모은 {RESOURCE.name} {emberShards}{RESOURCE.unit}
+          </p>
+          <p className="hairline-note">· {nextRoomNote}</p>
+        </div>
+        <p className="hairline-note text-quiet">
+          이 온기는 기기에 저장된 오늘의 기록으로 표시해요. 고양이가 실시간으로 반응하거나 저절로 자라는 건
+          아니에요.
+        </p>
+      </section>
+
       <section className="card">
         <span className="card-label">오늘의 보상 받기</span>
         <p className="hairline-note">오늘의 절제를 채우면 받을 수 있어요.</p>
+        {/* RC-4 honesty, reward edge: while the hero counter is still a 예시 sample the
+            elapsed time is demo shape, so nothing here is claimable. Say so plainly and
+            point at the one real way to open it, rather than hiding the rewards. */}
+        {!streakIsReal ? (
+          <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+            <p className="hairline-note">{SAMPLE_REWARD_NOTE}</p>
+            <button
+              type="button"
+              className="btn btn-ghost btn-block"
+              onClick={() => onNavigate?.('home')}
+            >
+              홈에서 내 기록 시작하기
+            </button>
+          </div>
+        ) : null}
         <div className="stack" style={{ '--gap': 'var(--sp-3)' }}>
           {reachedMilestones.map((m) => {
             const claimed = claimedRewardIds.includes(m.id);
@@ -623,7 +828,9 @@ export default function PetRewardScreen({
               <div>
                 <div style={{ color: 'var(--text-secondary)' }}>{lockedNext.label} 달성</div>
                 <div className="hairline-note">
-                  아직 받을 수 없어요. 오늘을 채우면 열려요.
+                  {streakIsReal
+                    ? '아직 받을 수 없어요. 오늘을 채우면 열려요.'
+                    : '아직 받을 수 없어요. 내 기록으로 시작하면 열려요.'}
                 </div>
               </div>
               <span className="pill reward-claim-btn" aria-disabled="true" style={{ opacity: 0.55 }}>

@@ -35,10 +35,25 @@ function formatSavedAt(ms) {
  * Entries are handed to App's dedicated futureDiaryEntries slice and never enter
  * todayRecord/checkinLedger. The writing prompts describe a desired future as a
  * concrete scene rather than asking for today's events or retrospective feelings.
+ *
+ * 미래일기 was the one bottom-nav tab whose primary action dead-ended: pressing save
+ * silently swapped the form for a list, acknowledged nothing, and offered no way on.
+ * The save now ANSWERS — a real confirmation of what was written, and a route onward
+ * into 내 방, which links back here. It still never routes into 오늘 기록: a future
+ * scene is not today's retrospective, and merging the two would blur what each is for.
+ * It also claims no reward — writing a scene grants no 잔불 조각 today, so nothing here
+ * says it does (the grant would need the reward economy in App, which is frozen).
  */
-export default function FutureDiaryScreen({ futureDiaryEntries = [], onSaveFutureDiary }) {
+export default function FutureDiaryScreen({
+  futureDiaryEntries = [],
+  onSaveFutureDiary,
+  onNavigate,
+}) {
   const [draft, setDraft] = useState(EMPTY_DRAFT);
   const [writing, setWriting] = useState(() => futureDiaryEntries.length === 0);
+  // One-shot save acknowledgement. Set only by an actual save below and cleared the
+  // moment the user writes again, so it can never read as a stale/idle banner.
+  const [justSaved, setJustSaved] = useState(false);
   const canSave = Object.values(draft).some((value) => value.trim().length > 0);
 
   const updateDraft = (id, value) => {
@@ -49,7 +64,13 @@ export default function FutureDiaryScreen({ futureDiaryEntries = [], onSaveFutur
     if (!canSave) return;
     onSaveFutureDiary?.(draft);
     setDraft(EMPTY_DRAFT);
+    setJustSaved(true);
     setWriting(false);
+  };
+
+  const startWriting = () => {
+    setJustSaved(false);
+    setWriting(true);
   };
 
   return (
@@ -106,6 +127,35 @@ export default function FutureDiaryScreen({ futureDiaryEntries = [], onSaveFutur
         </div>
       ) : (
         <div className="future-diary-entries">
+          {/* Save acknowledgement (one-shot). A plain "it saved" line plus the two real
+              next moves. It never routes into 오늘 기록 — a future scene is not today's
+              retrospective — and claims no reward, because the save grants none. It
+              reuses the entry card's warm treatment rather than adding a style rule:
+              components.css is a pinned canonical authority (K2D-1K-A2/A3). */}
+          {justSaved ? (
+            <section className="card future-diary-entry">
+              <div className="card-row">
+                <span className="card-label">미래 장면을 저장했어요</span>
+                <span className="pill pill-moss" style={{ fontSize: 'var(--fs-small)' }}>완료</span>
+              </div>
+              <p className="hairline-note">
+                아래에 그대로 남아 있어요. 언제든 다시 읽을 수 있어요.
+              </p>
+              <div className="stack" style={{ '--gap': 'var(--sp-2)' }}>
+                <button
+                  type="button"
+                  className="btn btn-primary btn-block"
+                  onClick={() => onNavigate?.('reward')}
+                >
+                  내 방에서 보기
+                </button>
+                <button type="button" className="btn btn-ghost btn-block" onClick={startWriting}>
+                  미래 장면 더 쓰기
+                </button>
+              </div>
+            </section>
+          ) : null}
+
           <div className="card-row future-diary-saved-heading">
             <div>
               <span className="card-label">내가 그린 미래</span>
@@ -131,9 +181,13 @@ export default function FutureDiaryScreen({ futureDiaryEntries = [], onSaveFutur
             </article>
           ))}
 
-          <button type="button" className="btn btn-primary btn-block" onClick={() => setWriting(true)}>
-            미래 장면 더 쓰기
-          </button>
+          {/* The confirmation card already offers this action right after a save, so the
+              list only carries it once the acknowledgement is gone (no duplicate CTA). */}
+          {justSaved ? null : (
+            <button type="button" className="btn btn-primary btn-block" onClick={startWriting}>
+              미래 장면 더 쓰기
+            </button>
+          )}
           <p className="hairline-note text-quiet future-diary-local-note">
             이 미래일기는 일반 기록과 분리되어 이 기기에만 저장돼요.
           </p>

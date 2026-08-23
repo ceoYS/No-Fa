@@ -39,8 +39,11 @@ export const MILESTONES = [
 
 export const MILESTONE_BY_ID = Object.fromEntries(MILESTONES.map((m) => [m.id, m]));
 
-// Milestones the user has reached but not yet claimed.
-export function earnableMilestones(streakDays = 0, claimedIds = []) {
+// Milestones the user has reached but not yet claimed. `streakIsReal` mirrors
+// isMilestoneClaimable below: a 예시 sample streak has reached nothing, so a future
+// caller can't reintroduce the first-run payout hole through this helper.
+export function earnableMilestones(streakDays = 0, claimedIds = [], streakIsReal = true) {
+  if (!streakIsReal) return [];
   return MILESTONES.filter((m) => streakDays >= m.day && !claimedIds.includes(m.id));
 }
 
@@ -49,10 +52,23 @@ export function earnableMilestones(streakDays = 0, claimedIds = []) {
 // reward is claimable at most once. Opening the room or re-pressing 받기 grants
 // nothing: this is the guard the screen *and* the App action both consult, so the
 // snack/shard balance can never move for an ineligible or already-claimed reward.
-export function isMilestoneClaimable(milestone, streakDays = 0, claimedIds = []) {
+//
+// `streakIsReal` closes the first-run 예시 hole (RC-4 honesty, reward edge): a cleared
+// install seeds SAMPLE counters whose elapsed time is demo shape, not the user's own
+// abstinence. Without this the seeded 12-day sample made 절제 1·3·7일 claimable on a
+// brand-new device, paying real 잔불 조각 + 간식 for progress nobody made. A sample
+// streak is therefore never eligible; converting it (내 기록으로 시작 / editing the
+// counter drops isSample) restarts the run at 0일 and unlocks milestones honestly.
+export function isMilestoneClaimable(milestone, streakDays = 0, claimedIds = [], streakIsReal = true) {
   if (!milestone) return false;
+  if (!streakIsReal) return false;
   return streakDays >= milestone.day && !claimedIds.includes(milestone.id);
 }
+
+// Copy for the 예시-streak reward state — reached-looking milestones stay visible but
+// honestly locked, so the room never hides that rewards exist nor pays out demo data.
+export const SAMPLE_REWARD_NOTE =
+  '지금 보이는 절제 기록은 예시예요. 홈에서 ‘내 기록으로 시작’을 누르면 내 기록으로 보상이 열려요.';
 
 // The next locked milestone (reached none of it yet) — used to show an honest
 // "아직 열리지 않은" row instead of hiding future rewards entirely.

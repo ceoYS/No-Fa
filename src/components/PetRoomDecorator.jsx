@@ -1,15 +1,18 @@
 import { useRef, useState } from 'react';
 import { resolveItemAsset, resolveRoomSceneAsset } from '../constants/petAssets.js';
 import { ITEM_BY_ID } from '../constants/roomItems.js';
+import { PLACED_IMG_STYLE, SELECTED_IMG_STYLE } from './PlacedDecorLayer.jsx';
 
 /*
  * PetRoomDecorator — the REAL room-decorating surface (PRD §0.6.9, RC-2B).
  *
  * HONESTY MODEL: the decor art is rectangular, non-transparent crops, NOT
- * transparent overlay sprites (petAssets keeps every spriteReady:false). A placed
- * item therefore remains a labelled thumbnail, but C2-B removes the heavy outer
- * card frame and feathers the placed crop into a circle. The UI never marks these assets as
- * transparent sprites or claims a seamless composite.
+ * transparent overlay sprites (petAssets keeps every spriteReady:false). C2-B
+ * removed the heavy outer card frame and feathered the placed crop into a circle;
+ * the placement-UX pass then took the always-on name pill off placed objects and
+ * deepened the feather, so a placed item reads as an object in the room rather than
+ * a labelled thumbnail. The UI still never marks these assets as transparent
+ * sprites or claims a seamless composite — the crops remain honest crops.
  *
  * Placement is coordinate-based: every card sits at a normalized (x, y) fraction
  * of the stage, so the layout survives the 390px mobile form factor. Coordinates
@@ -27,18 +30,29 @@ const TAP_SLOP = 6; // px of travel under which a press is a tap, not a drag
 
 const clamp01 = (v) => Math.min(1 - PAD, Math.max(PAD, v));
 
+/*
+ * The placed look (feathered crop + contact shadow, and the shape-following halo
+ * used only while an item is selected) lives in PlacedDecorLayer.jsx, because the
+ * normal room view now renders the SAME persisted placements with the SAME
+ * representation. Editing and viewing must not drift apart: an object must not
+ * change appearance — or disappear — when the user presses 배치 마치기.
+ */
+
 // Lightweight item overlay — the real rectangular art plus its readable name.
-// CSS removes the heavy container frame while retaining selection/focus affordance.
-function ItemCardFace({ item, className = 'room-card-face' }) {
+// `showName` makes the name an EDITING affordance rather than room furniture: the
+// tray always names what you are about to place, and a placed card names itself only
+// while it is the selected one. An unselected placed object renders clean.
+function ItemCardFace({ item, className = 'room-card-face', placed = false, selected = false, showName = true }) {
   const src = resolveItemAsset(item.assetId);
+  const imgStyle = placed ? (selected ? SELECTED_IMG_STYLE : PLACED_IMG_STYLE) : undefined;
   return (
     <span className={className}>
       {src ? (
-        <img className="room-card-img" src={src} alt="" loading="lazy" decoding="async" />
+        <img className="room-card-img" src={src} alt="" loading="lazy" decoding="async" style={imgStyle} />
       ) : (
         <span className="room-card-pending" aria-hidden="true" />
       )}
-      <span className="room-card-name">{item.name}</span>
+      {showName ? <span className="room-card-name">{item.name}</span> : null}
     </span>
   );
 }
@@ -183,11 +197,15 @@ export default function PetRoomDecorator({
           const live = livePos && livePos.id === p.itemId ? livePos : null;
           const x = live ? live.x : p.x ?? 0.5;
           const y = live ? live.y : p.y ?? 0.6;
+          // Normalized percent of the stage — the SAME expression the read-only room
+          // view uses (PlacedDecorLayer), so an item sits at the exact same spot before
+          // and after 배치 마치기. Kept literal here because placement coordinates are a
+          // pinned contract of this file (regression: normalized percent of the stage).
           const style = { left: `${x * 100}%`, top: `${y * 100}%`, zIndex: (p.z ?? 1) + 3 };
           if (!editable) {
             return (
               <div key={p.itemId} className="room-card" style={style} data-item={p.itemId}>
-                <ItemCardFace item={item} />
+                <ItemCardFace item={item} placed showName={false} />
               </div>
             );
           }
@@ -203,7 +221,7 @@ export default function PetRoomDecorator({
               aria-pressed={selectedId === p.itemId}
               onPointerDown={(e) => beginCardDrag(p, e)}
             >
-              <ItemCardFace item={item} />
+              <ItemCardFace item={item} placed selected={selectedId === p.itemId} showName={selectedId === p.itemId} />
             </button>
           );
         })}
@@ -216,7 +234,7 @@ export default function PetRoomDecorator({
       {editable ? (
         <>
           <p className="room-decorator-help" aria-live="polite">
-            아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요. 놓인 소품은 다시 끌어 옮길 수 있어요.
+            아이템을 눌러 방에 놓거나, 끌어서 원하는 자리에 놓아보세요. 놓인 소품은 눌러서 고르고, 끌어서 옮길 수 있어요.
           </p>
           {selectedId && placedIds.has(selectedId) ? (
             <div className="room-select-bar">

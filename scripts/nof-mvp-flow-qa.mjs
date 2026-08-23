@@ -79,6 +79,7 @@ const BEHAVIORS = {
   B36: 'RC-9 guided 3분 보호 설정 is reachable + honest: 4-step stepper (위험 신호 정리/Chrome 확장 연결/차단 규칙 반영/차단 테스트), browser-scoped scope, 잠깐 멈춤+오늘 기록 CTAs, no connected/complete state without a real extension, no 체크인/금욕/AI/device-wide/full-block claim',
   B37: 'RC-10 shield→app deep link: ?from=shield&to=urge opens 잠깐 멈춤, &to=record opens 오늘 기록, invalid destination falls back home, blocked target never passed, no 체크인/금욕/fake AI/device-wide/full-block claim',
   B38: 'RC-11 extension setup is compressed + honest: reachable setup flow (Chrome 확장 준비/압축해제 설치/확장 ID/연결 확인/이 브라우저 차단 규칙에 반영/차단 테스트), states Chrome 웹 스토어 not yet + this-Chrome-only + not device-wide/other-app, no connected/complete state without a real extension reply, 잠깐 멈춤+오늘 기록 exits, no 체크인/금욕/fake AI/device-wide/full-block claim',
+  B40: 'placed decor stays VISIBLE in the normal room after 배치 마치기 (same position, no labels/outlines/handles), survives reopen + reload',
   B39: 'RC-13 danger-signal input is product-like + honest: 위험 신호 정리 with a concrete 피하고 싶은 사이트나 검색어 field + an abstract 자주 흔들리는 상황 note, only user-confirmed 브라우저 차단 규칙 후보 are sent (situation note never sent), no rule-success/연결됨/설정 완료 without a real extension reply, this-Chrome-only + not device-wide, no 체크인/금욕/AI/자동 탐지/성인 사이트 목록 claim',
 };
 
@@ -607,6 +608,67 @@ async function runFlow(c) {
   const moveOk = dragged && leftBefore != null && leftAfter != null && Math.abs(leftAfter - leftBefore) > 5;
   check('B29', moveOk, moveOk ? '' : `dragged:${dragged} left ${leftBefore} -> ${leftAfter}`);
   await c.shot('room_card_repositioned');
+
+  // 40 · P1 CLOSEOUT — placement must SURVIVE leaving placement mode. The exact Founder
+  //      flow: place → move → 배치 마치기 → THE OBJECT IS STILL THERE, at the same
+  //      coordinates, with no edit chrome on it (no name label, no button/handle, no
+  //      selection outline) → reopen 배치 → same position → hard reload → still present in
+  //      the normal room without entering placement mode at all. All asserted on rendered
+  //      DOM: a saved-count sentence would not satisfy any of these.
+  const lampPos = `(() => { const el = document.querySelector('.room-card[data-item="ember_lamp"]');
+    return el ? { left: parseFloat(el.style.left), top: parseFloat(el.style.top) } : null; })()`;
+  const editPos = await c.eval(lampPos);
+  await c.click('배치 마치기'); await sleep(400);
+  const viewCards = await c.eval(`document.querySelectorAll('.room-card').length`);
+  const viewPos = await c.eval(lampPos);
+  // The placed object is really painted (not a 0-size / display:none ghost) and carries
+  // no editing chrome of any kind in the normal room.
+  const viewClean = await c.eval(`(() => {
+    const el = document.querySelector('.room-card[data-item="ember_lamp"]');
+    if (!el) return { drawn: false };
+    const img = el.querySelector('img');
+    const r = img ? img.getBoundingClientRect() : null;
+    const cs = img ? getComputedStyle(img) : null;
+    return {
+      drawn: !!r && r.width > 8 && r.height > 8 && cs.visibility === 'visible' && parseFloat(cs.opacity) > 0.5,
+      viewFlag: el.getAttribute('data-placed-view') === '1',
+      labels: document.querySelectorAll('.room-card .room-card-name').length,
+      handles: document.querySelectorAll('button.room-card').length,
+      selected: document.querySelectorAll('.room-card.is-selected').length,
+      outline: cs ? cs.outlineStyle : null,
+      hits: el.getAttribute('style').includes('pointer-events: none'),
+    };
+  })()`);
+  await c.shot('room_placed_visible_after_done');
+  // Reopen placement: the same object, still at the same spot.
+  await c.click('아이템 배치하기'); await sleep(350);
+  const reopenPos = await c.eval(lampPos);
+  await c.click('배치 마치기'); await sleep(350);
+  // Hard reload, then straight into the normal room — no placement mode.
+  await c.reload(); await sleep(400);
+  await c.clickExact('홈'); await sleep(200);
+  await c.clickExact('내 방'); await sleep(450);
+  const reloadPos = await c.eval(lampPos);
+  const reloadCards = await c.eval(`document.querySelectorAll('.room-card').length`);
+  const same = (a, b) => a && b && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.top - b.top) < 0.5;
+  const stayVisible =
+    !!editPos
+    && viewCards > 0
+    && same(editPos, viewPos)
+    && viewClean.drawn === true
+    && viewClean.viewFlag === true
+    && viewClean.labels === 0
+    && viewClean.handles === 0
+    && viewClean.selected === 0
+    && viewClean.outline === 'none'
+    && viewClean.hits === true
+    && same(editPos, reopenPos)
+    && reloadCards > 0
+    && same(editPos, reloadPos);
+  check('B40', stayVisible, stayVisible ? '' : `edit:${JSON.stringify(editPos)} view:${JSON.stringify(viewPos)} cards:${viewCards} clean:${JSON.stringify(viewClean)} reopen:${JSON.stringify(reopenPos)} reload:${JSON.stringify(reloadPos)}/${reloadCards}`);
+  await c.shot('room_placed_after_reload');
+  // Hand back to B30 in placement mode, exactly as it expects to find the room.
+  await c.click('아이템 배치하기'); await sleep(300);
 
   // 30 · The snack hand-off is a REAL visible motion that updates real state. Leave 배치
   //      mode, press 간식 놓아주기 → the snack token animates (data-active) and the fed state

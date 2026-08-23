@@ -16,6 +16,7 @@ import {
   shouldUsePetSceneMode,
 } from '../constants/petAssets.js';
 import { ITEM_BY_ID } from '../constants/roomItems.js';
+import PlacedDecorLayer from './PlacedDecorLayer.jsx';
 
 /*
  * PetRoomEditor — the draggable room stage (PRD §0.6.9), asset-first.
@@ -52,6 +53,12 @@ const LAYERED_PRELOAD_URLS = Object.freeze([
 
 const clamp01 = (v) => Math.min(1 - PAD, Math.max(PAD, v));
 
+// How long the cat takes to glide from one resting spot to the next. The waypoints
+// themselves are decided by the screen (a fixed, non-random cycle) — this file only
+// owns the easing, so the move reads as a slow stroll rather than a snap. Long
+// enough that a 10-14px step is a walk, not a twitch.
+const CAT_WANDER_GLIDE_MS = 2200;
+
 function normalizeLoopbackHostname(hostname) {
   return hostname === '[::1]' ? '::1' : hostname;
 }
@@ -84,6 +91,7 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     label,
     sceneMode,
     reacting = false,
+    catDrift = null,
   },
   ref,
 ) {
@@ -421,6 +429,33 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     .filter(Boolean)
     .join(' ');
   const shadowSrc = useLayered ? resolveCanonicalShadow() : null;
+  /*
+   * AUTONOMOUS POSITIONAL LIFE (Founder P1-2). The cat used to only swap pose; it
+   * never went anywhere, so an untouched room still read as a still image. The screen
+   * hands down the next resting spot as a small pixel offset and this wrapper glides
+   * the whole cat group — shadow, idle/blink cutout and the 기쁨/휴식 pose alike — so
+   * the cat keeps whatever spot it strolled to instead of snapping back when it reacts.
+   *
+   * It is a WRAPPER, deliberately: the canonical layer's own transform (the authored
+   * 1.06 scene overscale, the parallax offset and the A5 breathing) is pinned in CSS,
+   * and an inline transform on the image would wipe all three. Nesting composes instead.
+   *
+   * Gates match the canonical motion contract exactly — layered scene, motion allowed
+   * (prefers-reduced-motion off) and a visible tab. Any of them off and the offset is
+   * zero with no transition, i.e. the scene is perfectly still, as before.
+   */
+  const wanderActive = useLayered && motionAllowed && documentVisible;
+  const wanderX = wanderActive ? catDrift?.x ?? 0 : 0;
+  const wanderY = wanderActive ? catDrift?.y ?? 0 : 0;
+  const catWanderStyle = {
+    position: 'absolute',
+    inset: 0,
+    zIndex: 0,
+    pointerEvents: 'none',
+    transform: `translate3d(${wanderX}px, ${wanderY}px, 0)`,
+    transition: wanderActive ? `transform ${CAT_WANDER_GLIDE_MS}ms cubic-bezier(0.4, 0, 0.25, 1)` : 'none',
+    willChange: wanderActive ? 'transform' : 'auto',
+  };
   const handleLayeredImageError = () => setPreloadState('failed');
   // A failed pose cutout falls the whole layered path back to the baked composite,
   // exactly like a failed plate/idle — never a broken <img>, never a fabricated cat.
@@ -501,6 +536,9 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
                   decoding="async"
                   onError={handleLayeredImageError}
                 />
+                {/* The wandering cat group. The plate above stays put — only the cat
+                    (and its contact shadow) strolls, so the room itself never moves. */}
+                <div className="canonical-kitten-wander" aria-hidden="true" style={catWanderStyle}>
                 {shadowSrc ? (
                   <img
                     className="canonical-kitten-shadow"
@@ -546,6 +584,7 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
                     </div>
                   </div>
                 ) : null}
+                </div>
               </>
             ) : (
               <img className="room-img" src={roomSrc} alt="" loading="lazy" decoding="async" />
@@ -557,6 +596,12 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
                     2.5D feel comes purely from lighting, vignette and parallax. */}
                 <div className="scene-depth" aria-hidden="true" />
                 <div className="scene-glow" aria-hidden="true" />
+                {/* The user's own props, still in the room after 배치 마치기 (Founder
+                    P1-1). Same persisted coordinates and the same feathered crop the
+                    editing surface draws — this is a READ-ONLY layer: no labels, no
+                    outlines, no handles, pointer-events:none so the room's tap target
+                    below is untouched. Editing affordances stay behind 아이템 배치하기. */}
+                <PlacedDecorLayer placements={placements} />
                 {onCatTap ? (
                   <button
                     type="button"

@@ -3602,8 +3602,9 @@ check('v13 final handoff shell: palette, nav, structure, honesty labels pinned',
 // PetRoomDecorator 편집 with the scene-depth/scene-glow polish — never a stale plate);
 // one PetRoom3D mount serves 감상 and 꾸미기 alike (same canvas, edit is a prop);
 // 3D placement writes through the SAME normalized placement handlers the 2.5D room
-// persists; item name labels stay an edit-mode affordance (the 감상 scene is one
-// finished composite, no labelled cards); and while the 2D cat frame art is pending
+// persists; item name labels stay an edit-mode affordance (the 감상 scene draws the
+// user's placed props but never a labelled card — see the P1 view-mode guard below);
+// and while the 2D cat frame art is pending
 // no frame set / sprite is force-marked ready and no clip-mixer machinery ships
 // (the Phase C procedural transform rig has its own contract, guard #111).
 check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contract', () => {
@@ -3663,7 +3664,9 @@ check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contr
   assert(dec.includes('scene-glow'), 'PetRoomDecorator lost the scene-glow lighting layer');
 
   // (g) item name labels are an EDIT affordance: the decorator names its cards, the
-  //     감상 scene stays one finished composite with a caption and no labelled cards.
+  //     감상 scene keeps its caption and stays free of labelled cards. (The 감상 scene
+  //     DOES draw the user's placed props since the P1 closeout — unlabelled, chrome-
+  //     free and read-only; that contract has its own guard below.)
   assert(dec.includes('room-card-name'), 'PetRoomDecorator cards lost their honest name labels');
   assert(editor.includes('room-scene-note'), 'the 감상 scene lost its composite caption');
   assert(
@@ -4512,6 +4515,204 @@ check('C2-B-R1C three-state cat integrates into the actual room with default idl
     viewer.includes('CatStateSelector') && viewer.includes('CAT_STATE_VIEWS')
       && /<PetRoomEditor[\s\S]*?catState=\{catState\}/.test(screen),
     'the small selector must drive catState into the actual room layer',
+  );
+});
+
+// P1-A — PLACEMENT SURVIVES PLACEMENT MODE. Founder P1 closeout: placing an item and
+// pressing 배치 마치기 used to make the object vanish from the room, leaving only a
+// "your arrangement is saved" sentence. A saved-count sentence is not placement. This
+// pins the deal it shipped under: the normal room draws the SAME persisted placements
+// through ONE shared representation (PlacedDecorLayer) so edit and view cannot drift;
+// the view layer carries NO editing chrome (no name label, no button/handle, no
+// selection outline, pointer-events:none so the room's own tap target survives); the
+// count row is SECONDARY and never a substitute for the objects; and the decor honesty
+// model is untouched — spriteReady stays false everywhere and no copy upgrades the
+// opaque crops into transparent sprites or a seamless composite.
+check('P1-A placed decor stays visible after 배치 마치기 through one shared representation', () => {
+  const layer = read('src/components/PlacedDecorLayer.jsx');
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const assets = read('src/constants/petAssets.js');
+  const items = read('src/constants/roomItems.js');
+
+  // (a) ONE shared representation: both surfaces take the placed look from the same
+  //     module, so a placed object cannot change appearance across the mode switch.
+  assert(
+    /export const PLACED_IMG_STYLE = Object\.freeze\(\{/.test(layer)
+      && /export const SELECTED_IMG_STYLE = Object\.freeze\(\{/.test(layer),
+    'PlacedDecorLayer no longer owns the shared placed/selected look',
+  );
+  assert(
+    /import \{[^}]*PLACED_IMG_STYLE[^}]*\} from '\.\/PlacedDecorLayer\.jsx'/.test(dec),
+    'PetRoomDecorator no longer draws placed items with the shared placed look',
+  );
+  assert(
+    !/const PLACED_IMG_STYLE\s*=/.test(dec) && !/const SELECTED_IMG_STYLE\s*=/.test(dec),
+    'PetRoomDecorator re-declares the placed look locally (edit and view will drift)',
+  );
+
+  // (b) the NORMAL room actually renders the persisted placements.
+  assert(
+    /import PlacedDecorLayer from '\.\/PlacedDecorLayer\.jsx'/.test(editor),
+    'PetRoomEditor no longer imports the read-only placed-decor layer',
+  );
+  assert(
+    /<PlacedDecorLayer placements=\{placements\} \/>/.test(editor),
+    'the normal room no longer draws the user\'s persisted placements',
+  );
+
+  // (c) identical normalized-percent coordinates on both sides — no drift on 배치 마치기.
+  for (const [name, body] of [['PetRoomDecorator', dec], ['PlacedDecorLayer', layer]]) {
+    assert(/\* 100\}%/.test(body), `${name} stopped positioning placed cards by normalized percent`);
+    assert(/\(p\.z \?\? 1\) \+ 3/.test(body), `${name} stopped sharing the placed stacking order`);
+  }
+
+  // (d) the view layer is READ-ONLY: no label, no button/handle, no outline, and it
+  //     never eats the pointer (the room's 쓰다듬기 tap target sits under it).
+  assert(!layer.includes('room-card-name'), 'the read-only placed layer renders a name label');
+  assert(!layer.includes('<button'), 'the read-only placed layer renders an interactive handle');
+  assert(!layer.includes('is-selected'), 'the read-only placed layer renders a selection outline');
+  assert(layer.includes("pointerEvents: 'none'"), 'the read-only placed layer swallows pointer events');
+  assert(layer.includes("data-placed-view=\"1\""), 'the read-only placed layer lost its QA-assertable marker');
+  assert(
+    !editor.includes('room-card-name'),
+    'the 감상 stage renders labelled cards (names must stay edit-mode only)',
+  );
+
+  // (e) the count row stays SECONDARY — it may point back into 배치, but it must not be
+  //     the thing that stands in for the objects being visible.
+  assert(
+    screen.includes('방에 놓은 소품') && screen.includes('배치 바꾸기'),
+    'the secondary placement row is gone or no longer routes back into 배치',
+  );
+  assert(
+    !/그대로 저장돼 있어요/.test(screen),
+    'the room still claims placements are merely "saved" instead of showing them',
+  );
+
+  // (f) HONESTY UNCHANGED: the crops are still opaque crops. Nothing here raises a
+  //     readiness flag or upgrades the copy into a transparent-sprite/composite claim.
+  assert(!/spriteReady:\s*true/.test(assets + layer + dec + editor), 'decor sprite readiness was force-raised');
+  for (const overclaim of ['투명', '완벽하게 어울', '자연스럽게 합성', '실제 사진처럼']) {
+    assert(!layer.includes(overclaim) && !screen.includes(overclaim), `placement copy overclaims: ${overclaim}`);
+  }
+
+  // (g) first-run/tap-to-place defaults must be CLEAR FLOOR. Now that placed decor is
+  //     drawn in the normal room, a default inside the cat's box is not a momentary
+  //     edit-mode glitch — it is the room the user lives with. Cat box measured off the
+  //     rendered plate: x 0.41–0.72, y 0.30–0.90.
+  const defaults = [...items.matchAll(/id: '([a-z_]+)'[\s\S]*?defaultPlacement: \{ x: ([0-9.]+), y: ([0-9.]+)/g)];
+  assert(defaults.length >= 6, 'catalogue default placements are missing');
+  for (const [, id, x, y] of defaults) {
+    const onCat = Number(x) > 0.41 && Number(x) < 0.72 && Number(y) > 0.3 && Number(y) < 0.9;
+    assert(!onCat, `${id} first lands on the cat (${x}, ${y}) — defaults must be clear floor`);
+  }
+  const seed = items.match(/export const DEFAULT_PLACEMENTS = \[[\s\S]*?\];/);
+  assert(seed, 'DEFAULT_PLACEMENTS seed is missing');
+  for (const [, x, y] of seed[0].matchAll(/x: ([0-9.]+), y: ([0-9.]+)/g)) {
+    const onCat = Number(x) > 0.41 && Number(x) < 0.72 && Number(y) > 0.3 && Number(y) < 0.9;
+    assert(!onCat, `the first-paint seed lands on the cat (${x}, ${y})`);
+  }
+});
+
+// P1-B — THE CAT MOVES ON ITS OWN. Founder P1-2: swapping pose every 18s still left an
+// untouched room reading as a still image, so the cat now strolls between a few fixed
+// resting spots. This pins what it shipped under: the walk is DETERMINISTIC (a frozen
+// cycle, never random), BOUNDED (single-digit-to-mid-teens px, so it can never leave the
+// room or climb over UI), gated exactly like the canonical blink/breathing motion
+// (prefers-reduced-motion off + visible tab, cleared on unmount), it YIELDS to any
+// reaction the user earned, and it moves the CAT ONLY — the room plate never moves.
+// The canonical motion contract in PetRoomEditor is untouched: no setInterval, no
+// randomness, and the pinned CSS transform (1.06 overscale + parallax + A5 breathing)
+// is composed through a wrapper rather than overwritten.
+check('P1-B autonomous cat movement is deterministic, bounded, gated, and yields to the user', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const editor = read('src/components/PetRoomEditor.jsx');
+
+  // (a) a frozen waypoint cycle — never random, never generated.
+  const steps = screen.match(/const CAT_WANDER_STEPS = Object\.freeze\(\[[\s\S]*?\]\);/);
+  assert(steps, 'the fixed cat wander waypoints are missing');
+  assert(
+    !/Math\.random|crypto\.getRandomValues|Date\.now\(\)/.test(steps[0]),
+    'cat movement must stay deterministic (no random / clock-derived waypoints)',
+  );
+  const offsets = [...steps[0].matchAll(/x: (-?[0-9.]+), y: (-?[0-9.]+)/g)];
+  assert(offsets.length >= 3, 'the wander needs at least three resting spots to read as movement');
+  for (const [, x, y] of offsets) {
+    assert(
+      Math.abs(Number(x)) <= 20 && Math.abs(Number(y)) <= 20,
+      `wander offset (${x}, ${y}) is large enough to walk the cat out of the room`,
+    );
+  }
+  assert(
+    offsets.some(([, x, y]) => Number(x) !== 0 || Number(y) !== 0),
+    'every wander waypoint is neutral — the cat would never move',
+  );
+
+  // (b) gated and cleaned up exactly like the idle beat.
+  assert(
+    /if \(!catIdleAllowed\) \{\s*\n\s*setCatWanderStep\(0\);/.test(screen),
+    'the wander does not pin the cat at its neutral spot when motion is disallowed',
+  );
+  assert(
+    /return \(\) => clearInterval\(walk\);/.test(screen),
+    'the wander loop is not cleared on unmount / gate change',
+  );
+  assert(
+    screen.includes("matchMedia('(prefers-reduced-motion: reduce)')")
+      && screen.includes("document.visibilityState === 'visible'"),
+    'the wander gate lost prefers-reduced-motion or tab-visibility',
+  );
+
+  // (c) the user wins: a reaction in flight holds the cat in place.
+  assert(
+    /const walk = setInterval\(\(\) => \{\s*\n\s*if \(catReactingRef\.current\) return;/.test(screen),
+    'the wander no longer yields to the reaction the user earned',
+  );
+
+  // (d) the offset reaches the room layer, and the room layer double-gates it.
+  assert(/catDrift=\{catDrift\}/.test(screen), 'the wander offset is not handed to the room layer');
+  assert(
+    /const wanderActive = useLayered && motionAllowed && documentVisible;/.test(editor),
+    'the room layer no longer double-gates the wander on the canonical motion conditions',
+  );
+  assert(
+    /const wanderX = wanderActive \? catDrift\?\.x \?\? 0 : 0;/.test(editor)
+      && /const wanderY = wanderActive \? catDrift\?\.y \?\? 0 : 0;/.test(editor),
+    'the room layer no longer zeroes the wander when motion is disallowed',
+  );
+  assert(
+    /transition: wanderActive \? `transform \$\{CAT_WANDER_GLIDE_MS\}ms/.test(editor),
+    'the wander must glide (and must not transition at all when motion is off)',
+  );
+
+  // (e) the CAT moves, the ROOM does not: the wrapper sits below the cat layers and the
+  //     plate stays outside it, so the scene itself never slides.
+  const scene = editor.match(/<img\s+className="room-img"\s+src=\{plateSrc\}[\s\S]*?<\/div>\s*\n\s*<\/>/);
+  assert(scene, 'the layered scene block could not be read');
+  const wrapperAt = scene[0].indexOf('className="canonical-kitten-wander"');
+  assert(wrapperAt > 0, 'the cat wander wrapper is missing from the layered scene');
+  assert(
+    scene[0].indexOf('src={plateSrc}') < wrapperAt,
+    'the room plate must stay OUTSIDE the wander wrapper (only the cat strolls)',
+  );
+  for (const inside of ['className={canonicalKittenClassName}', 'canonical-kitten-pose-frame']) {
+    assert(
+      scene[0].indexOf(inside) > wrapperAt,
+      `${inside} must sit inside the wander wrapper so the cat keeps the spot it walked to`,
+    );
+  }
+
+  // (f) the canonical motion contract is composed, never overwritten.
+  assert(!editor.includes('setInterval('), 'setInterval remains forbidden in the canonical room layer');
+  assert(
+    !editor.includes('Math.random') && !editor.includes('crypto.getRandomValues'),
+    'canonical room motion must remain deterministic',
+  );
+  assert(
+    /className="canonical-kitten-wander"[^>]*style=\{catWanderStyle\}/.test(editor.replace(/\s+/g, ' ')),
+    'the wander must ride its own wrapper (an inline transform on the cutout would wipe the pinned CSS transform)',
   );
 });
 
