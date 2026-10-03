@@ -1,0 +1,135 @@
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="robots" content="index,follow" />
+  <title>NoF 실드 개인정보 처리방침</title>
+  <style>
+    :root {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      color: #171717;
+      background: #f7f7f5;
+      line-height: 1.7;
+    }
+    * { box-sizing: border-box; }
+    body { margin: 0; padding: 40px 20px 80px; }
+    main {
+      max-width: 760px;
+      margin: 0 auto;
+      background: #fff;
+      border: 1px solid #e8e8e5;
+      border-radius: 24px;
+      padding: 40px;
+    }
+    h1 { margin-top: 0; font-size: 30px; line-height: 1.3; }
+    h2 { margin-top: 36px; font-size: 20px; }
+    p, li { font-size: 15px; }
+    .meta {
+      color: #6b6b67;
+      font-size: 14px;
+      margin-bottom: 32px;
+    }
+    .note {
+      background: #f5f5f2;
+      border-radius: 14px;
+      padding: 16px 18px;
+    }
+    a { color: inherit; }
+    footer {
+      margin-top: 44px;
+      padding-top: 24px;
+      border-top: 1px solid #ecece8;
+      color: #6b6b67;
+      font-size: 13px;
+    }
+  </style>
+</head>
+<body>
+<main>
+  <h1>NoF 실드 개인정보 처리방침</h1>
+
+  <div class="meta">
+    시행일: 2026년 10월 3일<br />
+    대상: NoF 실드 Chrome 확장 프로그램
+  </div>
+
+  <p class="note">
+    NoF 실드는 이 Chrome 브라우저에서 사용자가 직접 확인한 위험 신호에
+    잠깐 멈춤이라는 마찰을 더하는 도구입니다.
+    방문 기록이나 차단한 주소를 NoF 서버로 보내지 않습니다.
+  </p>
+
+  <h2>1. 수집하는 정보</h2>
+  <p>
+    NoF 실드는 사용자의 방문 기록, 방문 주소, 검색어, 쿠키 또는 페이지 내용을
+    서버로 수집하지 않습니다. 확장 프로그램에는 광고, 분석 도구,
+    원격 코드 실행 또는 방문 기록 전송 기능이 없습니다.
+  </p>
+
+  <h2>2. 차단 대상 정보</h2>
+  <p>
+    사용자가 NoF 웹앱에서 직접 확인한 구체적인 차단 값은
+    Chrome의 <code>declarativeNetRequest</code> 규칙으로 이 브라우저 안에서만
+    처리될 수 있습니다.
+  </p>
+  <p>
+    차단 화면은 사용자가 어디로 이동하려 했는지 읽거나 표시하거나
+    NoF 서버에 전송하지 않습니다.
+  </p>
+
+  <h2>3. NoF 웹앱과 확장 프로그램 사이의 데이터</h2>
+  <p>
+    NoF 웹앱은 사용자가 직접 확인한 구체 값만 확장 프로그램에 전달할 수 있습니다.
+    사용자가 작성한 상황 메모 자체를 브라우저 차단 규칙으로 전송하지 않습니다.
+  </p>
+  <p>
+    확장 프로그램에서 NoF 앱으로 돌아갈 때는
+    <code>from=shield</code> 및
+    <code>to=record</code> 또는 <code>to=urge</code>와 같은
+    일반적인 이동 목적만 사용하며, 차단된 주소나 검색어를 전달하지 않습니다.
+  </p>
+
+  <h2>4. 데이터 판매 및 제3자 공유</h2>
+  <p>
+    NoF 실드는 사용자의 브라우징 데이터를 판매하지 않으며,
+    광고 목적으로 제3자에게 제공하지 않습니다.
+  </p>
+
+  <h2>5. Chrome 권한</h2>
+  <p>
+    NoF 실드는 차단 규칙을 적용하기 위해
+    <code>declarativeNetRequest</code> 권한을 사용합니다.
+  </p>
+  <p>
+    사용자가 지정한 위험 신호는 어느 웹사이트의 최상위 이동에서도 나타날 수 있기 때문에
+    차단 규칙이 웹 전반의 탐색에 적용될 수 있도록 HTTP/HTTPS 호스트 범위를 사용합니다.
+    이 권한을 이용해 페이지 내용을 읽거나 스크립트를 삽입하지 않으며,
+    쿠키·브라우징 기록·탭 내용을 서버로 수집하지 않습니다.
+  </p>
+
+  <h2>6. 기능의 범위와 한계</h2>
+  <ul>
+    <li>NoF 실드는 Chrome 데스크톱 브라우저 안에서만 작동합니다.</li>
+    <li>기기 전체, 다른 앱, iOS 또는 Android 전체를 차단하지 않습니다.</li>
+    <li>위험한 주소를 AI가 자동으로 판단하거나 자동 분류하지 않습니다.</li>
+    <li>확장을 끄거나 다른 브라우저를 사용하면 우회할 수 있습니다.</li>
+    <li>의학적 치료나 진단을 제공하는 서비스가 아닙니다.</li>
+  </ul>
+
+  <h2>7. 문의</h2>
+  <p>
+    개인정보 처리방침 및 NoF 실드에 관한 문의는 아래 프로젝트 문의 채널을 이용할 수 있습니다.
+  </p>
+  <p>
+    <a href="https://github.com/ceoYS/No-Fa/issues">
+      https://github.com/ceoYS/No-Fa/issues
+    </a>
+  </p>
+
+  <footer>
+    NoF · NoF Chrome Shield Privacy Policy
+  </footer>
+</main>
+</body>
+</html>
