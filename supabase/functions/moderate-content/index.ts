@@ -19,6 +19,9 @@ Deno.serve(async (req) => {
       return json({ ok: true, configured: false, state: 'MODERATION_NOT_CONFIGURED', allowed: false });
     }
     const m = await moderate({ text, imageUrl });
+    if (!m.configured) {
+      return json({ ok: true, configured: false, state: 'MODERATION_NOT_CONFIGURED', allowed: false });
+    }
     return json({ ok: true, configured: true, allowed: !m.flagged, flagged: !!m.flagged, categories: m.categories ?? [] });
   } catch (e) {
     if (e instanceof Response) return e;

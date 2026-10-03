@@ -29,11 +29,17 @@ Deno.serve(async (req) => {
     if (imagePath) {
       // Own-folder guard: only this user's objects may be attached.
       if (!imagePath.startsWith(`${uid}/`)) return json({ ok: false, error: 'invalid_image_path' });
-      const { data: signed } = await admin.storage.from('future-images').createSignedUrl(imagePath, 120);
-      imageUrl = signed?.signedUrl;
+      const { data: signed, error: signedErr } = await admin.storage
+        .from('future-images')
+        .createSignedUrl(imagePath, 120);
+      if (signedErr || !signed?.signedUrl) {
+        return json({ ok: false, error: 'image_unavailable' });
+      }
+      imageUrl = signed.signedUrl;
     }
 
     const m = await moderate({ text: combined, imageUrl });
+    if (!m.configured) return json({ ok: false, error: 'MODERATION_NOT_CONFIGURED' });
     if (m.flagged) return json({ ok: false, error: 'flagged', categories: m.categories });
 
     const { data: prof } = await admin.from('anonymous_profiles').select('display_alias').eq('id', uid).single();

@@ -107,10 +107,24 @@ Deno.serve(async (req) => {
 
     // Safety-moderate before it can ever be shared. A flagged image AND a moderation call that itself
     // errors both FAIL CLOSED: remove the object and refund — never charge for an unverified image.
-    const { data: signed } = await admin.storage.from('future-images').createSignedUrl(path, 300);
+    const { data: signed, error: signedErr } = await admin.storage
+      .from('future-images')
+      .createSignedUrl(path, 300);
+
+    if (signedErr || !signed?.signedUrl) {
+      await admin.storage.from('future-images').remove([path]).catch(() => {});
+      await unwind();
+      return json({ ok: false, error: 'signed_url_error' }, 500);
+    }
+
     try {
-      const m = await moderate({ imageUrl: signed?.signedUrl });
-      if (m.configured && m.flagged) {
+      const m = await moderate({ imageUrl: signed.signedUrl });
+      if (!m.configured) {
+        await admin.storage.from('future-images').remove([path]).catch(() => {});
+        await unwind();
+        return json({ ok: false, error: 'moderation_unavailable' });
+      }
+      if (m.flagged) {
         await admin.storage.from('future-images').remove([path]).catch(() => {});
         await unwind();
         return json({ ok: false, error: 'image_rejected' });
@@ -121,8 +135,8 @@ Deno.serve(async (req) => {
       return json({ ok: false, error: 'moderation_unavailable' });
     }
 
-    // Success — the single charge stands (both counters). Nothing to unwind.
-    return json({ ok: true, imagePath: path, signedUrl: signed?.signedUrl, used: reserved.used, limit: reserved.limit });
+    // Success — only a real signed URL + explicit moderation verdict can leave the charge standing.
+    return json({ ok: true, imagePath: path, signedUrl: signed.signedUrl, used: reserved.used, limit: reserved.limit });
   } catch (e) {
     await unwind(); // any unexpected throw after a reservation still refunds
     if (e instanceof Response) return e;

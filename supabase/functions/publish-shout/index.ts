@@ -34,6 +34,7 @@ Deno.serve(async (req) => {
     // Moderation gate — authoritative. Not configured → do NOT publish.
     if (!openaiConfigured()) return json({ ok: false, error: 'MODERATION_NOT_CONFIGURED' });
     const m = await moderate({ text: clean });
+    if (!m.configured) return json({ ok: false, error: 'MODERATION_NOT_CONFIGURED' });
     if (m.flagged) return json({ ok: false, error: 'flagged', categories: m.categories });
 
     const { data: prof } = await admin.from('anonymous_profiles').select('display_alias').eq('id', uid).single();

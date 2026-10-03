@@ -5702,6 +5702,55 @@ check('RC17 MODERATION_GATE: public publish fail-closed without moderation', () 
   assert(!/create policy[^\n]*shout_messages[^\n]*insert|shouts_insert/i.test(mig), 'clients must not insert shouts directly (moderated server publish only)');
 });
 
+// Public/media moderation must never turn a missing provider input or failed signed URL into "safe".
+check('RC17 MODERATION_FAIL_CLOSED: signed media + explicit provider verdict are mandatory', () => {
+  const helper = read('supabase/functions/_shared/openai.ts');
+  assert(
+    helper.includes("throw new Error('moderation input missing')"),
+    'empty moderation input must fail closed, never become flagged:false'
+  );
+
+  const moderateFn = read('supabase/functions/moderate-content/index.ts');
+  assert(
+    moderateFn.includes('if (!m.configured)') &&
+      moderateFn.includes("state: 'MODERATION_NOT_CONFIGURED'") &&
+      moderateFn.includes('allowed: false'),
+    'moderate-content must refuse a missing provider verdict'
+  );
+
+  const shout = read('supabase/functions/publish-shout/index.ts');
+  assert(
+    shout.includes('if (!m.configured)') &&
+      shout.includes("error: 'MODERATION_NOT_CONFIGURED'"),
+    'shout publish must refuse a missing provider verdict'
+  );
+
+  const share = read('supabase/functions/publish-future-diary-share/index.ts');
+  assert(
+    share.includes('signedErr') &&
+      share.includes('!signed?.signedUrl') &&
+      share.includes("error: 'image_unavailable'"),
+    'public diary image share must require a real signed URL'
+  );
+  assert(
+    share.includes('if (!m.configured)'),
+    'public diary share must require an explicit moderation verdict'
+  );
+
+  const gen = read('supabase/functions/generate-future-image/index.ts');
+  assert(
+    gen.includes('signedErr') &&
+      gen.includes('!signed?.signedUrl') &&
+      gen.includes("error: 'signed_url_error'"),
+    'generated image must fail closed when a signed URL cannot be created'
+  );
+  assert(
+    gen.includes('if (!m.configured)') &&
+      gen.includes("error: 'moderation_unavailable'"),
+    'generated image must require an explicit moderation verdict'
+  );
+});
+
 // Image generation quota is server-authoritative: reserve BEFORE generate, refund on failure.
 check('RC17 IMAGE_QUOTA_SERVER_AUTHORITY: reserve-before-generate + refund-on-failure', () => {
   const mig = walk(join(ROOT, 'supabase/migrations'), ['.sql']).map((f) => readFileSync(f, 'utf8')).join('\n');

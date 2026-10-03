@@ -40,7 +40,10 @@ export async function moderate(
   const input: unknown[] = [];
   if (text) input.push({ type: 'text', text });
   if (imageUrl) input.push({ type: 'image_url', image_url: { url: imageUrl } });
-  if (input.length === 0) return { configured: true, flagged: false, categories: [] };
+  if (input.length === 0) {
+    // Never interpret "nothing reached the provider" as a safe moderation verdict.
+    throw new Error('moderation input missing');
+  }
   const res = await postJson(`${OPENAI}/moderations`, { model: 'omni-moderation-latest', input });
   if (!res.ok) throw new Error(`moderation ${res.status}`);
   const data = await res.json();
