@@ -5709,6 +5709,11 @@ check('RC17 MODERATION_FAIL_CLOSED: signed media + explicit provider verdict are
     helper.includes("throw new Error('moderation input missing')"),
     'empty moderation input must fail closed, never become flagged:false'
   );
+  assert(
+    helper.includes("typeof result.flagged !== 'boolean'") &&
+      helper.includes("throw new Error('moderation verdict missing')"),
+    'missing or malformed provider verdict must fail closed'
+  );
 
   const moderateFn = read('supabase/functions/moderate-content/index.ts');
   assert(

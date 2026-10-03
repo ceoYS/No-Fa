@@ -47,11 +47,16 @@ export async function moderate(
   const res = await postJson(`${OPENAI}/moderations`, { model: 'omni-moderation-latest', input });
   if (!res.ok) throw new Error(`moderation ${res.status}`);
   const data = await res.json();
-  const result = data.results?.[0] ?? {};
+  const result = data.results?.[0];
+  if (!result || typeof result.flagged !== 'boolean') {
+    // A successful HTTP response is not itself a moderation verdict.
+    // Missing/malformed provider output must never be interpreted as safe.
+    throw new Error('moderation verdict missing');
+  }
   const categories = Object.entries(result.categories ?? {})
     .filter(([, v]) => v === true)
     .map(([k]) => k);
-  return { configured: true, flagged: !!result.flagged, categories };
+  return { configured: true, flagged: result.flagged, categories };
 }
 
 export async function generateImage(
