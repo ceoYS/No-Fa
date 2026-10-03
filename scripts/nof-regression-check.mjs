@@ -5771,10 +5771,55 @@ check('RC17 IMAGE_QUOTA_SERVER_AUTHORITY: reserve-before-generate + refund-on-fa
 check('RC17 BLOCKLIST_ATTRIBUTION: license review documented + promotion license-gated', () => {
   const attr = read('extensions/chrome-shield/data/BLOCKLIST_ATTRIBUTION.md');
   assert(/PRODUCTION_BLOCKLIST_LICENSE_REVIEW_REQUIRED\s*=\s*YES/.test(attr), 'attribution must flag the open license review');
-  assert(/^PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED\s*=\s*NO/m.test(attr), 'license review must be uncleared by default');
-  assert(/StevenBlack/.test(attr) && /MIT/.test(attr), 'attribution must name the upstream + its wrapper license');
+  assert(/^PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED\s*=\s*YES/m.test(attr), 'approved production blocklist license review must remain recorded as cleared');
+  const fetcher = read('scripts/fetch-production-blocklist.mjs');
+
+  for (const source of [
+    'bigdargon/hostsVN',
+    'Sinfonietta/hostfiles',
+    'tiuxo/hosts',
+  ]) {
+    assert(attr.includes(source), `attribution missing direct source: ${source}`);
+    assert(fetcher.includes(source), `fetcher missing direct source: ${source}`);
+  }
+
+  for (const sha of [
+    'ffd066115880f98f590640ae55e544fbfc46d9b5',
+    '46f3097d7bcfc9eea323fe365074dfd771d0d17c',
+    'b950765effd7808e90fda888b23540689ed46766',
+  ]) {
+    assert(fetcher.includes(sha), `production source is not commit-pinned: ${sha}`);
+  }
+
+  assert(
+    /MIT/.test(attr) && /(CC BY 4\.0|CC-BY-4\.0)/.test(attr),
+    'direct-source license attribution is incomplete',
+  );
+
+  assert(
+    !fetcher.includes('alternates/porn-only/hosts')
+      && !fetcher.includes('StevenBlack/hosts/master'),
+    'production fetcher must not use the StevenBlack aggregate',
+  );
+
   const build = read('scripts/build-blocklist.mjs');
   assert(build.includes('PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED') && build.includes('flag[1]'), 'promotion must read the cleared FLAG (line-anchored), not prose');
+});
+
+check('RC17 BLOCKLIST_NOTICES: production third-party notices are packaged', () => {
+  const notices = read('extensions/chrome-shield/THIRD_PARTY_NOTICES.md');
+
+  for (const required of [
+    'bigdargon/hostsVN',
+    'Sinfonietta/hostfiles',
+    'tiuxo/hosts',
+    'CC BY 4.0',
+    'ffd066115880f98f590640ae55e544fbfc46d9b5',
+    '46f3097d7bcfc9eea323fe365074dfd771d0d17c',
+    'b950765effd7808e90fda888b23540689ed46766',
+  ]) {
+    assert(notices.includes(required), `third-party notices missing: ${required}`);
+  }
 });
 
 // Production blocklist is deterministic: one shared normalize + source/compiled SHA-256.

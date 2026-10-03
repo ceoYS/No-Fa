@@ -27,23 +27,40 @@ import { normalizeHostsToDomains, canonicalDomainsJson, sha256Hex } from './lib/
 // The "porn-only" alternate build = the unified base list + the pornography extension ONLY (no
 // gambling/social/fakenews), which is what an adult-site blocklist wants. Pinned by URL; the exact
 // bytes retrieved are hashed (sourceSha256) so a release is reproducible and auditable.
-const SOURCE = {
-  project: 'StevenBlack/hosts (porn-only alternate build)',
-  url: 'https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts',
-  homepage: 'https://github.com/StevenBlack/hosts',
-  // Do NOT assert a single license here — this is an aggregator of upstream sources with potentially
-  // different licenses. The license review lives in BLOCKLIST_ATTRIBUTION.md and gates promotion.
-  license: 'aggregated — see BLOCKLIST_ATTRIBUTION.md (redistribution review required)',
-};
+const SOURCES = [
+  {
+    id: 'hostsvn-adult-vn',
+    project: 'bigdargon/hostsVN',
+    commit: 'ffd066115880f98f590640ae55e544fbfc46d9b5',
+    url: 'https://raw.githubusercontent.com/bigdargon/hostsVN/ffd066115880f98f590640ae55e544fbfc46d9b5/extensions/adult/hosts-VN',
+    homepage: 'https://github.com/bigdargon/hostsVN',
+    license: 'MIT',
+  },
+  {
+    id: 'sinfonietta-pornography',
+    project: 'Sinfonietta/hostfiles',
+    commit: '46f3097d7bcfc9eea323fe365074dfd771d0d17c',
+    url: 'https://raw.githubusercontent.com/Sinfonietta/hostfiles/46f3097d7bcfc9eea323fe365074dfd771d0d17c/pornography-hosts',
+    homepage: 'https://github.com/Sinfonietta/hostfiles',
+    license: 'MIT',
+  },
+  {
+    id: 'tiuxo-porn',
+    project: 'tiuxo/hosts',
+    commit: 'b950765effd7808e90fda888b23540689ed46766',
+    url: 'https://raw.githubusercontent.com/tiuxo/hosts/b950765effd7808e90fda888b23540689ed46766/porn',
+    homepage: 'https://github.com/tiuxo/hosts',
+    license: 'CC-BY-4.0',
+  },
+];
 
 const SCHEMA = 'nof.blocklist/v1';
-const ARTIFACT_VERSION = 1;
+const ARTIFACT_VERSION = 2;
 const FETCH_TIMEOUT_MS = 30000;
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const DATA = join(HERE, '..', 'extensions', 'chrome-shield', 'data');
 const SOURCES_DIR = join(DATA, '.sources'); // gitignored raw cache — never committed
-const RAW_OUT = join(SOURCES_DIR, 'stevenblack-porn-only.hosts');
 const ARTIFACT_OUT = join(DATA, 'adult-domains.production.json');
 
 async function fetchText(url) {
@@ -60,17 +77,37 @@ async function fetchText(url) {
 
 async function main() {
   const dry = process.argv.includes('--dry');
-  console.log(`[fetch-blocklist] GET ${SOURCE.url}`);
-  const raw = await fetchText(SOURCE.url);
-  const sourceSha256 = sha256Hex(raw);
-  const domains = normalizeHostsToDomains(raw);
-  const compiledSha256 = sha256Hex(canonicalDomainsJson(domains));
   const retrievedAt = new Date().toISOString();
+  const fetched = [];
 
-  console.log(`[fetch-blocklist] rawBytes=${raw.length} sourceSha256=${sourceSha256}`);
-  console.log(`[fetch-blocklist] domains=${domains.length} compiledSha256=${compiledSha256}`);
+  for (const source of SOURCES) {
+    console.log(`[fetch-blocklist] GET ${source.id} @ ${source.commit.slice(0, 12)}`);
+    const raw = await fetchText(source.url);
+    const sourceSha256 = sha256Hex(raw);
+    const sourceDomains = normalizeHostsToDomains(raw);
 
-  if (domains.length === 0) throw new Error('normalized domain count is 0 — refusing to write an empty production list');
+    if (sourceDomains.length === 0) {
+      throw new Error(`${source.id}: normalized domain count is 0`);
+    }
+
+    fetched.push({ source, raw, sourceSha256, domains: sourceDomains });
+    console.log(
+      `[fetch-blocklist] ${source.id}: domains=${sourceDomains.length} sourceSha256=${sourceSha256}`,
+    );
+  }
+
+  const domains = [...new Set(fetched.flatMap((x) => x.domains))].sort();
+  const compiledSha256 = sha256Hex(canonicalDomainsJson(domains));
+
+  const provenance = fetched.map(({ source, sourceSha256, domains }) => ({
+    ...source,
+    sourceSha256,
+    domainCount: domains.length,
+  }));
+
+  console.log(
+    `[fetch-blocklist] mergedDomains=${domains.length} compiledSha256=${compiledSha256}`,
+  );
 
   if (dry) {
     console.log('[fetch-blocklist] --dry: nothing written.');
@@ -78,24 +115,27 @@ async function main() {
   }
 
   mkdirSync(SOURCES_DIR, { recursive: true });
-  writeFileSync(RAW_OUT, raw);
+
+  for (const { source, raw } of fetched) {
+    writeFileSync(join(SOURCES_DIR, `${source.id}.hosts`), raw);
+  }
 
   const artifact = {
     schema: SCHEMA,
     version: ARTIFACT_VERSION,
     listType: 'production',
-    source: SOURCE,
+    strategy: 'direct-pinned-sources',
     retrievedAt,
-    sourceSha256,
+    sources: provenance,
     compiledSha256,
     domainCount: domains.length,
     domains,
   };
+
   writeFileSync(ARTIFACT_OUT, JSON.stringify(artifact, null, 2) + '\n');
 
   console.log(`[fetch-blocklist] wrote ${ARTIFACT_OUT} (${domains.length} domains)`);
-  console.log('[fetch-blocklist] NOT promoted. Next, after clearing the license review:');
-  console.log('[fetch-blocklist]   node scripts/build-blocklist.mjs --promote-production');
+  console.log('[fetch-blocklist] NOT promoted. Human license review remains required.');
 }
 
 main().catch((e) => {

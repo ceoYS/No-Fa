@@ -1,71 +1,118 @@
 # NoF 실드 — Production Adult Blocklist Attribution & License Review
 
-**Status flags (machine-read by `scripts/build-blocklist.mjs --promote-production`):**
-
-```
 PRODUCTION_BLOCKLIST_LICENSE_REVIEW_REQUIRED = YES
-PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED  = NO
-```
+PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED  = YES
+## Release source policy
 
-Promotion of a real production blocklist is **blocked** until a human sets
-`PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED = YES` here, after verifying the redistribution
-rights described below. This file exists so we never silently ship a list we do not have the
-right to redistribute.
+NoF does not redistribute the StevenBlack unified or porn-only aggregate.
 
----
+Production candidates are fetched directly from category-specific upstream files,
+and every URL is pinned to an immutable Git commit SHA.
 
-## Why this review is required (do not assume MIT)
+## Included sources
 
-The chosen upstream is an **aggregator**. It assembles many third-party source lists into one
-hosts file. The aggregator's own repository and tooling are MIT-licensed, **but the individual
-upstream domain sources it pulls in carry their own, sometimes unstated, licenses.** MIT on the
-wrapper does not automatically grant redistribution rights over every aggregated record. Shipping
-the compiled domain data inside the NoF 실드 extension **is** redistribution, so the aggregated
-data's provenance — not just the wrapper's license — has to hold up.
+| Source | Commit | File | License |
+|---|---|---|---|
+| bigdargon/hostsVN | ffd066115880f98f590640ae55e544fbfc46d9b5 | extensions/adult/hosts-VN | MIT |
+| Sinfonietta/hostfiles | 46f3097d7bcfc9eea323fe365074dfd771d0d17c | pornography-hosts | MIT |
+| tiuxo/hosts | b950765effd7808e90fda888b23540689ed46766 | porn | CC BY 4.0 |
 
-Because those upstream licenses cannot be uniformly established from the wrapper alone, this
-review is open (`PRODUCTION_BLOCKLIST_LICENSE_REVIEW_REQUIRED = YES`).
+## Required attribution
 
-## Upstream
+### bigdargon/hostsVN
 
-| Field | Value |
-|-------|-------|
-| Project | StevenBlack/hosts — "porn-only" alternate build (unified base + pornography extension only) |
-| Homepage | https://github.com/StevenBlack/hosts |
-| Pinned source URL | https://raw.githubusercontent.com/StevenBlack/hosts/master/alternates/porn-only/hosts |
-| Wrapper license | MIT (StevenBlack/hosts repository & assembly tooling) |
-| Aggregated-data license | **VARIES / partially unstated** — the pornography extension draws on multiple third-party lists; each must be checked individually before redistribution |
-| Retrieval date | `NOT_YET_FETCHED` (filled by `fetch-production-blocklist.mjs` at retrieval time) |
-| Source SHA-256 | `NOT_YET_FETCHED` (the exact bytes retrieved are hashed and pinned in `adult-domains.production.json`) |
-| Compiled SHA-256 | `NOT_YET_FETCHED` (deterministic hash of the normalized domain list) |
+MIT License.
+Copyright (c) 2026 BigDargon.
 
-## Attribution obligations to satisfy before clearing
+The MIT copyright and permission notice must accompany redistribution.
 
-1. Preserve the StevenBlack/hosts **MIT** copyright notice and license text with any redistribution.
-2. Credit StevenBlack/hosts as the aggregation source.
-3. Enumerate the upstream sources that the porn extension pulls in (the aggregator documents these
-   in its `hosts` extension `README`/source manifest), and confirm each one's license permits
-   redistribution of the domain data, **or** exclude any source that does not.
-4. Record, here and in `adult-domains.production.json`, the pinned source URL, the retrieval
-   timestamp, and the source SHA-256 actually retrieved.
+### Sinfonietta/hostfiles
 
-Only when all four hold, and a human is satisfied redistribution is permitted, set
-`PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED = YES`.
+MIT License.
+Copyright (c) 2016 Sinfonietta.
 
-## How the real list ships (it never enters this repo)
+The MIT copyright and permission notice must accompany redistribution.
 
-The production list contains real adult domains, which must never be committed to source
-(protected rule #5). It is a **release-time artifact**, not version-controlled:
+### tiuxo/hosts
 
-1. `node scripts/fetch-production-blocklist.mjs` — fetch the pinned upstream, normalize to bare
-   domains, write the **gitignored** `data/adult-domains.production.json` (schema, version,
-   `listType: production`, source, retrievedAt, sourceSha256, compiledSha256, domainCount, domains).
-2. Clear this license review (set the flag above).
-3. `node scripts/build-blocklist.mjs --promote-production` — compile to the **gitignored**
-   `blocklist-rules.production.json` + `blocklist-meta.production.js`.
-4. Release packaging swaps the `.production.*` files over the fixture files **inside the extension
-   zip only**. The committed repo keeps the harmless fixture (`adult-domains.v1.json`,
-   `listType: fixture`) so it holds no real adult domains.
+Creative Commons Attribution 4.0 International (CC BY 4.0).
 
-Everything is local: the extension never fetches a list at runtime, and no browsing history is ever
-uploaded.
+The release must identify the source, license and modifications made by NoF,
+including normalization, deduplication and conversion to Chrome DNR rules.
+
+## Explicitly excluded
+
+- StevenBlack unified/base list
+- StevenBlack alternates/porn-only aggregate
+- brijrajparmar27 until authoritative licensing is independently established
+- Clefspeare13 while original-source provenance cannot be independently verified
+- Sinfonietta snuff-hosts
+- any source with unclear or non-commercial redistribution terms
+
+## Provenance requirements
+
+Each production artifact must record:
+
+1. source repository
+2. immutable commit SHA
+3. exact raw URL
+4. per-source SHA-256
+5. per-source normalized domain count
+6. merged compiled SHA-256
+7. retrieval timestamp
+
+Raw sources and real-domain production artifacts remain gitignored.
+
+## Human release gate
+
+Before changing CLEARED to YES:
+
+- [x] all pinned source files still resolve
+- [x] recorded licenses still match those pinned repositories
+- [x] excluded sources are absent
+- [x] dry fetch succeeds
+- [x] per-source SHA-256 values are recorded
+- [x] merged SHA-256 is recorded
+- [x] THIRD_PARTY_NOTICES is included in the release package
+- [x] release owner accepts the attribution obligations
+
+Until then:
+
+Release state confirmed: `CLEARED = YES`
+
+<!-- NOF_BLOCKLIST_SNAPSHOT_START -->
+## Verified production-candidate provenance snapshot
+
+- Retrieved at: `2026-10-03T14:28:01.257Z`
+- Strategy: `direct-pinned-sources`
+- Merged domain count: `63336`
+- Compiled SHA-256: `b8db042bdd94504ff33188bdb3741a54bcd63f07dd82ac175a8abc9d06b250d8`
+- Expected Chrome DNR rule count: `64`
+
+### Per-source evidence
+
+- `bigdargon/hostsVN`
+  - commit: `ffd066115880f98f590640ae55e544fbfc46d9b5`
+  - normalized domains: `1943`
+  - source SHA-256: `e3c74d8340db6782bbb9a897a9125e50775401d0dd91d965c049771929fd7649`
+
+- `Sinfonietta/hostfiles`
+  - commit: `46f3097d7bcfc9eea323fe365074dfd771d0d17c`
+  - normalized domains: `61153`
+  - source SHA-256: `d5c31a7ee9f1920df47044270449ad42a1b09ad4f3b608410383abaabb27fa1d`
+
+- `tiuxo/hosts`
+  - commit: `b950765effd7808e90fda888b23540689ed46766`
+  - normalized domains: `369`
+  - source SHA-256: `2e30d7012de8560ced54c92963a1fc9e8b755c437d691d20fa268e810897399c`
+
+<!-- NOF_BLOCKLIST_SNAPSHOT_END -->
+
+## Human release-owner sign-off
+
+Release-owner approval recorded: `2026-10-03`
+
+The release owner approved redistribution of the three pinned candidate
+sources under the attribution obligations recorded in this document.
+
+This is a product/release approval record, not a statement of external legal advice.

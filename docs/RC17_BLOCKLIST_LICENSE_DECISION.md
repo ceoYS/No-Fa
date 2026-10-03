@@ -1,97 +1,62 @@
-# NoF RC-17 — Production Blocklist License Decision (human sign-off gate)
+# RC17 Production Blocklist License Decision
 
-```
+Status:
+
 PRODUCTION_BLOCKLIST_LICENSE_REVIEW_REQUIRED = YES
-PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED  = NO   ← a human sets this, in BLOCKLIST_ATTRIBUTION.md, never a tool
-```
+PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED  = YES
+## Decision — 2026-10-03
 
-This is the **decision checklist** a human must complete before a real adult-domain blocklist may be
-compiled into the shipped NoF 실드 extension. The mechanism (fetch → normalize → gitignored artifact →
-license-gated promotion) already exists and is verified; what is missing is a **human judgement about
-redistribution rights**, which no script can make. Nothing here sets the flag. The build tool
-(`scripts/build-blocklist.mjs --promote-production`) refuses to promote until a human sets
-`PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED = YES` on its own flag line in
-`extensions/chrome-shield/data/BLOCKLIST_ATTRIBUTION.md`.
+The StevenBlack porn-only aggregate is not used as the NoF production
+redistribution source.
 
-## Why a human must decide (a tool cannot)
+The release pipeline instead uses direct, category-specific, immutable-pinned
+files from:
 
-The pinned upstream (`StevenBlack/hosts`, porn-only alternate build) is an **aggregator**. Its wrapper
-and tooling are MIT, but it assembles third-party source lists whose licenses **vary and are partly
-unstated**. Shipping the compiled domains inside our extension **is redistribution of that aggregated
-data** — so MIT-on-the-wrapper is not sufficient authority. This is a rights question, not a code
-question.
+- bigdargon/hostsVN — MIT
+- Sinfonietta/hostfiles — MIT
+- tiuxo/hosts — CC BY 4.0
 
-## The decision checklist — ALL must hold before setting the flag to YES
+The current pinned commits are recorded in
+extensions/chrome-shield/data/BLOCKLIST_ATTRIBUTION.md and
+scripts/fetch-production-blocklist.mjs.
 
-- [ ] **1. Upstream enumerated.** The individual source lists the porn extension pulls in are
-      enumerated (from the aggregator's `hosts` extension README / source manifest), and recorded.
-- [ ] **2. Each source's redistribution right established.** For every enumerated source, redistribution
-      of its domain data is confirmed permitted — **or** that source is excluded from the shipped list.
-      No source with unknown/again-unstated terms remains included.
-- [ ] **3. Attribution obligations satisfiable.** The StevenBlack/hosts MIT notice + license text will
-      travel with the redistribution, and StevenBlack/hosts is credited as the aggregation source
-      (see the four obligations in `BLOCKLIST_ATTRIBUTION.md`).
-- [ ] **4. Provenance pinned.** `adult-domains.production.json` (written by
-      `node scripts/fetch-production-blocklist.mjs`) records the pinned source URL, the retrieval
-      timestamp, the `sourceSha256` actually retrieved, and the `compiledSha256`; those same values are
-      copied into `BLOCKLIST_ATTRIBUTION.md`.
-- [ ] **5. Category correctness.** Spot-check confirms the list is adult-content only (the porn-only
-      build), not gambling/social/fakenews, and that only `main_frame` navigations are redirected.
-- [ ] **6. No real adult domains enter the repo.** The production artifact + compiled outputs stay
-      gitignored (protected rule #5); only the harmless reserved-TLD fixture is committed. Confirm
-      `git status` shows none of `adult-domains.production.json`,
-      `blocklist-rules.production.json`, `blocklist-meta.production.js`, or `data/.sources/`.
-- [ ] **7. Legal/owner sign-off recorded.** The person accountable for the release has reviewed 1–6 and
-      accepts the redistribution risk, and records who/when in `BLOCKLIST_ATTRIBUTION.md`.
+Excluded sources must not enter the production artifact unless their licensing
+and provenance are independently reviewed.
 
-## Per-source review matrix (fill during human review — NOTHING is downloaded to produce this)
+The production promotion gate was opened after third-party notices,
+provenance hashes and human release-owner sign-off were completed.
 
-Item 1 above requires enumerating the individual lists the porn build aggregates; items 2 and the
-commercial-use column below require a right per source. The rows below are a **candidate roster** of the
-sources the StevenBlack porn build has historically aggregated — a starting checklist, **not** an
-authoritative or downloaded snapshot. Before sign-off, the reviewer MUST reconcile this list against the
-live `hosts` source manifest **at the pinned commit** (the README/`update.json` under the porn
-extension), add or remove rows to match, and replace every `VERIFY` with the confirmed term (or exclude
-that source from the shipped list). NoF 실드 ships inside a **paid** app, so **commercial redistribution**
-must be affirmatively permitted for every included source — an unstated or non-commercial term = exclude.
+<!-- NOF_BLOCKLIST_SNAPSHOT_START -->
+## Verified production-candidate provenance snapshot
 
-| # | Source (repo/list) | Source URL | License | Attribution required? | Redistribution allowed? | Commercial use allowed? | Verdict |
-|---|--------------------|-----------|---------|-----------------------|-------------------------|-------------------------|---------|
-| 0 | **StevenBlack/hosts** (aggregator + tooling — the pinned upstream) | https://github.com/StevenBlack/hosts | MIT (wrapper/tooling only) | Yes — MIT notice + credit | Wrapper: yes. Aggregated data: per-source (rows below) | Wrapper: yes. Data: per-source | AGGREGATOR — data rights are per-source |
-| 1 | Clefspeare13/pornhosts | https://github.com/Clefspeare13/pornhosts | VERIFY | VERIFY | VERIFY | VERIFY | VERIFY / exclude |
-| 2 | Sinfonietta/hostfiles (pornography-hosts) | https://github.com/Sinfonietta/hostfiles | VERIFY | VERIFY | VERIFY | VERIFY | VERIFY / exclude |
-| 3 | Bon-Appetit/porn-domains | https://github.com/Bon-Appetit/porn-domains | VERIFY | VERIFY | VERIFY | VERIFY | VERIFY / exclude |
-| 4 | chadmayfield/my-pihole-blocklists | https://github.com/chadmayfield/my-pihole-blocklists | VERIFY | VERIFY | VERIFY | VERIFY | VERIFY / exclude |
-| … | any additional source in the pinned manifest | (from manifest) | VERIFY | VERIFY | VERIFY | VERIFY | VERIFY / exclude |
+- Retrieved at: `2026-10-03T14:28:01.257Z`
+- Strategy: `direct-pinned-sources`
+- Merged domain count: `63336`
+- Compiled SHA-256: `b8db042bdd94504ff33188bdb3741a54bcd63f07dd82ac175a8abc9d06b250d8`
+- Expected Chrome DNR rule count: `64`
 
-Rules for the matrix:
-- **Commercial-use is a hard gate.** A source whose terms are unstated, non-commercial, or forbid
-  redistribution is **excluded** from the shipped list — it does not get a "maybe".
-- **Retrieval/hash procedure** (item 4): `node scripts/fetch-production-blocklist.mjs` pins the source
-  URL, retrieval timestamp, `sourceSha256`, and `compiledSha256`; copy those into
-  `BLOCKLIST_ATTRIBUTION.md`. The matrix rows must reference the same pinned commit those hashes came
-  from — not a "latest" fetch.
-- **Release attribution requirement** (item 3): every included source's required notice/credit travels
-  in `BLOCKLIST_ATTRIBUTION.md` and ships in the release zip, alongside the StevenBlack/hosts MIT notice.
+### Per-source evidence
 
-## Only then
+- `bigdargon/hostsVN`
+  - commit: `ffd066115880f98f590640ae55e544fbfc46d9b5`
+  - normalized domains: `1943`
+  - source SHA-256: `e3c74d8340db6782bbb9a897a9125e50775401d0dd91d965c049771929fd7649`
 
-When — and only when — every box above is genuinely true, a human edits
-`extensions/chrome-shield/data/BLOCKLIST_ATTRIBUTION.md` and sets:
+- `Sinfonietta/hostfiles`
+  - commit: `46f3097d7bcfc9eea323fe365074dfd771d0d17c`
+  - normalized domains: `61153`
+  - source SHA-256: `d5c31a7ee9f1920df47044270449ad42a1b09ad4f3b608410383abaabb27fa1d`
 
-```
-PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED = YES
-```
+- `tiuxo/hosts`
+  - commit: `b950765effd7808e90fda888b23540689ed46766`
+  - normalized domains: `369`
+  - source SHA-256: `2e30d7012de8560ced54c92963a1fc9e8b755c437d691d20fa268e810897399c`
 
-after which `node scripts/build-blocklist.mjs --promote-production` will compile the gitignored
-production ruleset for the release zip. Until then the extension ships the fixture and blocks nothing
-real — which is the correct, honest pre-clearance state.
+<!-- NOF_BLOCKLIST_SNAPSHOT_END -->
 
-## What is already true (no human needed)
+## Release-owner approval
 
-- Pipeline exists + is deterministic: shared pure normalizer (comments/IP/path/scheme stripped,
-  lowercased, deduped, sorted, validated), source + compiled SHA-256, refuses an empty list.
-- Promotion **fails closed**: the license flag is read line-anchored (a loose mention in prose cannot
-  open the gate), and the committed fixture is never overwritten.
-- The extension **never fetches a list at runtime** and never uploads browsing history — matching is
-  local `declarativeNetRequest` over a bundled static ruleset.
+Release-owner approval recorded: `2026-10-03`.
+
+The three pinned direct sources may proceed through the NoF production
+blocklist promotion path subject to the recorded third-party notices.
