@@ -118,3 +118,23 @@ export function sendBlockRules(extId, signals) {
 export function clearExtensionRules(extId) {
   return sendMessage(extId, { type: 'CLEAR_RULES' });
 }
+
+// RC-16 — push the COMPLETE desired protection state to this Chrome in one idempotent call: the
+// bundled 기본 보호 static ruleset on/off, the user's allowlist domains (allow, wins over blocks),
+// and optionally the user's confirmed block domains. The extension reconciles Chrome to match and
+// replies with its REAL status. Same fail-safe contract: resolves { ok:false, error } on every
+// failure path, never a fabricated success. Domains are matching hosts, never URLs we fetch.
+export function setProtectionState(extId, { defaultProtection = false, allowlist = [], userBlocks = null } = {}) {
+  return sendMessage(extId, {
+    type: 'SET_PROTECTION_STATE',
+    defaultProtection: !!defaultProtection,
+    allowlist: Array.isArray(allowlist) ? allowlist : [],
+    userBlocks: Array.isArray(userBlocks) ? userBlocks : null,
+  });
+}
+
+// RC-16 — set ONLY the allowlist (allow rules, priority above every block). A user allow always
+// wins over default protection and user blocks. Returns { ok, allowlistCount } from a real reply.
+export function setAllowlist(extId, domains) {
+  return sendMessage(extId, { type: 'SET_ALLOWLIST', domains: Array.isArray(domains) ? domains : [] });
+}

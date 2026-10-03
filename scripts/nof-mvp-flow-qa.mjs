@@ -79,6 +79,10 @@ const BEHAVIORS = {
   B36: 'RC-9 guided 3분 보호 설정 is reachable + honest: 4-step stepper (위험 신호 정리/Chrome 확장 연결/차단 규칙 반영/차단 테스트), browser-scoped scope, 잠깐 멈춤+오늘 기록 CTAs, no connected/complete state without a real extension, no 체크인/금욕/AI/device-wide/full-block claim',
   B37: 'RC-10 shield→app deep link: ?from=shield&to=urge opens 잠깐 멈춤, &to=record opens 오늘 기록, invalid destination falls back home, blocked target never passed, no 체크인/금욕/fake AI/device-wide/full-block claim',
   B38: 'RC-11 extension setup is compressed + honest: reachable setup flow (Chrome 확장 준비/압축해제 설치/확장 ID/연결 확인/이 브라우저 차단 규칙에 반영/차단 테스트), states Chrome 웹 스토어 not yet + this-Chrome-only + not device-wide/other-app, no connected/complete state without a real extension reply, 잠깐 멈춤+오늘 기록 exits, no 체크인/금욕/fake AI/device-wide/full-block claim',
+  B40: 'placed decor stays VISIBLE in the normal room after 배치 마치기 (same position, no labels/outlines/handles), survives reopen + reload',
+  B41: 'a decor card dragged onto the cat / the feeder is re-aimed to clear floor (real pointer drag, asserted on saved coordinates)',
+  B42: 'the empty placement tray says what is TRUE of the tray, and still names the props that are in the room',
+  B43: '상점 item name / description / category tab / action all clear 4.5:1 against their real rendered background',
   B39: 'RC-13 danger-signal input is product-like + honest: 위험 신호 정리 with a concrete 피하고 싶은 사이트나 검색어 field + an abstract 자주 흔들리는 상황 note, only user-confirmed 브라우저 차단 규칙 후보 are sent (situation note never sent), no rule-success/연결됨/설정 완료 without a real extension reply, this-Chrome-only + not device-wide, no 체크인/금욕/AI/자동 탐지/성인 사이트 목록 claim',
 };
 
@@ -304,10 +308,10 @@ async function runFlow(c) {
   await c.goto(APP_URL);
   await c.clearLS();
   await c.goto(APP_URL);
-  // v13 Final Handoff Home mounts as the ink-hero status surface with the 절제 항목 counter
-  // list (root .v13-home). '절제 시간'/'절제 카운터' were the pre-v13 home strings; they now
-  // live only in a confirm sheet / DisciplineScreen, so home is keyed on '절제 항목' + .v13-home.
-  check('B01', await c.eval("!!document.querySelector('.v13-home')"));
+  // V2 Ember Graphite home mounts as the .v2-screen surface with the white-kitten hero and the
+  // PRESERVED 절제 항목 counter list (.v13-item-row). (The v13 .v13-home root was superseded by
+  // the V2 kitten+XP home; the counter management + '절제 항목' capability is retained.)
+  check('B01', await c.eval("!!document.querySelector('.v2-screen') && !!document.querySelector('.v13-item-row')"));
   check('B02', (await c.has('절제 항목')) && (await c.eval('document.querySelectorAll(".v13-item-row").length >= 1')));
   // v13 in-the-moment actions: 잠깐 멈춤 (hero primary) + 오늘 기록 (secondary).
   check('B03', (await c.has('잠깐 멈춤')) && (await c.has('오늘 기록')));
@@ -362,7 +366,8 @@ async function runFlow(c) {
   // 9 · Urge → check-in continuation (start the 5-min hold so the CTA appears).
   const held = await c.click('5분 같이 버티기');
   const toCheckin = await c.click('오늘 기록에 한 줄 남기기');
-  check('B09', held && toCheckin && (await c.has('1분 기록')));
+  // V2 오늘 기록 (EG-02) opens on the day-state / writing step.
+  check('B09', held && toCheckin && ((await c.has('오늘 하루')) || (await c.has('오늘의 규율 점검'))));
 
   // 10 · Complete the WRITING-first check-in (RC-1): the user's own 회고 (the gate), plus
   //      나와의 약속 / 오늘의 다짐. Verify each writing input actually registered (a silently
@@ -371,11 +376,14 @@ async function runFlow(c) {
   const promiseTyped = await c.type('textarea[aria-label="나와의 약속"]', PROMISE);
   const resolveTyped = await c.type('textarea[aria-label="오늘의 다짐"]', RESOLVE);
   const nextEnabled = await c.click('다음 · 오늘의 규율 점검'); // writing-gated; only clicks once step1Ready
-  const finished = await c.click('오늘 기록 마치기');
-  check('B10', retroTyped && promiseTyped && resolveTyped && nextEnabled && finished,
-    retroTyped && promiseTyped && resolveTyped && nextEnabled && finished
-      ? '' : `retro:${retroTyped} promise:${promiseTyped} resolve:${resolveTyped} next:${nextEnabled} finish:${finished}`);
-  await sleep(400);
+  // V2 EG-02 → EG-03: step 2 '기록하기' shows the itemized XP result as a PREVIEW (nothing
+  // persisted yet), and the result CTA '보러 가기' commits the record + XP together.
+  const recorded = await c.click('기록하기'); await sleep(400);
+  const finished = await c.click('보러 가기');
+  check('B10', retroTyped && promiseTyped && resolveTyped && nextEnabled && recorded && finished,
+    retroTyped && promiseTyped && resolveTyped && nextEnabled && recorded && finished
+      ? '' : `retro:${retroTyped} promise:${promiseTyped} resolve:${resolveTyped} next:${nextEnabled} record:${recorded} finish:${finished}`);
+  await sleep(500);
 
   // 11–12 · Reward landing appears; its save confirmation is gated on the real save.
   const onReward = await c.waitForText('고양이 방', 4000);
@@ -513,7 +521,9 @@ async function runFlow(c) {
   //      counter card's elapsed text, wait past a second, read again — it must advance.
   //      This proves the seconds are real (not a frozen stamp), on the rendered DOM.
   await c.clickExact('홈'); await sleep(300);
-  const readCounter = `(() => { const el = document.querySelector('.v13-hero-timer'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
+  // V2 home shows the live per-counter elapsed time in the PRESERVED counter rows (.v13-item-row);
+  // its trailing seconds tick every second.
+  const readCounter = `(() => { const el = document.querySelector('.v13-item-row'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
   const tick1 = await c.eval(readCounter);
   await sleep(1500);
   const tick2 = await c.eval(readCounter);
@@ -526,7 +536,8 @@ async function runFlow(c) {
   //      read-back appears (absent before the first pet) — proving the interaction changed
   //      real state, not just played a glow. Asserts on rendered DOM, not source.
   await c.clickExact('홈'); await sleep(250);
-  const toRoom = await c.clickExact('내 방'); await sleep(450); // v13 bottom nav → 고양이 방(내 방)
+  await c.clickExact('내 방'); await sleep(300); // 내 방 tab → Kitten Hub (EG-05)
+  const toRoom = await c.click('방으로 들어가기'); await sleep(450); // hub → the actual room (EG-11)
   const beforePet = await c.has('지금까지 쓰다듬기'); // no petting yet this run → absent
   const petClicked = await c.click('쓰다듬기'); await sleep(350);
   const afterPet = await c.has('지금까지 쓰다듬기'); // count read-back now visible
@@ -579,34 +590,122 @@ async function runFlow(c) {
   check('B27', calOk, calOk ? '' : `cal:${onCal} now:${monthNow} weekday:${hasWeekday} today:${hasToday} prev:${monthPrev} back:${monthBack}`);
   await c.shot('records_month_nav');
 
-  // 28 · 고양이 방 꾸미기 — REAL placement. Open the room, enter 배치 mode, tap a tray item
-  //      to place it, and a placed card appears on the stage; after a HARD RELOAD the card
-  //      is still there (coordinates persisted to localStorage), asserted on rendered DOM.
+  // 28 · 방 꾸미기 (V2 living room, EG-13) — REAL placement. Enter the room, open 꾸미기, tap a
+  //      tray prop to place it (a transparent sprite appears in the 4:3 scene), and after a HARD
+  //      RELOAD it is still there (persisted to useRoomV2). Asserted on rendered DOM.
+  const decorCount = `document.querySelectorAll('.pr-sprite:not(.pr-feeder)').length`;
   await c.clickExact('홈'); await sleep(200);
-  await c.clickExact('내 방'); await sleep(350); // v13 bottom nav → 고양이 방
-  await c.click('아이템 배치하기'); await sleep(300);
-  const trayBefore = await c.eval(`document.querySelectorAll('.room-tray-item').length`);
-  const placedBefore = await c.eval(`document.querySelectorAll('.room-card').length`);
-  await c.clickSelector('.room-tray-item'); await sleep(350); // tap-to-place the first tray item
-  const placedAfter = await c.eval(`document.querySelectorAll('.room-card').length`);
+  await c.clickExact('내 방'); await sleep(300);
+  await c.click('방으로 들어가기'); await sleep(400);
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(350);
+  const trayBefore = await c.eval(`document.querySelectorAll('.pr-tray-item').length`);
+  const placedBefore = await c.eval(decorCount);
+  await c.click('초록 화분'); await sleep(350); // tap-to-place a tray prop
+  const placedAfter = await c.eval(decorCount);
+  await c.click('배치 마치기'); await sleep(300);
   await c.reload(); await sleep(400);
   await c.clickExact('홈'); await sleep(200);
-  await c.clickExact('내 방'); await sleep(350); // v13 bottom nav → 고양이 방
-  await c.click('아이템 배치하기'); await sleep(300);
-  const placedAfterReload = await c.eval(`document.querySelectorAll('.room-card').length`);
+  await c.clickExact('내 방'); await sleep(300);
+  await c.click('방으로 들어가기'); await sleep(450);
+  const placedAfterReload = await c.eval(decorCount);
   const placeOk = trayBefore > 0 && placedAfter > placedBefore && placedAfterReload >= placedAfter;
   check('B28', placeOk, placeOk ? '' : `tray:${trayBefore} before:${placedBefore} after:${placedAfter} reload:${placedAfterReload}`);
   await c.shot('room_place_persist');
 
-  // 29 · A placed card can be DRAGGED to a new position. Read the lamp card's left% before
-  //      and after a real pointer drag (pointerdown → pointermove → pointerup); it must move.
-  const lampSel = '.room-card[data-item="ember_lamp"]';
-  const leftBefore = await c.eval(`(() => { const el = document.querySelector('${lampSel}'); return el ? parseFloat(el.style.left) : null; })()`);
-  const dragged = await c.pointerDrag(lampSel, 0.28, 0.82);
-  const leftAfter = await c.eval(`(() => { const el = document.querySelector('${lampSel}'); return el ? parseFloat(el.style.left) : null; })()`);
-  const moveOk = dragged && leftBefore != null && leftAfter != null && Math.abs(leftAfter - leftBefore) > 5;
+  // 29 · A placed prop can be DRAGGED to a new floor position (real pointer drag inside the 4:3
+  //      scene); its left% changes. Drag is a 꾸미기 affordance, so re-enter edit first, and aim
+  //      at a clear floor spot (a safe-zone target would be rejected — that is B41).
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(350);
+  const plantSel = '.pr-sprite[src*="plant"]';
+  const readLeft = `(() => { const el=document.querySelector('${plantSel}'); return el?parseFloat(el.style.left):null; })()`;
+  const leftBefore = await c.eval(readLeft);
+  const dragged = await c.pointerDrag(plantSel, 0.16, 0.90, '.pet-room--scene');
+  const leftAfter = await c.eval(readLeft);
+  const moveOk = dragged && leftBefore != null && leftAfter != null && Math.abs(leftAfter - leftBefore) > 3;
   check('B29', moveOk, moveOk ? '' : `dragged:${dragged} left ${leftBefore} -> ${leftAfter}`);
-  await c.shot('room_card_repositioned');
+  await c.shot('room_prop_repositioned');
+
+  // 40 · P1 CLOSEOUT — placement SURVIVES leaving 꾸미기. The exact Founder flow: place → move
+  //      → 배치 마치기 → THE OBJECT IS STILL THERE (PetRoomV2 draws decor in view mode), at the
+  //      same coordinates, with no edit chrome (no selection outline) → reopen 꾸미기 → same spot
+  //      → hard reload → still present in the normal room without entering 꾸미기. Asserted on the
+  //      rendered sprite: a saved-count sentence would not satisfy any of these. (Still in 꾸미기.)
+  const plantPos = `(() => { const el = document.querySelector('${plantSel}');
+    return el ? { left: parseFloat(el.style.left), top: parseFloat(el.style.top) } : null; })()`;
+  const editPos = await c.eval(plantPos);
+  await c.click('배치 마치기'); await sleep(400);
+  const viewCount = await c.eval(decorCount);
+  const viewPos = await c.eval(plantPos);
+  // The placed sprite is really painted (not a 0-size / hidden ghost) and carries no selection
+  // chrome in the normal room.
+  const viewClean = await c.eval(`(() => {
+    const el = document.querySelector('${plantSel}');
+    if (!el) return { drawn: false };
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
+    return {
+      drawn: r.width > 8 && r.height > 8 && cs.visibility === 'visible' && parseFloat(cs.opacity) > 0.5,
+      selected: el.getAttribute('data-selected') === 'true',
+    };
+  })()`);
+  await c.shot('room_placed_visible_after_done');
+  // Reopen 꾸미기: same sprite, still at the same spot.
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(350);
+  const reopenPos = await c.eval(plantPos);
+  await c.click('배치 마치기'); await sleep(350);
+  // Hard reload, then straight into the normal room — no 꾸미기.
+  await c.reload(); await sleep(400);
+  await c.clickExact('홈'); await sleep(200);
+  await c.clickExact('내 방'); await sleep(300);
+  await c.click('방으로 들어가기'); await sleep(450);
+  const reloadPos = await c.eval(plantPos);
+  const reloadCount = await c.eval(decorCount);
+  const same = (a, b) => a && b && Math.abs(a.left - b.left) < 0.6 && Math.abs(a.top - b.top) < 0.6;
+  const stayVisible =
+    !!editPos
+    && viewCount > 0
+    && same(editPos, viewPos)
+    && viewClean.drawn === true
+    && viewClean.selected === false
+    && same(editPos, reopenPos)
+    && reloadCount > 0
+    && same(editPos, reloadPos);
+  check('B40', stayVisible, stayVisible ? '' : `edit:${JSON.stringify(editPos)} view:${JSON.stringify(viewPos)}/${viewCount} clean:${JSON.stringify(viewClean)} reopen:${JSON.stringify(reopenPos)} reload:${JSON.stringify(reloadPos)}/${reloadCount}`);
+  await c.shot('room_placed_after_reload');
+  // Hand to B41 in 꾸미기 (drag is an edit affordance).
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(300);
+
+  // 41 · SAFE PLACEMENT — a prop dragged onto the cat or over the feeder (safe zones) is
+  //      REJECTED and never comes to rest over them (useRoomV2 rejects inSafeZone). Two REAL
+  //      pointer drags aim straight at the cat home and then at the feeder; asserted on the
+  //      coordinates the store actually saved. Zones mirror src/constants/roomV2.js SAFE_ZONES.
+  const ZONES = [{ x: 0.34, y: 0.86, r: 0.13 }, { x: 0.64, y: 0.865, r: 0.12 }, { x: 0.72, y: 0.7, r: 0.1 }];
+  const inZone = (p) => !!p && ZONES.some((z) => Math.hypot(p.left / 100 - z.x, p.top / 100 - z.y) < z.r);
+  await c.pointerDrag(plantSel, 0.34, 0.86, '.pet-room--scene'); // aim at the cat home
+  const afterCat = await c.eval(plantPos);
+  await c.pointerDrag(plantSel, 0.64, 0.865, '.pet-room--scene'); // aim at the feeder
+  const afterFeeder = await c.eval(plantPos);
+  const safeOk = !!afterCat && !!afterFeeder && !inZone(afterCat) && !inZone(afterFeeder);
+  check('B41', safeOk, safeOk ? '' : `cat:${JSON.stringify(afterCat)} feeder:${JSON.stringify(afterFeeder)}`);
+  await c.shot('room_placement_safe_zone');
+
+  // 42 · TRAY HONESTY — the 꾸미기 tray tells the truth: a placed prop offers 치우기 (tap to
+  //      remove), and a form/reward-gated prop shows its gate (Lv.6 / 황금 리그) rather than a
+  //      fake unlock. Asserted on the rendered tray (still in 꾸미기 from B41).
+  const trayState = await c.eval(`(() => {
+    const items = [...document.querySelectorAll('.pr-tray-item')];
+    const tags = items.map((i) => { const t = i.querySelector('.pr-tray-tag'); return t ? t.textContent.trim() : null; });
+    return {
+      total: items.length,
+      placed: items.filter((i) => i.getAttribute('data-placed') === 'true').length,
+      gated: items.filter((i) => i.disabled).length,
+      hasRemove: tags.includes('치우기'),
+      hasGate: tags.some((t) => t && (t.includes('Lv.') || t.includes('리그'))),
+    };
+  })()`);
+  const trayOk = trayState.total > 0 && trayState.placed >= 1 && trayState.hasRemove && trayState.hasGate;
+  check('B42', trayOk, trayOk ? '' : JSON.stringify(trayState));
+  await c.shot('room_tray_honesty');
 
   // 30 · The snack hand-off is a REAL visible motion that updates real state. Leave 배치
   //      mode, press 간식 놓아주기 → the snack token animates (data-active) and the fed state
@@ -621,6 +720,61 @@ async function runFlow(c) {
   const feedOk = fed && !fedBefore && tossActive && fedAfter && fedTodayShown;
   check('B30', feedOk, feedOk ? '' : `fed:${fed} before:${fedBefore} toss:${tossActive} after:${fedAfter} today:${fedTodayShown}`);
   await c.shot('room_snack_handoff');
+
+  // 43 · P1 SHOP READABILITY (Founder video QA, defect 3) — the 상점 sheet kept the
+  //      ORIGINAL dark palette under the v13 light shell, so item names and descriptions
+  //      rendered dark-on-dark and the unaffordable action was faded to 0.45 opacity.
+  //      This measures the REAL rendered contrast: the element's computed colour against
+  //      the first opaque background behind it, as WCAG relative luminance. Everything the
+  //      Founder named — item name, description, category tab, action/price state — must
+  //      clear 4.5:1. Measured on two tabs so a decor row is covered too, not only 간식.
+  const CONTRAST_EVAL = `(() => {
+    const parse = (c) => { const m = String(c).match(/[0-9.]+/g); return m ? m.map(Number) : null; };
+    const lin = (v) => { const s = v / 255; return s <= 0.03928 ? s / 12.92 : Math.pow((s + 0.055) / 1.055, 2.4); };
+    const lum = (c) => 0.2126 * lin(c[0]) + 0.7152 * lin(c[1]) + 0.0722 * lin(c[2]);
+    const bgOf = (el) => {
+      let n = el;
+      while (n) {
+        const c = parse(getComputedStyle(n).backgroundColor);
+        if (c && (c.length < 4 || c[3] > 0.5)) return c;
+        n = n.parentElement;
+      }
+      return [255, 255, 255];
+    };
+    const ratio = (sel) => {
+      const el = document.querySelector(sel);
+      if (!el) return null;
+      const cs = getComputedStyle(el);
+      const fg = parse(cs.color);
+      if (!fg) return null;
+      // A faded label is exactly the defect, so opacity counts against the ratio.
+      const alpha = parseFloat(cs.opacity);
+      if (Number.isFinite(alpha) && alpha < 0.95) return 0;
+      const a = lum(fg), b = lum(bgOf(el));
+      return Math.round(((Math.max(a, b) + 0.05) / (Math.min(a, b) + 0.05)) * 100) / 100;
+    };
+    return {
+      name: ratio('.catalog-name'),
+      blurb: ratio('.catalog-blurb'),
+      tabOn: ratio('.shop-tab[data-selected="true"]'),
+      tabOff: ratio('.shop-tab:not([data-selected="true"])'),
+      action: ratio('.catalog-action'),
+    };
+  })()`;
+  const shopOpen = await c.clickExact('상점'); await sleep(400);
+  const shopSnack = await c.eval(CONTRAST_EVAL);
+  await c.shot('shop_contrast_snack');
+  await c.clickExact('가구'); await sleep(300);
+  const shopDecor = await c.eval(CONTRAST_EVAL);
+  await c.shot('shop_contrast_decor');
+  const READABLE = 4.5;
+  const allReadable = (m) =>
+    !!m
+    && Object.entries(m).every(([, v]) => v === null || v >= READABLE)
+    && m.name !== null && m.blurb !== null && m.tabOn !== null && m.tabOff !== null;
+  const shopOk = shopOpen && allReadable(shopSnack) && allReadable(shopDecor);
+  check('B43', shopOk, shopOk ? '' : `open:${shopOpen} snack:${JSON.stringify(shopSnack)} decor:${JSON.stringify(shopDecor)}`);
+  await c.clickExact('닫기'); await sleep(300);
 
   // 31 · RC-6 protection clarity. The 보호 설정 screen the user actually reaches (Home →
   //      보호 설정 관리 row) must be HONEST about scope — it is a self-opened protection plan, NOT
@@ -839,7 +993,7 @@ async function runFlow(c) {
   const dlUrge = await c.has('지금 멈추면'); // v13 urge title
   const dlUrgeText = await c.text();
   await c.goto(`${APP_URL}?from=shield&to=record`); await sleep(500);
-  const dlRecord = (await c.has('1분 기록')) || (await c.has('오늘의 기록'));
+  const dlRecord = (await c.has('오늘의 기록')) || (await c.has('오늘 하루')) || (await c.has('오늘 기록'));
   const dlRecordText = await c.text();
   await c.goto(`${APP_URL}?from=shield&to=bogus`); await sleep(500);
   const dlFallback = (await c.has('절제 항목')) && !(await c.has('지금 멈추면'));

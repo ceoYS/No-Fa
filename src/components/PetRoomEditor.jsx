@@ -16,6 +16,7 @@ import {
   shouldUsePetSceneMode,
 } from '../constants/petAssets.js';
 import { ITEM_BY_ID } from '../constants/roomItems.js';
+import PlacedDecorLayer from './PlacedDecorLayer.jsx';
 
 /*
  * PetRoomEditor — the draggable room stage (PRD §0.6.9), asset-first.
@@ -421,6 +422,21 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
     .filter(Boolean)
     .join(' ');
   const shadowSrc = useLayered ? resolveCanonicalShadow() : null;
+  /*
+   * NO POSITIONAL WANDER (Founder video QA, P1 defect 2). A previous pass slid the whole
+   * cat group between fixed offsets to make the room feel alive. On real device video it
+   * did not read as walking — a fixed PNG translating across the floor reads as SLIDING,
+   * because there is no gait, no weight shift and no frame animation behind it. Faking
+   * locomotion with the art we actually have is a worse product than a cat that sits
+   * still, and it quietly claims motion this layer cannot deliver.
+   *
+   * The cat's life here is therefore what the art can honestly support: the canonical
+   * blink loop, the A5 breathing scale, the slow 휴식 idle beat, and the 기쁨/휴식 poses
+   * the user's own 간식/쓰다듬기 actions earn. Believable reaction over fake walking.
+   *
+   * Real locomotion needs authored walk frames (or the rigged 3D cat); until that art
+   * exists this file must not translate the cutout. See docs/NOF_DECOR_ASSET_BLOCKERS.md.
+   */
   const handleLayeredImageError = () => setPreloadState('failed');
   // A failed pose cutout falls the whole layered path back to the baked composite,
   // exactly like a failed plate/idle — never a broken <img>, never a fabricated cat.
@@ -557,6 +573,12 @@ const PetRoomEditor = forwardRef(function PetRoomEditor(
                     2.5D feel comes purely from lighting, vignette and parallax. */}
                 <div className="scene-depth" aria-hidden="true" />
                 <div className="scene-glow" aria-hidden="true" />
+                {/* The user's own props, still in the room after 배치 마치기 (Founder
+                    P1-1). Same persisted coordinates and the same feathered crop the
+                    editing surface draws — this is a READ-ONLY layer: no labels, no
+                    outlines, no handles, pointer-events:none so the room's tap target
+                    below is untouched. Editing affordances stay behind 아이템 배치하기. */}
+                <PlacedDecorLayer placements={placements} />
                 {onCatTap ? (
                   <button
                     type="button"

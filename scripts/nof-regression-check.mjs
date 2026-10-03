@@ -77,6 +77,14 @@
  *      blocking, never says the app itself blocks browsing, and adds no network /
  *      remote-code / external-API sink (the one address shown is the reserved
  *      example.com test URL). The Shield screen stays planner-only / non-enforcing.
+ *  38. Placed decor can never be dropped on the cat or the feeder: one shared resolver
+ *      (roomZones.js), derived from the approved canonical pose geometry, re-aims every
+ *      coordinate the decorating surface produces — including the live drag preview.
+ *  39. The room cat never fakes locomotion. Autonomous motion is only what the art
+ *      supports (blink / breathing / idle pose beat) plus action-earned reactions.
+ *  40. The 상점 sheet is readable on the v13 light shell (no dark-on-dark item cards,
+ *      no unreadable faded action), repaired in the bounded layer, not in the pinned CSS.
+ *  41. The empty placement tray describes the TRAY, never the room.
  */
 import { readFileSync, readdirSync, statSync } from 'node:fs';
 import { createHash } from 'node:crypto';
@@ -215,7 +223,14 @@ check('no fake-motion / emoji-furniture / blob tokens in source', () => {
       const loc = `${rel(f)}:${i + 1}`;
       for (const t of tokens) if (line.includes(t)) offenders.push(`${loc} (${t})`);
       // 'stretch' is a legitimate flex value; only ban it outside flex/align usage.
-      if (line.includes('stretch') && !/align|flex|justify/.test(line)) offenders.push(`${loc} (stretch)`);
+      // 'stretch' is a legitimate flex value, and a legitimate ambient POSE id in the V2
+      // companion sprite registry (a real still image, never a fake-motion claim).
+      if (
+        line.includes('stretch') &&
+        !/align|flex|justify/.test(line) &&
+        rel(f) !== 'src/constants/companionAssets.js'
+      )
+        offenders.push(`${loc} (stretch)`);
       // sprite-readiness must stay false everywhere it is declared.
       if (/spriteReady:\s*true/.test(line)) offenders.push(`${loc} (spriteReady:true)`);
     });
@@ -276,12 +291,16 @@ check('top-level ErrorBoundary wraps the app', () => {
 
 // 11 — Home must stay timer-first: the abstinence timer hero plus the crisis and
 // record hero CTAs sit above the secondary cards (the core loop is not buried).
-check('home is timer-first with crisis + record hero CTAs', () => {
+check('home is companion-first with crisis + record CTAs (V2 EG-01)', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  // v13 Final Handoff home-primary: ink hero card with the live timer first,
-  // then the 잠깐 멈춤 (primary) / 오늘 기록 (secondary) action row.
-  assert(home.includes('v13-hero'), 'Home v13 ink hero card (v13-hero) missing');
-  assert(home.includes('v13-action-row'), 'Home action row (v13-action-row) missing');
+  // V2 EG-01: the white-kitten hero + LV/XP lead, then the 오늘 기록 primary action and
+  // the 잠깐 멈춤 crisis path. (Supersedes the v13 ink-timer hero — the live abstinence
+  // time now rides the counter rows, guarded live-to-the-second separately below.) The
+  // crisis + record CTA safety assertions are unchanged.
+  assert(
+    home.includes('eg-home-hero') && home.includes('KittenHero'),
+    'Home V2 kitten hero (eg-home-hero / KittenHero) missing',
+  );
   assert(
     home.includes('잠깐 멈춤') && home.includes("onNavigate('urge')"),
     'Home crisis CTA (잠깐 멈춤 → urge) missing',
@@ -323,9 +342,11 @@ check('home relapse restart requires confirmation (never instant reset)', () => 
     home.includes('기록은 끝이 아니라 다음 시작점이에요'),
     'required restart copy (기록은 끝이 아니라 다음 시작점이에요) missing on Home',
   );
-  assert(home.includes('aria-label="다시 시작 확인"'), 'restart confirmation dialog (aria-label) missing');
+  // (Founder core-experience repair) the confirm dialog is the explicit 기록 중단 stop; its
+  // aria-label was retargeted from the old shame-framed 다시 시작 to the neutral 기록 중단.
+  assert(home.includes('aria-label="기록 중단 확인"'), 'stop confirmation dialog (aria-label) missing');
   assert(home.includes('useDismissOnEscape('), 'restart confirm sheet is not Esc-dismissible');
-  assert(home.includes('setConfirmRestart(true)'), 'restart CTA does not open the confirm sheet');
+  assert(home.includes('setConfirmRestart(true)'), 'stop CTA does not open the confirm sheet');
   assert(
     !/onClick=\{\(\)\s*=>\s*onRelapse/.test(home),
     'restart CTA calls onRelapse directly — it must go through the confirm sheet',
@@ -386,7 +407,8 @@ check('home exposes add + edit counter UI (name/date/time/target)', () => {
 check('home renders a selectable counter list', () => {
   const home = read('src/screens/HomeScreen.jsx');
   assert(home.includes('v13-item-row'), 'v13 item row markup (v13-item-row) missing');
-  assert(home.includes('otherCounters.map('), 'Home does not iterate counters into a list');
+  // V2 lists every counter (the selected one is marked inline, not lifted into a hero).
+  assert(home.includes('counters.map('), 'Home does not iterate counters into a list');
   assert(home.includes('onSelectCounter'), 'counter selection handler (onSelectCounter) not wired');
   const app = read('src/App.jsx');
   assert(
@@ -523,23 +545,16 @@ check('audio is an honest silent fallback (no fake sound claim)', () => {
 // 27 — the selected counter must be shown by VISUAL treatment only: a data-selected
 // hook drives an amber border + glow, and selection reaches assistive tech via
 // aria-pressed. No 보는 중 / 현재 / 선택됨 text badge may render inside the card.
-check('counter selected state is visual-only (no 보는 중 text badge)', () => {
+check('counter selection uses no shaming / selection-verb text badge (V2)', () => {
   const home = read('src/screens/HomeScreen.jsx');
-  // v13 shape: selection is expressed structurally — the selected counter renders
-  // as the ink hero card and is excluded from the row list (otherCounters). No
-  // text badge ever marks selection.
-  assert(
-    home.includes('counters.filter((c) => c.id !== (selectedCounter?.id ?? selectedCounterId))'),
-    'selected counter is not lifted out of the row list into the hero',
-  );
+  // V2 lists every counter and marks the selected one with a neutral ROLE label (대표) +
+  // aria — selection must never render a shaming or selection-verb text badge. (The v13
+  // "lift the selected counter into the ink hero" structure is superseded by the kitten
+  // hero; this guard keeps the real safety rail: no selection-shaming text.)
   for (const badge of ['보는 중', '선택됨', 'counter-card-flag']) {
-    assert(!home.includes(badge), `counter list still renders a selected text badge: ${badge}`);
+    assert(!home.includes(badge), `counter list renders a forbidden selection text badge: ${badge}`);
   }
-  const css = read('src/styles/components.css');
-  assert(
-    /\.v13-card--ink\s*\{[\s\S]*?background:\s*var\(--ink-900\)/.test(css),
-    'v13 ink hero card treatment missing',
-  );
+  assert(home.includes('onSelectCounter'), 'counter selection handler (onSelectCounter) not wired');
 });
 
 // 28 — the pet room's finished scene must reference the completed composite cat-room
@@ -1351,9 +1366,13 @@ check('pet-room scene viewer stays a disclosed static preset display', () => {
     /<CatStateSelector[\s\S]*?onChange=\{setCatState\}/.test(screen),
     'the cat-state selector must set the room catState',
   );
+  // Slice 3: the actual product room is now the V2 living scene (PetRoomV2), whose cat is
+  // driven by the ONE companion state machine — a superset of the R1C three states. The old
+  // catState→PetRoomEditor path is retained only as a review tool (petAssets + PetRoomEditor
+  // file integrity checked elsewhere); it is no longer the product stage.
   assert(
-    /<PetRoomEditor[\s\S]*?catState=\{catState\}[\s\S]*?\/>/.test(screen),
-    'the actual room (PetRoomEditor) must receive catState',
+    screen.includes('<PetRoomV2') && screen.includes('companion={companion}'),
+    'the actual room (PetRoomV2 living scene) must be rendered and driven by the companion state machine',
   );
   assert(
     !screen.includes('CatStatePreview') && !viewer.includes('CatStatePreview'),
@@ -2025,7 +2044,7 @@ check('final recovery-loop guard pack: vocab, structure, a11y, styling stay inta
   //     hero, the crisis/record action row, the item list, and the compact 관리 rows.
   //     The old dashboard sections must stay gone so Home cannot drift back into a
   //     long scroll.
-  for (const hook of ['v13-hero', 'v13-action-row', 'v13-item-row', 'v13-manage-group']) {
+  for (const hook of ['eg-home-hero', 'v13-item-row', 'eg-home-manage']) {
     assert(home.includes(hook), `Home lost a status-surface section: ${hook}`);
   }
   for (const gone of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state']) {
@@ -2133,11 +2152,11 @@ check('MVP closeout surfaces stay honest: reward confirm + protection clear, Hom
 
   // (a) v13 Home core order: ink timer hero → item list → compact 관리 rows. The
   //     status surface leads with the timer, then the items, with secondary entries last.
-  const tHero = home.indexOf('v13-hero');
+  const tHero = home.indexOf('eg-home-hero');
   const tCounters = home.indexOf('v13-item-row');
-  const tManage = home.indexOf('v13-manage-group');
-  assert(tHero !== -1 && tCounters !== -1 && tManage !== -1, 'Home lost a core section marker (v13-hero / v13-item-row / v13-manage-group)');
-  assert(tHero < tCounters && tCounters < tManage, 'Home core order regressed — must stay timer hero → items → 관리 rows');
+  const tManage = home.indexOf('eg-home-manage');
+  assert(tHero !== -1 && tCounters !== -1 && tManage !== -1, 'Home lost a core section marker (eg-home-hero / v13-item-row / eg-home-manage)');
+  assert(tHero < tCounters && tCounters < tManage, 'Home core order regressed — must stay kitten hero → items → 관리 rows');
 
   // (b) No forbidden 금욕 / fake claim anywhere on the two closeout surfaces (file-level). 상점
   //     is intentionally absent from this list — the cosmetic room shop is a real feature.
@@ -2192,15 +2211,15 @@ check('NoF MVP browser QA harness stays runnable + honest (qa:mvp, 33 behaviors,
 
   // (c) Must NOT reintroduce the brittle latin-boundary "NoF는 …" innerText assertion
   //     (freeze-audit mistake #1: text-transform:uppercase makes the substring never
-  //     match). The v13 Final Handoff Home is the ink-hero status surface: it mounts as
-  //     .v13-home and renders the 절제 항목 counter list (.v13-item-row rows). The pre-v13
-  //     home strings (절제 시간 / 절제 카운터) moved to a confirm sheet / DisciplineScreen, so
-  //     the harness now keys Home on .v13-home + 절제 항목 on a fresh mount instead.
+  //     match). The V2 Ember Graphite Home superseded the v13 ink-hero: it mounts as
+  //     .v2-screen with the white-kitten hero, and the 절제 항목 counter list (.v13-item-row
+  //     rows) is PRESERVED. The harness now keys Home on .v2-screen + the preserved
+  //     .v13-item-row / 절제 항목 on a fresh mount.
   assert(!qa.includes('NoF는'), 'QA flow must not assert the brittle "NoF는 …" innerText');
-  assert(/check\(\s*'B01'\s*,[^\n]*\.v13-home/.test(qa), 'QA flow must assert the v13 Home mounts (.v13-home)');
+  assert(/check\(\s*'B01'\s*,[^\n]*\.v2-screen/.test(qa), 'QA flow must assert the V2 Home mounts (.v2-screen)');
   assert(
     /check\(\s*'B02'\s*,[^\n]*c\.has\('절제 항목'\)/.test(qa) && /check\(\s*'B02'\s*,[^\n]*\.v13-item-row/.test(qa),
-    'QA flow must assert the v13 Home counter list (절제 항목 / .v13-item-row) on a fresh mount',
+    'QA flow must assert the preserved Home counter list (절제 항목 / .v13-item-row) on a fresh mount',
   );
 
   // (d) Forbidden user-facing copy is actually checked (금욕 vocabulary + fake-claim sweep).
@@ -2304,12 +2323,11 @@ check('discipline counters tick live to the second on Home', () => {
   assert(/setInterval\(\(\) => setNow\(Date\.now\(\)\), 1000\)/.test(home), 'Home lost its 1-second now tick');
   // (b) Each item row's elapsed is derived from the live `now` (not a frozen stamp).
   assert(/const el = formatElapsed\(now - c\.startMs\)/.test(home), 'item row elapsed is not derived from the live now');
-  // (c) The hero clock renders live seconds; rows render the v13 일 + hh:mm density.
-  assert(/v13-hero-timer[\s\S]{0,400}\{hh\}:\{mm\}:\{ss\}/.test(home), 'hero timer does not render live seconds');
-  assert(/v13-item-row-time[\s\S]{0,120}el\.hh/.test(home), 'item row does not render live elapsed time');
+  // (c) V2: the live abstinence time ticks to the SECOND on the counter rows (the v13
+  // ink-timer hero is superseded by the kitten hero). The per-row clock renders 일 + hh:mm:ss.
+  assert(/\{el\.hh\}:\{el\.mm\}:\{el\.ss\}/.test(home), 'counter row does not render live seconds (el.hh:el.mm:el.ss)');
   assert(/formatElapsed[\s\S]*?ss:/.test(home) || /ss = String/.test(home), 'formatElapsed does not expose seconds');
-  // (d) Honest live-status copy, one vocabulary (no 금욕).
-  assert(home.includes('절제 경과'), 'hero is missing the 절제 경과 live-status label');
+  // (d) One vocabulary — no 금욕.
   assert(!home.includes('금욕'), 'counter surface uses forbidden 금욕 vocabulary');
 });
 
@@ -2368,9 +2386,8 @@ check('RC-1 product loop: writing-first check-in, live counters, real cat intera
   // (b) The user's own writing reads back in records.
   assert(/day\.checkin\.promise/.test(cal) && /day\.checkin\.resolve/.test(cal), 'records do not read back the user writing (약속/다짐)');
 
-  // (c) The hero timer ticks to the second; item rows tick from the same live now (v13 density).
-  assert(/v13-hero-timer[\s\S]{0,400}\{hh\}:\{mm\}:\{ss\}/.test(home), 'hero timer no longer ticks to the second');
-  assert(/v13-item-row-time[\s\S]{0,120}el\.hh/.test(home), 'item rows no longer tick from the live now');
+  // (c) V2: counter rows tick to the second from the live now (kitten hero replaces the v13 timer hero).
+  assert(/\{el\.hh\}:\{el\.mm\}:\{el\.ss\}/.test(home), 'counter rows no longer tick to the second (el.hh:el.mm:el.ss)');
 
   // (d) The cat room has a real, visible, persisted 쓰다듬기 interaction.
   assert(
@@ -2441,7 +2458,7 @@ check('RC-2A clarity loop: no user-facing 체크인, 오늘 기록 copy, no fluf
 
   // (4) Home stays a reduced status surface — v13 ink hero + item rows + compact 관리.
   const home = read('src/screens/HomeScreen.jsx');
-  for (const keep of ['v13-hero', 'v13-item-row', 'v13-manage-group']) {
+  for (const keep of ['eg-home-hero', 'v13-item-row', 'eg-home-manage']) {
     assert(home.includes(keep), `Home lost its RC-2A status-surface section: ${keep}`);
   }
   for (const gone of ['home-loop-hub', 'home-checkin-summary', 'home-room-state', 'home-onboarding']) {
@@ -2547,14 +2564,10 @@ check('RC-4 first-run counters are honest 예시 samples with a one-tap real sta
   assert(home.includes('내 기록으로 시작'), 'Home offers no one-tap honest start (내 기록으로 시작)');
   assert(home.includes('onStartOwnRun'), 'Home does not wire the onStartOwnRun handler');
   assert(home.includes('isSample'), 'Home does not branch on isSample (sample label + 최장 gating)');
+  // V2: the kitten hero shows NO earned-looking 최장 record; sample honesty lives in the
+  // 예시 notice + the one-tap 내 기록으로 시작 + the per-row 예시 marker (below).
   assert(
-    /!heroIsSample \?[\s\S]{0,400}최장 \{bestDays\}일/.test(home),
-    'hero 최장 record is not gated behind a non-sample check (!heroIsSample)',
-  );
-  // v13 item rows show only name + elapsed (no 최장 at all), which is stricter than
-  // the old per-card gate; a sample row still discloses itself with an 예시 marker.
-  assert(
-    /v13-item-row-sample/.test(home) && /c\.isSample \?/.test(home),
+    /c\.isSample \?[\s\S]{0,160}예시/.test(home),
     'item rows no longer disclose sample counters (예시 marker)',
   );
   for (const banned of ['home-onboarding', 'home-loop-hub', 'home-checkin-summary', 'home-room-state']) {
@@ -3602,8 +3615,9 @@ check('v13 final handoff shell: palette, nav, structure, honesty labels pinned',
 // PetRoomDecorator 편집 with the scene-depth/scene-glow polish — never a stale plate);
 // one PetRoom3D mount serves 감상 and 꾸미기 alike (same canvas, edit is a prop);
 // 3D placement writes through the SAME normalized placement handlers the 2.5D room
-// persists; item name labels stay an edit-mode affordance (the 감상 scene is one
-// finished composite, no labelled cards); and while the 2D cat frame art is pending
+// persists; item name labels stay an edit-mode affordance (the 감상 scene draws the
+// user's placed props but never a labelled card — see the P1 view-mode guard below);
+// and while the 2D cat frame art is pending
 // no frame set / sprite is force-marked ready and no clip-mixer machinery ships
 // (the Phase C procedural transform rig has its own contract, guard #111).
 check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contract', () => {
@@ -3632,7 +3646,9 @@ check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contr
   // (c) flag OFF keeps the latest 2.5D stage, and WebGL/chunk failure routes to the
   //     SAME stage: onUnsupported must flip the room3dBlocked gate, nothing else.
   assert(screen.includes('room3d && !room3dBlocked'), 'the room3d && !room3dBlocked gate is gone');
-  assert(screen.includes('<PetRoomEditor'), 'flag-off 감상 no longer renders PetRoomEditor');
+  // Flag-off 감상 renders the latest 2.5D stage — now the V2 living room (PetRoomV2), which
+  // supersedes the still-composite PetRoomEditor as the product stage. 3D stays flag-gated.
+  assert(screen.includes('<PetRoomV2'), 'flag-off 감상 no longer renders the 2.5D living room (PetRoomV2)');
   assert(screen.includes('<PetRoomDecorator'), 'flag-off 편집 no longer renders PetRoomDecorator');
   assert(
     /onUnsupported=\{\(\)\s*=>\s*setRoom3dBlocked\(true\)\}/.test(screen),
@@ -3663,7 +3679,9 @@ check('3D pet room experiment: flag-gated lazy three.js over the same 2.5D contr
   assert(dec.includes('scene-glow'), 'PetRoomDecorator lost the scene-glow lighting layer');
 
   // (g) item name labels are an EDIT affordance: the decorator names its cards, the
-  //     감상 scene stays one finished composite with a caption and no labelled cards.
+  //     감상 scene keeps its caption and stays free of labelled cards. (The 감상 scene
+  //     DOES draw the user's placed props since the P1 closeout — unlabelled, chrome-
+  //     free and read-only; that contract has its own guard below.)
   assert(dec.includes('room-card-name'), 'PetRoomDecorator cards lost their honest name labels');
   assert(editor.includes('room-scene-note'), 'the 감상 scene lost its composite caption');
   assert(
@@ -4508,10 +4526,1295 @@ check('C2-B-R1C three-state cat integrates into the actual room with default idl
     !screen.includes('CatStatePreview') && !viewer.includes('CatStatePreview') && !viewer.includes('CAT_POSE_VIEWS'),
     'the old large three-image preview workaround must not remain the room state path',
   );
+  // Product path (Slice 3): the actual room is the V2 living scene (PetRoomV2) whose cat is
+  // the companion state machine — a superset of these three states. The R1C selector +
+  // registry above remain as the review/pose-integrity path.
   assert(
     viewer.includes('CatStateSelector') && viewer.includes('CAT_STATE_VIEWS')
-      && /<PetRoomEditor[\s\S]*?catState=\{catState\}/.test(screen),
-    'the small selector must drive catState into the actual room layer',
+      && screen.includes('<PetRoomV2') && screen.includes('companion={companion}'),
+    'the actual room (PetRoomV2) must render the living companion (superset of the R1C three states)',
+  );
+});
+
+// P1-A — PLACEMENT SURVIVES PLACEMENT MODE. Founder P1 closeout: placing an item and
+// pressing 배치 마치기 used to make the object vanish from the room, leaving only a
+// "your arrangement is saved" sentence. A saved-count sentence is not placement. This
+// pins the deal it shipped under: the normal room draws the SAME persisted placements
+// through ONE shared representation (PlacedDecorLayer) so edit and view cannot drift;
+// the view layer carries NO editing chrome (no name label, no button/handle, no
+// selection outline, pointer-events:none so the room's own tap target survives); the
+// count row is SECONDARY and never a substitute for the objects; and the decor honesty
+// model is untouched — spriteReady stays false everywhere and no copy upgrades the
+// opaque crops into transparent sprites or a seamless composite.
+check('P1-A placed decor stays visible after 배치 마치기 through one shared representation', () => {
+  const layer = read('src/components/PlacedDecorLayer.jsx');
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const assets = read('src/constants/petAssets.js');
+  const items = read('src/constants/roomItems.js');
+
+  // (a) ONE shared representation: both surfaces take the placed look from the same
+  //     module, so a placed object cannot change appearance across the mode switch.
+  assert(
+    /export const PLACED_IMG_STYLE = Object\.freeze\(\{/.test(layer)
+      && /export const SELECTED_IMG_STYLE = Object\.freeze\(\{/.test(layer),
+    'PlacedDecorLayer no longer owns the shared placed/selected look',
+  );
+  assert(
+    /import \{[^}]*PLACED_IMG_STYLE[^}]*\} from '\.\/PlacedDecorLayer\.jsx'/.test(dec),
+    'PetRoomDecorator no longer draws placed items with the shared placed look',
+  );
+  assert(
+    !/const PLACED_IMG_STYLE\s*=/.test(dec) && !/const SELECTED_IMG_STYLE\s*=/.test(dec),
+    'PetRoomDecorator re-declares the placed look locally (edit and view will drift)',
+  );
+
+  // (b) the NORMAL room actually renders the persisted placements.
+  assert(
+    /import PlacedDecorLayer from '\.\/PlacedDecorLayer\.jsx'/.test(editor),
+    'PetRoomEditor no longer imports the read-only placed-decor layer',
+  );
+  assert(
+    /<PlacedDecorLayer placements=\{placements\} \/>/.test(editor),
+    'the normal room no longer draws the user\'s persisted placements',
+  );
+
+  // (c) identical normalized-percent coordinates on both sides — no drift on 배치 마치기.
+  for (const [name, body] of [['PetRoomDecorator', dec], ['PlacedDecorLayer', layer]]) {
+    assert(/\* 100\}%/.test(body), `${name} stopped positioning placed cards by normalized percent`);
+    assert(/\(p\.z \?\? 1\) \+ 3/.test(body), `${name} stopped sharing the placed stacking order`);
+  }
+
+  // (d) the view layer is READ-ONLY: no label, no button/handle, no outline, and it
+  //     never eats the pointer (the room's 쓰다듬기 tap target sits under it).
+  assert(!layer.includes('room-card-name'), 'the read-only placed layer renders a name label');
+  assert(!layer.includes('<button'), 'the read-only placed layer renders an interactive handle');
+  assert(!layer.includes('is-selected'), 'the read-only placed layer renders a selection outline');
+  assert(layer.includes("pointerEvents: 'none'"), 'the read-only placed layer swallows pointer events');
+  assert(layer.includes("data-placed-view=\"1\""), 'the read-only placed layer lost its QA-assertable marker');
+  assert(
+    !editor.includes('room-card-name'),
+    'the 감상 stage renders labelled cards (names must stay edit-mode only)',
+  );
+
+  // (e) DE-CLUTTER (Founder): the legacy shard-decorator entry is no longer a second
+  //     competing editor beside PetRoomV2 in the normal room. The 배치 바꾸기 count row is
+  //     retained but GATED behind the debug/3D experiment (legacyDecorEntry), so it never
+  //     stacks onto the normal 2.5D flow. Full ONE_USER_FACING_DECOR_FLOW contract: P1-A2.
+  assert(
+    /const legacyDecorEntry = room3d && !room3dBlocked;/.test(screen),
+    'the legacy decor entry is no longer gated to the debug/3D experiment',
+  );
+  assert(
+    /legacyDecorEntry && placements\.length > 0 \?/.test(screen),
+    'the secondary 배치 바꾸기 row is no longer gated behind legacyDecorEntry (a second editor returns to the normal flow)',
+  );
+  assert(
+    !/그대로 저장돼 있어요/.test(screen),
+    'the room still claims placements are merely "saved" instead of showing them',
+  );
+
+  // (f) HONESTY UNCHANGED: the crops are still opaque crops. Nothing here raises a
+  //     readiness flag or upgrades the copy into a transparent-sprite/composite claim.
+  assert(!/spriteReady:\s*true/.test(assets + layer + dec + editor), 'decor sprite readiness was force-raised');
+  for (const overclaim of ['투명', '완벽하게 어울', '자연스럽게 합성', '실제 사진처럼']) {
+    assert(!layer.includes(overclaim) && !screen.includes(overclaim), `placement copy overclaims: ${overclaim}`);
+  }
+
+  // (g) first-run/tap-to-place defaults must be CLEAR FLOOR — now that placed decor is
+  //     drawn in the normal room, a default on the cat is the room the user lives with.
+  //     The geometry itself is asserted by P1-C against the approved canonical pose
+  //     rects; this only pins that the catalogue still declares defaults at all, and
+  //     that the room catalogue points at the shared zone module for what "clear" means.
+  const defaults = [...items.matchAll(/id: '([a-z_]+)'[\s\S]*?defaultPlacement: \{ x: ([0-9.]+), y: ([0-9.]+)/g)];
+  assert(defaults.length >= 6, 'catalogue default placements are missing');
+  assert(items.includes('roomZones.js'), 'the catalogue no longer names the shared clear-floor authority');
+  assert(items.match(/export const DEFAULT_PLACEMENTS = \[[\s\S]*?\];/), 'DEFAULT_PLACEMENTS seed is missing');
+});
+
+// P1-A2 — ONE USER-FACING DECORATION FLOW (Founder de-clutter). The room used to expose two
+// generations of decor UI at once: PetRoomV2's own 방 꾸미기 tray AND the legacy shard
+// decorator's 아이템 배치하기 / 배치 바꾸기 entry, which swapped PetRoomV2 out for a second
+// competing editor. This pins the closeout as a SEMANTIC contract, not a string: PetRoomV2 is
+// the single user-facing decoration surface; the legacy entry survives only for the debug-gated
+// 3D experiment; view mode carries ZERO edit guides; the rug still places; and decor persists.
+check('P1-A2 one user-facing decoration flow (PetRoomV2), no legacy second editor in normal flow', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const room = read('src/components/PetRoomV2.jsx');
+  const hook = read('src/hooks/useRoomV2.js');
+  const geo = read('src/constants/roomV2.js');
+
+  // ONE_USER_FACING_DECOR_FLOW = YES — the normal flow renders PetRoomV2 as the decor surface,
+  // and BOTH legacy placementMode → PetRoomDecorator entry points are gated behind the debug/3D
+  // flag so they never appear beside it in the normal 2.5D room.
+  assert(screen.includes('<PetRoomV2'), 'the normal room no longer renders PetRoomV2');
+  assert(
+    /const legacyDecorEntry = room3d && !room3dBlocked;/.test(screen),
+    'the legacy decor entry is not gated to the debug/3D experiment',
+  );
+  assert(
+    /legacyDecorEntry && placements\.length > 0 \?/.test(screen),
+    '배치 바꾸기 row is not gated behind legacyDecorEntry (a second editor returns to the normal flow)',
+  );
+  assert(
+    /legacyDecorEntry \?\s*\([\s\S]{0,400}아이템 배치하기/.test(screen),
+    '아이템 배치하기 button is not gated behind legacyDecorEntry (a second editor returns to the normal flow)',
+  );
+  // placementMode is entered ONLY from those two gated legacy buttons, so the normal flow
+  // (flag off) can never swap PetRoomV2 out for the legacy editor.
+  const trueSetters = (screen.match(/setPlacementMode\(true\)/g) ?? []).length;
+  assert(trueSetters === 2, `expected exactly 2 gated setPlacementMode(true) callers, found ${trueSetters}`);
+
+  // PetRoomV2 owns a REAL decoration flow: its own tray (방 꾸미기), a finish action, and
+  // placement wired to the V2 store.
+  assert(room.includes('방 꾸미기'), 'PetRoomV2 lost its own 방 꾸미기 entry');
+  assert(room.includes('배치 마치기'), 'PetRoomV2 lost its 배치 마치기 finish action');
+  assert(
+    /onAddDecor=\{roomV2\.addDecor\}/.test(screen) && /onPlaceDecor=\{roomV2\.placeDecor\}/.test(screen),
+    'PetRoomV2 decor actions are not wired to the V2 store',
+  );
+
+  // VIEW_MODE_GUIDES = ZERO — every edit guide (safe-zone hints, the 꾸미기 tag, and the placed
+  // selection outline) is gated behind `editing`, so appreciation mode shows none of them.
+  assert(/\{editing \? \(/.test(room), 'PetRoomV2 no longer gates its edit overlay behind editing');
+  assert(
+    /selected=\{editing && selected === d\.id\}/.test(room),
+    'the placed-prop selection outline is not gated behind editing (an outline can show in view mode)',
+  );
+  const editBlock = room.slice(room.indexOf('{editing ? ('), room.indexOf('{/* theme picker'));
+  assert(
+    editBlock.includes('pr-safezone') && editBlock.includes('pr-editing-tag'),
+    'safe-zone hints / editing tag escaped the editing-only branch (guides could show in view mode)',
+  );
+
+  // RUG_PLACEMENT = WORKING — a floor prop (the rug) is exempt from the safe-zone rejection,
+  // so it lies at the room's heart under the cat instead of silently failing to place.
+  assert(
+    geo.includes('isFloorDecor') && /FLOOR_DECOR[\s\S]{0,80}'rug'/.test(geo),
+    'the rug is no longer registered as a floor prop',
+  );
+  assert(
+    /if \(!isFloorDecor\(id\) && inSafeZone\(nx, ny\)\) return false;/.test(hook),
+    'placeDecor no longer exempts floor decor (the rug) from the safe-zone rejection',
+  );
+
+  // DECOR_PERSISTS_AFTER_FINISH = YES — the V2 store round-trips decor through its own
+  // localStorage key, so placed props survive 배치 마치기 and a hard reload.
+  assert(hook.includes("'nof.roomv2.v1'"), 'the V2 decor store lost its persistence key');
+  assert(/useEffect\(\(\) => \{\s*save\(state\);/.test(hook), 'the V2 store no longer persists decor on change');
+});
+
+// P1-B — CAT MOTION HONESTY. Founder video QA reversed the previous pass here. Sliding
+// the whole cat cutout between fixed offsets was supposed to make the room feel alive;
+// on device it read as an image SLIDING across the floor, because a still PNG has no
+// gait and no weight shift. Faking locomotion with the art we have is a worse product
+// than a cat that sits still, and it claims motion this layer cannot deliver. The
+// positional wander was therefore REMOVED, not tuned. This guard pins that decision and
+// keeps the motion that is genuinely asset-backed: canonical blink, A5 breathing, the
+// slow 휴식 idle beat, and the 기쁨/휴식 poses the user's own actions earn.
+check('P1-B the cat never fakes locomotion, and its honest motion is intact', () => {
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const editor = read('src/components/PetRoomEditor.jsx');
+  const code = (body) => body.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+  const screenCode = code(screen);
+  const editorCode = code(editor);
+
+  // (a) no positional wander machinery survives anywhere in the room path.
+  for (const [name, body] of [['PetRewardScreen', screenCode], ['PetRoomEditor', editorCode]]) {
+    for (const token of ['CAT_WANDER', 'catWanderStep', 'catDrift', 'canonical-kitten-wander']) {
+      assert(!body.includes(token), `${name} still carries the removed positional wander (${token})`);
+    }
+  }
+
+  // (b) the cat cutout is not translated by any inline transform. The pinned CSS
+  //     transform (1.06 scene overscale + parallax + A5 breathing) is the only one.
+  assert(
+    !/translate3d|translateX|translateY/.test(editorCode),
+    'the room layer translates the cat again — a sliding PNG is not walking',
+  );
+
+  // (c) the motion that IS backed by real art must still be running.
+  assert(
+    editor.includes('CANONICAL_BLINK_MOTION') && editor.includes('canonical-kitten-layer--breathing'),
+    'the canonical blink / breathing motion was lost with the wander',
+  );
+  assert(
+    /const CAT_IDLE_EVERY_MS = \d+/.test(screen) && /setCatState\('rest'\)/.test(screen),
+    'the slow idle beat (the honest autonomous life) was lost with the wander',
+  );
+  assert(
+    /const CAT_HAPPY_MS = \d+/.test(screen) && /const CAT_PET_MS = \d+/.test(screen)
+      && /reactCat\('happy', CAT_HAPPY_MS\)/.test(screen) && /reactCat\('rest', CAT_PET_MS\)/.test(screen),
+    'the action-driven 기쁨 / 휴식 reactions were lost with the wander',
+  );
+
+  // (d) the idle beat keeps its gates and still yields to the user's own action.
+  assert(
+    screen.includes("matchMedia('(prefers-reduced-motion: reduce)')")
+      && screen.includes("document.visibilityState === 'visible'"),
+    'the idle gate lost prefers-reduced-motion or tab-visibility',
+  );
+  assert(
+    /const beat = setInterval\(\(\) => \{\s*\n\s*if \(catReactingRef\.current\) return;/.test(screen),
+    'the idle beat no longer yields to the reaction the user earned',
+  );
+
+  // (e) the canonical room layer stays free of its own timers / randomness.
+  assert(!editor.includes('setInterval('), 'setInterval remains forbidden in the canonical room layer');
+  assert(
+    !editor.includes('Math.random') && !editor.includes('crypto.getRandomValues'),
+    'canonical room motion must remain deterministic',
+  );
+
+  // (f) no copy may claim the cat walks, strolls or plays by itself. 놀아주기 is the
+  //     USER's 쓰다듬기 action and stays allowed; an autonomous claim does not.
+  for (const claim of ['혼자 걸어', '방을 돌아다', '스스로 움직', '산책']) {
+    assert(!screen.includes(claim), `the room copy claims autonomous locomotion: ${claim}`);
+  }
+});
+
+/*
+ * The cat / feeder exclusion boxes, re-derived here from the SAME approved source the
+ * product derives them from (the canonical pose rects in petAssets.js) but with the
+ * mapping written out independently, so a silent edit to roomZones.js cannot quietly
+ * shrink the protected area. Mirrors roomZones.js: cover-fit a 1448×1086 plate into the
+ * 5:4 stage, then the scene's static 1.06 overscale about (50%, 55%).
+ */
+function derivedRoomZones() {
+  const assets = read('src/constants/petAssets.js');
+  const frame = assets.match(/CANONICAL_POSE_FRAME = Object\.freeze\(\{ w: (\d+), h: (\d+) \}\)/);
+  assert(frame, 'the canonical plate frame could not be read from petAssets.js');
+  const fw = Number(frame[1]);
+  const fh = Number(frame[2]);
+  const rects = [...assets.matchAll(/(happy|rest): Object\.freeze\(\{ x: (\d+), y: (\d+), w: (\d+), h: (\d+) \}\)/g)];
+  assert(rects.length === 2, 'the approved happy/rest pose rects could not be read from petAssets.js');
+
+  const spanX = (fw / fh) / (5 / 4);
+  const toStage = (px, py) => ({
+    x: 0.5 + (px * spanX - (spanX - 1) / 2 - 0.5) * 1.06,
+    y: 0.55 + (py - 0.55) * 1.06,
+  });
+  const pad = 0.02;
+  const box = (l, t, r, b) => {
+    const a = toStage(l, t);
+    const c = toStage(r, b);
+    return { x0: a.x - pad, x1: c.x + pad, y0: a.y - pad, y1: c.y + pad };
+  };
+  let l = 1;
+  let t = 1;
+  let r = 0;
+  let b = 0;
+  for (const [, , x, y, w, h] of rects) {
+    l = Math.min(l, Number(x) / fw);
+    t = Math.min(t, Number(y) / fh);
+    r = Math.max(r, (Number(x) + Number(w)) / fw);
+    b = Math.max(b, (Number(y) + Number(h)) / fh);
+  }
+  return [box(l, t, r, b), box(925 / fw, 810 / fh, 1400 / fw, 1055 / fh)];
+}
+
+// P1-C — DECOR CANNOT BE DROPPED ON THE CAT. Founder video QA, defect 1: the cushion crop
+// overlapped the cat's body and 고양이집 could be dragged squarely onto its face, because
+// placement was free coordinates with nothing but a stage-edge pad. Placed decor is drawn
+// in the NORMAL room now, so burying the pet is not a momentary edit-mode glitch — it is
+// the room the user lives with. This pins what the fix ships under: ONE shared resolver,
+// derived from the approved canonical geometry (never hand-tuned magic numbers), applied
+// to EVERY coordinate this surface can produce — including the live drag preview, so what
+// the user sees under their finger is what gets saved — and clear-floor catalogue defaults.
+check('P1-C placed decor can never be dropped onto the cat or the feeder', () => {
+  const zones = read('src/constants/roomZones.js');
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  const items = read('src/constants/roomItems.js');
+
+  // (a) the zones are DERIVED from the approved pose geometry, not typed in by hand.
+  assert(
+    /import \{ resolveCanonicalPosePlacement \} from '\.\/petAssets\.js'/.test(zones),
+    'roomZones no longer derives the cat box from the approved canonical pose geometry',
+  );
+  for (const literal of ['1448 / 1086', '5 / 4', 'SCENE_OVERSCALE = 1.06', 'SCENE_ORIGIN_Y = 0.55']) {
+    assert(zones.includes(literal), `roomZones lost the pinned stage geometry: ${literal}`);
+  }
+  for (const name of ['CAT_EXCLUSION_ZONE', 'FEEDER_EXCLUSION_ZONE', 'PROTECTED_ZONES', 'safePlacement', 'isBlockedPlacement', 'STAGE_PAD']) {
+    assert(new RegExp(`export (const|function) ${name}\\b`).test(zones), `roomZones no longer exports ${name}`);
+  }
+  // Fail-closed: missing approved geometry must fall back to a real box, never to none.
+  assert(/catZone\(\) \?\? \{ \.\.\.CAT_FALLBACK_ZONE \}/.test(zones), 'the cat box no longer fails closed');
+
+  // (b) the escape never pushes a prop UP the back wall (that is worse than the drop the
+  //     user made) and never leaves the stage margin.
+  assert(
+    /const escapeCeiling = Math\.min\(ROOM_FLOOR_Y, cy\);/.test(zones)
+      && /if \(c\.y < escapeCeiling\) continue;/.test(zones),
+    'a blocked drop can be pushed up onto the back wall again',
+  );
+  assert(/if \(isBlockedPlacement\(c\.x, c\.y\)\) continue;/.test(zones), 'an escape is no longer re-tested against every zone');
+
+  // (c) EVERY coordinate the decorator produces goes through the resolver: tap-to-place,
+  //     tray drop, live drag preview and the committed move all share one path.
+  assert(
+    /import \{ STAGE_PAD, safePlacement \} from '\.\.\/constants\/roomZones\.js'/.test(dec),
+    'PetRoomDecorator no longer imports the shared safe-placement resolver',
+  );
+  assert(/const PAD = STAGE_PAD;/.test(dec), 'the decorator re-declares its own stage pad (it will drift)');
+  assert(
+    /const safeSpot = \(x, y, fallback\) => safePlacement\(clamp01\(x\), clamp01\(y\), fallback\);/.test(dec),
+    'the decorator no longer resolves placements against the protected zones',
+  );
+  assert(
+    /const spot = safeSpot\(d\?\.x \?\? 0\.5, d\?\.y \?\? 0\.62\);\s*\n\s*onPlace\?\.\(item\.id, spot\.x, spot\.y\);/.test(dec),
+    'tap-to-place bypasses the protected zones',
+  );
+  assert(
+    /const spot = safeSpot\(\(clientX - rect\.left\) \/ rect\.width, \(clientY - rect\.top\) \/ rect\.height, fallback\);/.test(dec),
+    'pointer drops bypass the protected zones',
+  );
+  assert(
+    /const pos = normalizeFromClient\(e\.clientX, e\.clientY, drag\.from\); \/\/ live-follow/.test(dec),
+    'the LIVE drag preview no longer shows the resolved position (what you see is not what is saved)',
+  );
+  assert(
+    /from: \{ x: placement\.x \?\? 0\.5, y: placement\.y \?\? 0\.6 \}/.test(dec),
+    'a move with no valid escape can no longer fall back to where the object already was',
+  );
+
+  // (d) every catalogue default and first-paint seed is CLEAR FLOOR against the
+  //     independently re-derived boxes.
+  const [cat, feeder] = derivedRoomZones();
+  const blocked = (x, y) =>
+    [cat, feeder].some((z) => x > z.x0 && x < z.x1 && y > z.y0 && y < z.y1);
+  const defaults = [...items.matchAll(/id: '([a-z_]+)'[\s\S]*?defaultPlacement: \{ x: ([0-9.]+), y: ([0-9.]+)/g)];
+  assert(defaults.length >= 6, 'catalogue default placements are missing');
+  for (const [, id, x, y] of defaults) {
+    assert(!blocked(Number(x), Number(y)), `${id} first lands on the cat/feeder (${x}, ${y}) — defaults must be clear floor`);
+  }
+  const seed = items.match(/export const DEFAULT_PLACEMENTS = \[[\s\S]*?\];/);
+  assert(seed, 'DEFAULT_PLACEMENTS seed is missing');
+  for (const [, x, y] of seed[0].matchAll(/x: ([0-9.]+), y: ([0-9.]+)/g)) {
+    assert(!blocked(Number(x), Number(y)), `the first-paint seed lands on the cat/feeder (${x}, ${y})`);
+  }
+});
+
+// P1-D — THE SHOP IS READABLE ON THE LIGHT SHELL. Founder video QA, defect 3: the 상점
+// sheet still carried the ORIGINAL dark palette (.shop-tab / .catalog-row on --ink-700,
+// .catalog-thumb on --ink-600) under the v13 light shell, where --text-primary is
+// near-black — dark item names and descriptions on dark cards, with the unaffordable
+// action faded to 0.45 opacity on top of that. components.css is a pinned canonical
+// authority, so the repair lives in the bounded repair layer that loads after it.
+check('P1-D the 상점 sheet is readable on the v13 light shell', () => {
+  const polish = read('src/styles/c2a-polish.css');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  const main = read('src/main.jsx');
+
+  // (a) the repair layer really does load after the pinned authority.
+  assert(
+    main.indexOf("styles/components.css") < main.indexOf("styles/c2a-polish.css"),
+    'the repair layer no longer loads after components.css (its overrides would not apply)',
+  );
+
+  // (b) every dark-palette shop surface is repainted onto a light-shell token.
+  const rule = (selector) => {
+    const m = polish.match(new RegExp(`\\n${selector.replace(/[.[\]'=]/g, '\\$&')} \\{([\\s\\S]*?)\\n\\}`));
+    assert(m, `the shop readability layer lost its ${selector} rule`);
+    return m[1];
+  };
+  assert(/background: var\(--bg-surface\)/.test(rule('.catalog-row')), 'catalogue cards are dark again');
+  assert(/background: var\(--bg-surface\)/.test(rule('.shop-tab')), 'the category tabs are dark again');
+  assert(/background: var\(--bg-surface-raised\)/.test(rule('.catalog-thumb')), 'the item thumbnails are dark again');
+  assert(/color: var\(--text-primary\)/.test(rule('.catalog-name')), 'the item name lost its readable ink');
+  assert(/color: var\(--text-secondary\)/.test(rule('.catalog-blurb')), 'the item description lost its readable ink');
+  assert(/color: #f4f6f7/.test(rule('.catalog-action')), 'the buy action lost its readable label');
+  assert(
+    /color: var\(--text-secondary\)/.test(rule('.catalog-action:disabled')),
+    'the unaffordable action is unreadable again',
+  );
+  // No new palette: the repair uses tokens the shell already defines.
+  assert(
+    !/#(?!f4f6f7\b)[0-9a-fA-F]{3,8}/.test(
+      ['.shop-tab', '.catalog-row', '.catalog-thumb', '.catalog-name', '.catalog-blurb'].map(rule).join(''),
+    ),
+    'the shop readability layer introduced a raw colour instead of a shell token',
+  );
+
+  // (c) the unreadable inline fade is gone from the component.
+  assert(
+    !/opacity: 0\.45/.test(screen),
+    'the shop action is faded to an unreadable opacity again',
+  );
+});
+
+// P1-E — PLACED AND PLACEABLE ARE DIFFERENT THINGS. Founder video QA, defect 4: the tray
+// showed "방에 놓을 아이템이 없어요" while the room was visibly full of the user's own
+// props, because the line described the TRAY but read as a statement about the ROOM.
+check('P1-E the empty tray never claims the room is empty', () => {
+  const dec = read('src/components/PetRoomDecorator.jsx');
+  assert(
+    dec.includes('새로 배치할 아이템이 없어요'),
+    'the empty tray no longer distinguishes "nothing left to place" from "nothing in the room"',
+  );
+  assert(
+    /placements\.length > 0[\s\S]{0,200}방에 놓은 소품 \$\{placements\.length\}개는 그대로 있어요/.test(dec),
+    'the empty tray no longer names the props that ARE in the room',
+  );
+  assert(
+    !/'방에 놓을 아이템이 없어요/.test(dec) && !/`방에 놓을 아이템이 없어요/.test(dec),
+    'the tray-empty line reads as a claim about the room again',
+  );
+});
+
+// P1-F — THE UNSOLVABLE-BY-CODE BLOCKERS STAY RECORDED. Founder video QA: the decor
+// visual problem is the ART, not the rendering — the room plate ships already decorated
+// and every decor asset is an opaque photo crop, so placing one duplicates baked
+// furniture. Three passes have now been spent making that less wrong in code. The record
+// exists so a fourth is not, and this guard keeps the record honest: the flags stay YES
+// exactly as long as the code state that justifies them holds.
+check('P1-F the clean-room / alpha-sprite blockers stay recorded and match the code', () => {
+  const doc = read('docs/NOF_DECOR_ASSET_BLOCKERS.md');
+  const assets = read('src/constants/petAssets.js');
+
+  for (const flag of [
+    'DECOR_CLEAN_ROOM_REQUIRED       = YES',
+    'TRANSPARENT_DECOR_SPRITES_REQUIRED = YES',
+    'CAT_WALK_CYCLE_ART_REQUIRED = YES',
+  ]) {
+    assert(doc.includes(flag), `the decor/motion blocker record lost: ${flag}`);
+  }
+
+  // The record and the code must agree. If decor sprites are ever really approved, the
+  // flag flips in the same change that raises spriteReady — never silently in one of them.
+  const itemBlock = assets.match(/const ITEM_ASSETS = \{[\s\S]*?\n\};/);
+  assert(itemBlock, 'ITEM_ASSETS could not be read from petAssets.js');
+  assert(
+    !/spriteReady:\s*true/.test(itemBlock[0]),
+    'a decor sprite was marked ready while the record still says alpha sprites are required',
+  );
+
+  // The modules that defer to the record must keep pointing at it.
+  for (const rel of ['src/constants/roomZones.js', 'src/components/PetRoomEditor.jsx', 'src/screens/PetRewardScreen.jsx']) {
+    assert(read(rel).includes('NOF_DECOR_ASSET_BLOCKERS.md'), `${rel} no longer points at the blocker record`);
+  }
+});
+
+// ===========================================================================
+// V2 — game-loop contract guards (Founder-approved 2026-08-28). These express the
+// NEW V2 contract (Personal XP, level, evolution, weekly league) and KEEP every
+// safety rail: no shaming/humiliation, no pay-to-win, no user-facing 체크인/금욕, no
+// fabricated network. Walk (no fake sliding) + feed causality guards land with those
+// features in a later slice.
+// ===========================================================================
+const stripCommentsV2 = (src) =>
+  src.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
+
+// V2-1 — PERSONAL XP is a permanent progression store: numeric level label + XP-threshold
+// growth form, its own localStorage key, never reset.
+check('V2 progression: permanent Personal XP → level + growth form (own store)', () => {
+  const prog = read('src/constants/progression.js');
+  assert(/export function levelForXp/.test(prog), 'progression missing levelForXp (numeric level label)');
+  assert(/export function formForXp/.test(prog), 'progression missing formForXp (growth form by cumulative XP)');
+  assert(/export const EVOLUTION_STAGES/.test(prog), 'progression missing the evolution stages (same cat, growing confidence)');
+  assert(prog.includes('never decreases'), 'progression does not state Personal XP is permanent (no decrease/reset)');
+  const hook = read('src/hooks/useProgression.js');
+  assert(hook.includes("'nof.progression.v1'"), 'Personal XP does not use its own localStorage key');
+  assert(hook.includes('award') && hook.includes('computeXpBreakdown('), 'useProgression does not award from the real breakdown');
+});
+
+// V2-2 — PERSONAL XP != LEAGUE SCORE. Separate stores; the league is weekly, capped,
+// and resets, while Personal XP is untouched by that reset.
+check('V2 Personal XP and League Score are separate stores', () => {
+  const prog = read('src/hooks/useProgression.js');
+  const leagueHook = read('src/hooks/useLeague.js');
+  const leagueC = read('src/constants/league.js');
+  assert(prog.includes("'nof.progression.v1'"), 'Personal XP store key missing');
+  assert(leagueHook.includes("'nof.league.v1'"), 'League Score store key missing');
+  assert(!prog.includes("'nof.league.v1'"), 'the Personal XP store must not read the league key');
+  assert(!leagueHook.includes("'nof.progression.v1'"), 'the League store must not read the Personal XP key');
+  assert(leagueC.includes('DAILY_LEAGUE_CAP'), 'league missing a daily contribution cap');
+  assert(/rollWeek/.test(leagueHook) && /score:\s*0/.test(leagueHook), 'league weekly reset does not zero the weekly score');
+});
+
+// V2-3 — XP is ALWAYS the sum of the day's real actions — never a hard-coded universal +75.
+check('V2 XP is the real sum of the day actions (no hard-coded +75)', () => {
+  const prog = read('src/constants/progression.js');
+  assert(/export function computeXpBreakdown/.test(prog), 'no computeXpBreakdown (itemized real sum)');
+  const res = stripCommentsV2(read('src/components/XpResult.jsx')); // honesty comments may name +75 as the anti-pattern
+  assert(!/\+\s*75\b/.test(res), 'XpResult hard-codes a +75 total');
+  assert(/result\.total/.test(res), 'XpResult does not render the real computed total');
+  const checkin = stripCommentsV2(read('src/screens/CheckinScreen.jsx'));
+  assert(/award\(actions/.test(checkin), 'check-in does not award from the real actions');
+  assert(!/award\(\s*\{[^}]*\b75\b/.test(checkin), 'check-in awards a hard-coded number');
+});
+
+// V2-4 — the league week boundary is a NAMED, CONFIGURABLE constant (not a hard-coded Sunday).
+check('V2 league week boundary is a named, configurable policy constant', () => {
+  const leagueC = read('src/constants/league.js');
+  assert(/export const LEAGUE_WEEK = Object\.freeze\(\{/.test(leagueC), 'LEAGUE_WEEK policy constant missing');
+  assert(/startDay:/.test(leagueC) && /tunable:\s*true/.test(leagueC), 'LEAGUE_WEEK is not a tunable policy');
+  assert(/export function weekKey/.test(leagueC), 'weekKey() (boundary from the policy) missing');
+  assert(!/getDay\(\)\s*===\s*0/.test(leagueC), 'week boundary hard-codes Sunday (getDay()===0) instead of the policy');
+});
+
+// V2-5 — V2 surfaces may use the approved progression/competition vocabulary, but must
+// NEVER shame/humiliate by rank, nor allow pay-to-win progression.
+check('V2 surfaces: neutral progression vocab only — no shaming rank, no pay-to-win', () => {
+  const files = [
+    'src/screens/HomeScreen.jsx', 'src/screens/CheckinScreen.jsx',
+    'src/components/XpResult.jsx', 'src/components/LeaguePreview.jsx',
+    'src/components/KittenHero.jsx', 'src/constants/league.js',
+  ];
+  const SHAME = ['뒤처졌', '하위권', '약해요', '약합니다', '실패자', '낙인', '벌점', '수치심', '넌 하위'];
+  const PAYWIN = ['가챠', '뽑기', '돈을 내면', '결제로 리그', '결제로 진화', '유료로 진화', '현질', 'pay-to-win'];
+  for (const f of files) {
+    const src = stripCommentsV2(read(f)); // comments may NAME banned words as rules-to-follow (like storage.js)
+    for (const bad of SHAME) assert(!src.includes(bad), `${f} carries shaming/humiliation copy: ${bad}`);
+    for (const bad of PAYWIN) assert(!src.includes(bad), `${f} carries pay-to-win vocabulary: ${bad}`);
+  }
+});
+
+// V2-6 — the new V2 modules carry no user-facing 체크인 / 금욕 (internal identifiers/comments exempt).
+check('V2 new modules carry no user-facing 체크인 / 금욕', () => {
+  for (const f of [
+    'src/components/XpResult.jsx', 'src/components/LeaguePreview.jsx', 'src/components/KittenHero.jsx',
+    'src/hooks/useProgression.js', 'src/hooks/useLeague.js',
+    'src/constants/progression.js', 'src/constants/league.js',
+  ]) {
+    const src = stripCommentsV2(read(f));
+    assert(!src.includes('체크인'), `${f} shows user-facing 체크인`);
+    assert(!src.includes('금욕'), `${f} shows user-facing 금욕`);
+  }
+});
+
+// V2-7 — the weekly league is an HONEST local, deterministic, anonymous field — no
+// network call and no live-competitor claim.
+check('V2 league is an honest local deterministic field (no network)', () => {
+  const leagueC = read('src/constants/league.js');
+  const leagueHook = read('src/hooks/useLeague.js');
+  for (const net of ['fetch(', 'XMLHttpRequest', 'WebSocket', 'sendBeacon']) {
+    assert(!leagueC.includes(net) && !leagueHook.includes(net), `league makes a network call (${net}) — it must stay local`);
+  }
+  assert(/DETERMINISTIC|deterministic/.test(leagueC), 'league field is not documented as a deterministic local field');
+  assert(/buildLeagueField/.test(leagueC), 'league has no local field builder');
+});
+
+// V2-8 — the League contribution has its OWN calculator, structurally independent of
+// Personal XP. The check-in must NOT feed the league the Personal XP award total.
+check('V2 league contribution is an independent calculator (not the Personal XP total)', () => {
+  const leagueC = read('src/constants/league.js');
+  assert(/export function computeLeagueContribution/.test(leagueC), 'league missing its own computeLeagueContribution calculator');
+  assert(/export const LEAGUE_ELIGIBLE/.test(leagueC), 'league missing its own eligible-action point table (tunable, separate from XP)');
+  const checkin = stripCommentsV2(read('src/screens/CheckinScreen.jsx'));
+  assert(/addScore\(\s*computeLeagueContribution\(/.test(checkin), 'league contribution is not computed by computeLeagueContribution at the check-in');
+  assert(!/addScore\(\s*(res|award|xp|breakdown)[.\w]*total/i.test(checkin), 'league is fed the Personal XP total instead of its own contribution');
+});
+
+// V2-9 — record ↔ reward is ONE transaction. The Today Record commit (onCompleteCheckin)
+// and the Personal XP award must live in the SAME completion path, and step 2 must only
+// PREVIEW (no award before the record commits — no orphan reward on an interruption).
+check('V2 record and Personal XP commit together (no orphan reward)', () => {
+  const checkin = stripCommentsV2(read('src/screens/CheckinScreen.jsx'));
+  const m = checkin.match(/const commitAndGo[\s\S]*?\n {2}\};/);
+  assert(m, 'CheckinScreen has no single commitAndGo completion transaction');
+  const tx = m[0];
+  assert(/award\(actions/.test(tx), 'commitAndGo does not award Personal XP');
+  assert(/finishCheckin\(\)/.test(tx), 'commitAndGo does not commit the Today Record');
+  // step 2 (handleFinish) must PREVIEW, not award — the award may not precede the record.
+  const hf = checkin.match(/const handleFinish[\s\S]*?\n {2}\};/);
+  assert(hf, 'CheckinScreen has no handleFinish');
+  assert(/preview\(/.test(hf[0]) && !/\baward\(/.test(hf[0]), 'handleFinish awards XP before the record is committed (orphan-reward risk)');
+  assert(/const \{ preview, award/.test(checkin), 'CheckinScreen must use the pure preview for EG-03');
+});
+
+// V2-10 — Home "오늘 완료" is proven by the committed record, never by Personal XP alone.
+check('V2 Home completion source-of-truth is the committed record (not todayXp)', () => {
+  const home = stripCommentsV2(read('src/screens/HomeScreen.jsx'));
+  assert(/const recordedToday\s*=\s*!!\s*todayRecord\?\.checkin\s*;/.test(home), 'recordedToday is not derived solely from the committed todayRecord.checkin');
+  assert(!/recordedToday\s*=\s*todayXp\s*>\s*0/.test(home), 'Home proves completion from todayXp (orphan XP could fake a completed day)');
+});
+
+// V2-11 — the five growth forms are gated by CUMULATIVE XP at the frozen design thresholds
+// (dc.html evoStages): 0 / 150 / 300 / 450 / 900. Never a level-derived approximation.
+check('V2 growth: five forms at frozen XP thresholds 0/150/300/450/900', () => {
+  const prog = read('src/constants/progression.js');
+  const m = prog.match(/export const EVOLUTION_STAGES = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  assert(m, 'EVOLUTION_STAGES freeze block not found');
+  const mins = [...m[1].matchAll(/minXp:\s*(\d+)/g)].map((x) => Number(x[1]));
+  assert(mins.length === 5, `expected 5 growth forms, found ${mins.length}`);
+  assert(JSON.stringify(mins) === JSON.stringify([0, 150, 300, 450, 900]), `form XP thresholds ${JSON.stringify(mins)} != [0,150,300,450,900]`);
+  assert(/export function formForXp/.test(prog) && /export function formProgress/.test(prog), 'form resolver / progress missing');
+});
+
+// V2-12 — numeric LEVEL != growth FORM: the level labels (1/3/4/6/9) are non-consecutive,
+// so the level axis is finer than the five forms (levels 2/5/7/8 lie inside forms).
+check('V2 numeric level is distinct from growth form (level != form)', () => {
+  const prog = read('src/constants/progression.js');
+  const m = prog.match(/export const EVOLUTION_STAGES = Object\.freeze\(\[([\s\S]*?)\]\);/);
+  const levels = [...m[1].matchAll(/level:\s*(\d+)/g)].map((x) => Number(x[1]));
+  const ns = [...m[1].matchAll(/\bn:\s*(\d+)/g)].map((x) => Number(x[1]));
+  assert(JSON.stringify(levels) === JSON.stringify([1, 3, 4, 6, 9]), `level labels ${JSON.stringify(levels)} != [1,3,4,6,9]`);
+  assert(levels.some((lv, i) => i > 0 && lv !== ns[i]), 'level label never differs from the form ordinal (level == form)');
+  assert(levels.some((lv, i) => i > 0 && lv - levels[i - 1] >= 2), 'no level gap >= 2 (no numeric level lies inside a form)');
+});
+
+// V2-13 — accessories: unlock is monotonic by XP (never lost by a later form); equip is a
+// SEPARATE toggle. (registry §5 / dc.html: 리본 @450 · 하트 참 @900.)
+check('V2 accessories: unlock monotonic by XP, equip is separate, never lost', () => {
+  const prog = read('src/constants/progression.js');
+  assert(/export const EVOLUTION_ACCESSORIES/.test(prog), 'EVOLUTION_ACCESSORIES missing');
+  assert(/ribbon[\s\S]*?minXp:\s*450/.test(prog), 'ribbon does not unlock at 450 XP');
+  assert(/heart_charm[\s\S]*?minXp:\s*900/.test(prog), 'heart charm does not unlock at 900 XP');
+  assert(/never lost/.test(prog), 'accessories not documented as never lost (monotonic unlock)');
+  const hook = read('src/hooks/useProgression.js');
+  assert(/toggleAccessory/.test(hook) && /equippedAccessories/.test(hook), 'equip toggle / equipped state missing (equip separate from unlock)');
+  assert(/unlockedAccessories\(/.test(hook), 'equip is not gated by the unlocked set');
+});
+
+// V2-14 — recoveryReturn (어려운 하루 후 복귀, +15) is a NEXT-DAY one-time bonus, applied by
+// the store only when today's record follows a hard day.
+check('V2 recovery-return is a next-day one-time +15 bonus', () => {
+  const prog = read('src/constants/progression.js');
+  assert(/recoveryReturn:\s*\{\s*id:\s*'recoveryReturn',\s*xp:\s*15/.test(prog), 'recoveryReturn is not a +15 XP source');
+  const hook = read('src/hooks/useProgression.js');
+  assert(/lastRecordHard/.test(hook), 'store does not remember whether the last recorded day was hard');
+  assert(/recoveryEligible/.test(hook) && /'recoveryReturn'/.test(hook), 'store never grants the recovery-return bonus');
+  assert(/dayState === 'hard'/.test(hook), 'store never records today’s hardness for tomorrow’s return bonus');
+});
+
+// V2-15 — growth celebration (EG-07) is ONE-SHOT: a form crossing raises it once and the
+// acknowledgement is durable (no endless replay). No bonus XP is granted by the modal.
+check('V2 growth celebration is one-shot (durable acknowledgement)', () => {
+  const hook = read('src/hooks/useProgression.js');
+  assert(/ackForms/.test(hook), 'no durable celebration acknowledgement set (ackForms)');
+  assert(/pendingCelebration/.test(hook) && /acknowledgeCelebration/.test(hook), 'celebration pending / acknowledge API missing');
+  const cel = read('src/components/GrowthCelebration.jsx');
+  assert(/acknowledgeCelebration|onClose|onAcknowledge/.test(cel), 'celebration modal never acknowledges (would replay)');
+  assert(!/award\(|addScore\(/.test(cel), 'celebration modal grants bonus XP/score (must be one-shot, no bonus)');
+});
+
+// ===========================================================================
+// SLICE 3 — the living pet room (Phase C/D): real 4:3 scene, theme/decor
+// persistence, the honest feeder swap, and the ONE companion state machine
+// (walk/roam/feed/pet), with reduced-motion + no-autonomous-earning honesty.
+// ===========================================================================
+const exists = (r) => {
+  try {
+    statSync(join(ROOT, r));
+    return true;
+  } catch {
+    return false;
+  }
+};
+
+check('V2 pet room is a real 4:3 rendered scene (PetRoomV2 over the clean plate)', () => {
+  const v2 = read('src/components/PetRoomV2.jsx');
+  assert(v2.includes('pet-room--scene'), 'PetRoomV2 does not use the .pet-room--scene frame the browser QA measures');
+  assert(v2.includes('pr-plate') && v2.includes('ROOM_CLEAN'), 'PetRoomV2 does not render the clean 4:3 room plate');
+  assert(/\.pet-room--scene\s*\{[\s\S]*?aspect-ratio:\s*4\s*\/\s*3/.test(read('src/styles/components.css')), '.pet-room--scene is not aspect-ratio 4/3');
+  assert(read('src/constants/roomV2.js').includes('ROOM_ASPECT = 4 / 3'), 'roomV2 ROOM_ASPECT is not 4/3');
+});
+
+check('V2 room theme is real, persisted, and the reward theme is league-gated', () => {
+  const hook = read('src/hooks/useRoomV2.js');
+  assert(hook.includes("'nof.roomv2.v1'"), 'room theme/decor is not persisted to its own store key (would not survive reload)');
+  assert(hook.includes('setTheme') && hook.includes('t.reward && !allowSnow'), '백염 눈밤 reward theme is not gated behind reaching the 백염 league');
+  assert(read('src/constants/roomV2.js').includes("reward: '백염 리그'"), 'snow theme is not marked a league reward');
+});
+
+check('V2 decor persists and never covers the cat or feeder (safe zones)', () => {
+  const hook = read('src/hooks/useRoomV2.js');
+  assert(hook.includes('placeDecor') && hook.includes('inSafeZone('), 'decor placement does not reject safe-zone (cat/feeder) drops');
+  assert(hook.includes("'nof.roomv2.v1'"), 'decor is not persisted — it would vanish after 배치 마치기 / reload');
+  const room = read('src/constants/roomV2.js');
+  assert(room.includes('SAFE_ZONES') && room.includes('급식기') && room.includes('고양이'), 'safe zones do not protect the feeder + cat');
+});
+
+check('V2 feeder empty↔full is a real sprite swap (honest, art exists, blocker recorded)', () => {
+  const v2 = read('src/components/PetRoomV2.jsx');
+  assert(v2.includes("feederFull ? 'feeder-full' : 'feeder-empty'"), 'feeder does not swap the empty/full sprite from the real feed state');
+  assert(
+    exists('public/assets/v2/props/feeder-empty.webp') && exists('public/assets/v2/props/feeder-full.webp'),
+    'feeder-empty/full sprites are missing — the empty→full transition would be a fake claim',
+  );
+  assert(exists('docs/NOF_DECOR_ASSET_BLOCKERS.md'), 'the feeder-art status is not recorded in the blocker doc');
+});
+
+check('V2 companion is ONE authority with the required states, no autonomous XP/League', () => {
+  const c = read('src/hooks/useCompanion.js');
+  for (const st of ['idle', 'walk', 'pet', 'feedNotice', 'feedApproach', 'feedEat', 'feedFinish', 'ambient']) {
+    assert(c.includes(st), `companion is missing the ${st} phase`);
+  }
+  assert(c.includes('USER / FEED'), 'companion does not document the behaviour priority (USER/FEED first)');
+  assert(!/\baward\(|\baddScore\(|\bearn\(/.test(c), 'the companion grants XP/League/shards — autonomous behaviour must never earn');
+});
+
+check('V2 walk is multi-frame + real translation toward the active-room feeder', () => {
+  const ca = read('src/constants/companionAssets.js');
+  const m = ca.match(/WALK_GAIT = Object\.freeze\(\[([^\]]*)\]/);
+  assert(m, 'WALK_GAIT gait order is not defined');
+  assert((m[1].match(/walk-/g) || []).length >= 2, 'walk uses fewer than 2 gait frames (a single sliding PNG is forbidden)');
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('cycleFrames') && c.includes('WALK_GAIT['), 'the walk does not cycle the gait frames');
+  assert(c.includes('walkTo(FEEDER'), 'the feed approach does not target the active-room feeder geometry');
+  const v2 = read('src/components/PetRoomV2.jsx');
+  assert(v2.includes('transition: moving ?') && v2.includes('pos.x * 100'), 'the cat position does not really translate (no animated left/top)');
+  assert(v2.includes('scaleX('), 'facing is not a scaleX mirror');
+});
+
+check('V2 feed charges once, blocks at true zero (no fake feed, no negative inventory)', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('<= 0) return false'), 'feed does not block at zero inventory (fake-feed / negative risk)');
+  assert(c.includes('onConsumeSnack?.()'), 'feed does not charge the one snack');
+  assert(c.includes("startsWith('feed')) return false"), 'feed can double-start (double-charge risk)');
+  const app = read('src/App.jsx');
+  assert(/const feedSnack = \(\) => \{\s*if \(\(inventory\.snack \?\? 0\) <= 0\) return;/.test(app), 'App feedSnack does not guard the true-zero (no negative inventory)');
+});
+
+check('V2 reduced motion suppresses autonomous travel but keeps feed/pet functional', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('prefers-reduced-motion') && c.includes('reducedRef'), 'companion does not read prefers-reduced-motion');
+  assert(c.includes('if (reducedRef.current || !visibleRef.current) return false'), 'roam is not suppressed under reduced motion / hidden tab');
+  assert(/if \(reducedRef\.current\) \{[\s\S]*?onArrive\?\.\(\)/.test(c), 'feed/return does not stay functional (instant, no travel) under reduced motion');
+});
+
+check('V2 pet reaction is user-only and interrupts autonomous motion', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('const pet = useCallback'), 'no pet() user action on the companion');
+  const petBody = c.match(/const pet = useCallback\([\s\S]*?\}, \[\]\);/);
+  assert(petBody && petBody[0].includes('clearTimers()'), 'pet does not interrupt/cancel autonomous roam/ambient');
+  const screen = read('src/screens/PetRewardScreen.jsx');
+  assert(screen.includes('companion.pet()') && screen.includes('companion.feed()'), 'the room controls do not drive the companion pet/feed');
+});
+
+// ===========================================================================
+// FOUNDER CORE-EXPERIENCE REPAIR — Shield V2, living companion, run stopwatch/stop.
+// These replace obsolete string-pins with the NEW semantic contracts and prove the three
+// Founder blockers are genuinely resolved (no faked capability, no shame, XP preserved).
+// ===========================================================================
+
+// LIVE_RUN_TIMER + RUN_STOP_ACTION + RUN_STOP_PRESERVES_PERSONAL_XP + RUN_STOP_DOES_NOT_PUNISH_KITTEN
+check('Home shows a live current-run stopwatch and an explicit, non-punishing 기록 중단', () => {
+  const home = read('src/screens/HomeScreen.jsx');
+  // LIVE_RUN_TIMER: a prominent current-run stopwatch, derived from the real run start
+  // (abstinenceStartMs), ticking every second — never Personal XP and never League Score.
+  assert(home.includes('현재 유지 중'), 'Home is missing the current-run stopwatch label (현재 유지 중)');
+  assert(home.includes('eg-runtimer'), 'Home current-run stopwatch (eg-runtimer) missing');
+  assert(/formatElapsed\(now - abstinenceStartMs\)/.test(home), 'stopwatch is not derived from the run start (abstinenceStartMs)');
+  assert(/setInterval\(\(\) => setNow\(Date\.now\(\)\), 1000\)/.test(home), 'stopwatch does not tick every second');
+  // RUN_STOP_ACTION: an explicit, understandable 기록 중단, clearly separate from 흔들림 기록.
+  assert(home.includes('기록 중단'), 'Home is missing the explicit 기록 중단 stop action');
+  assert(
+    home.includes('흔들림 기록') && home.includes('현재 유지 시간은 멈추지 않아요'),
+    '흔들림 기록 is not clarified as an urge log that does NOT stop the run timer',
+  );
+  // The stop goes through the Founder confirmation copy and NEVER an instant reset.
+  assert(home.includes('지금 진행 중인 기록을 여기서 마칠까요'), 'stop confirmation title missing');
+  assert(home.includes('여기서 중단') && home.includes('계속 이어가기'), 'stop confirm actions (여기서 중단 / 계속 이어가기) missing');
+  assert(!/onClick=\{\(\)\s*=>\s*onRelapse/.test(home), '기록 중단 calls onRelapse directly — it must go through the confirm sheet');
+  assert(home.includes('onRelapse'), 'stop is not wired to onRelapse');
+  // Non-shaming: gentle recovery copy present.
+  assert(home.includes('괜찮아요. 다시 시작하면 돼요'), 'stop is missing the non-shaming recovery copy');
+  // RUN_STOP_PRESERVES_PERSONAL_XP + DOES_NOT_PUNISH_KITTEN: relapse() must touch ONLY counters +
+  // today's record; Personal XP / growth live in a SEPARATE store (useProgression) it never calls.
+  const app = read('src/App.jsx');
+  const rIdx = app.indexOf('const relapse = () =>');
+  assert(rIdx >= 0, 'relapse() not found in App.jsx');
+  const relapseBody = app.slice(rIdx, app.indexOf('const startSlipReflection'));
+  assert(!/progression|award\(|addScore\(|acknowledgeCelebration|\.xp\b/.test(relapseBody), 'relapse() touches Personal XP / growth — the stop must not');
+  const prog = read('src/hooks/useProgression.js');
+  assert(
+    prog.includes('a relapse must not shorten it') || prog.includes('never punished'),
+    'progression store lost its no-punish / no-XP-loss-on-relapse guarantee',
+  );
+});
+
+// SHIELD_V2_UI — the Shield screen is rebuilt in the V2 Ember Graphite system, not the old
+// light/form prototype (.screen/.card/.btn-block). Founder blocker 1 (visual + IA replacement).
+check('SHIELD_V2_UI: Shield is the V2 dashboard, not the old light/form prototype', () => {
+  const screen = read('src/screens/ShieldScreen.jsx');
+  assert(screen.includes('className="v2-screen"'), 'Shield is not on the V2 screen shell (.v2-screen)');
+  for (const c of ['eg-card', 'eg-cta', 'eg-secbtn', 'eg-section-label']) {
+    assert(screen.includes(c), `Shield does not use the V2 component ${c}`);
+  }
+  // The old prototype shell must be gone (this is the exact UI the Founder screenshot flagged).
+  assert(!screen.includes('screen-header'), 'Shield still renders the old prototype header (screen-header)');
+  assert(!/className="card[ "]/.test(screen), 'Shield still uses the old .card shell');
+  assert(!screen.includes('btn-block'), 'Shield still uses the old .btn-block buttons');
+  // The Founder information architecture is present.
+  for (const sect of ['현재 보호 상태', '내가 피하고 싶은 신호', '앞으로 연결될 보호 방식', '고급 보호']) {
+    assert(screen.includes(sect), `Shield is missing the IA section: ${sect}`);
+  }
+});
+
+// SHIELD_CAPABILITY_HONESTY — every protection is marked honestly (작동 중 / 실험 / 준비 중); the
+// genuinely-unbuilt advanced protections stay 준비 중; no fake device/SNS/adult blocking claim.
+// Founder blocker 6A: the Chrome browser-protection status must be DERIVED from a real extension
+// ping — '연결 안 됨' by default, '연결됨' only after a genuine reply — never a static claim and
+// never inferred from localStorage alone. The only honest '작동 중' is the local pause, which
+// truly works now and does not claim to block sites.
+check('SHIELD_CAPABILITY_HONESTY: honest 작동/실험/준비중 states, real Chrome status, no faked capability', () => {
+  const screen = read('src/screens/ShieldScreen.jsx');
+  for (const state of ['작동 중', '실험', '준비 중']) {
+    assert(screen.includes(state), `Shield is missing the honest capability state: ${state}`);
+  }
+  // The Chrome protection status is derived from a real bridge ping, not a static chip.
+  assert(
+    /chromeExtensionBridge/.test(screen) &&
+      (screen.includes('getExtensionStatus') || screen.includes('pingExtension')),
+    'Shield does not derive real Chrome protection status from the extension bridge (Founder 6A)',
+  );
+  assert(screen.includes('연결 안 됨'), 'Shield is missing the honest disconnected state (연결 안 됨)');
+  assert(screen.includes('연결됨'), 'Shield is missing the connected state label (연결됨)');
+  assert(screen.includes('Chrome 확장 연결하기'), 'Shield is missing the Chrome 확장 연결하기 connect CTA');
+  // The old static green "작동 중" must no longer sit on the browser/위험-신호 card (that read as
+  // active blocking). '작동 중' now belongs only to the genuinely-working local pause.
+  assert(
+    !screen.includes('앱 안 위험 신호 대응'),
+    'Shield still shows the static "앱 안 위험 신호 대응 · 작동 중" card (reads as active blocking)',
+  );
+  // The advanced protections Founder called out must each be present AND labelled 준비 중.
+  for (const adv of ['휴대폰 전체·다른 앱 차단', 'SNS 이미지 흐리게 가리기', '성인 사이트 자동 차단']) {
+    assert(screen.includes(adv), `Shield advanced-protection item missing: ${adv}`);
+  }
+  assert(screen.includes('status="soon"'), 'advanced protections are not marked 준비 중 (no soon status chip)');
+  // NoF still provides no real blocking engine — the honest disclosure stays.
+  assert(screen.includes('아직 실제 차단은 제공하지 않아요'), 'Shield dropped the honest "no real blocking yet" copy');
+  // No present-tense claim that device-wide / external app / SNS / adult blocking is happening.
+  for (const fake of ['차단했어요', '차단하고 있어요', '차단 중이에요', '막고 있어요', '차단되었어요']) {
+    assert(!screen.includes(fake), `Shield makes a fake working-blocking claim: ${fake}`);
+  }
+  assert(!/type="checkbox"/.test(screen) && !/role="switch"/.test(screen), 'Shield ships a dead toggle/switch (reads as fake blocking)');
+});
+
+// COMPANION_CURSOR_ATTENTION — the kitten notices the pointer/touch: facing follows it (outside a
+// dead-zone, no jitter), with a dwell before it steps closer. Founder blocker 2A.
+check('COMPANION_CURSOR_ATTENTION: pointer visibly affects facing/attention (dead-zone + dwell)', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('const attend = useCallback'), 'companion has no attend() cursor-attention entry');
+  assert(c.includes('ATTN_DEADZONE'), 'no dead-zone (would jitter on every pixel)');
+  assert(/setFacing\(dx >= 0 \? 1 : -1\)/.test(c), 'pointer x does not drive facing');
+  assert(c.includes('DWELL_MS') && c.includes('DWELL_DIST'), 'no dwell threshold before a cursor-invited step');
+  assert(c.includes("'look-left'"), 'attention does not use the real look-left pose');
+  const v2 = read('src/components/PetRoomV2.jsx');
+  assert(v2.includes('onPointerMove={trackPointer}'), 'the room scene does not report pointer position to the companion');
+  assert(v2.includes('attend?.('), 'the room scene does not call companion.attend');
+});
+
+// COMPANION_AUTONOMOUS_LIFE — one restrained autonomous scheduler keeps the room awake with real
+// poses (look-around / groom / stretch / lie-down / roam) on a tunable cadence, never earning XP.
+check('COMPANION_AUTONOMOUS_LIFE: one restrained scheduler with real life poses (no earning)', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('LIFE_TICK'), 'no single autonomous life-loop tick constant');
+  for (const fn of ['lookAround', 'ambientBeat', 'roamNow', 'enterSleep', 'enterHunger']) {
+    assert(c.includes(fn), `autonomous life loop is missing the ${fn} beat`);
+  }
+  for (const cad of ['AMBIENT_EVERY', 'ROAM_EVERY', 'SLEEP_AFTER']) {
+    assert(c.includes(cad), `autonomous cadence constant missing: ${cad}`);
+  }
+  assert(c.includes('AMBIENT_POSES'), 'ambient beats do not use the approved ambient poses');
+  assert(!/\baward\(|\baddScore\(|\bearn\(/.test(c), 'autonomous behaviour earns XP/League — it must never');
+});
+
+// COMPANION_SLEEP — sleep is a real state (real sleep sprite), motion stops, and a tap wakes it.
+check('COMPANION_SLEEP: real sleep state, wakes on tap (no shame)', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('enterSleep') && c.includes("setPose('sleep')"), 'no real sleep pose state');
+  assert(c.includes('SLEEP_AFTER'), 'sleep is not driven by an idle threshold');
+  // Tap wakes a sleeping kitten (wakeGently / phase === sleep handled in tap).
+  assert(c.includes('wakeGently') || /phaseRef\.current === 'sleep'/.test(c), 'a tap does not wake a sleeping kitten');
+  assert(
+    exists('public/assets/v2/cat/sleep.webp'),
+    'sleep.webp sprite is missing — a sleep state would be a fake pose',
+  );
+  const v2 = read('src/components/PetRoomV2.jsx');
+  assert(v2.includes('sleeping'), 'the room does not reflect the sleep state');
+});
+
+// COMPANION_HUNGER_REQUEST + FOOD_REQUEST_RATE_LIMITED — the kitten sometimes ASKS for food with a
+// real begging pose + gentle copy, rate-limited, and never nags / never requests impossible food.
+check('COMPANION_HUNGER_REQUEST: real, gentle, rate-limited food request (no nag, no impossible ask)', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes('enterHunger') && c.includes("setPose('begging')"), 'no real hunger/begging request state');
+  assert(
+    exists('public/assets/v2/cat/begging.webp'),
+    'begging.webp sprite is missing — a food request would be a fake pose',
+  );
+  // Gentle, non-guilt copy (the Founder examples), and a soft zero-snack line (no impossible ask).
+  assert(c.includes('배가 조금 고픈가 봐요') && c.includes('간식이 있으면 하나 줄까요'), 'hunger copy is missing the gentle Founder lines');
+  assert(c.includes('간식이 생기면 나눠줘요'), 'no soft zero-snack line (must not request impossible food)');
+  assert(/if \(snack > 0\)/.test(c), 'hunger does not branch on snack availability (would beg with zero snacks)');
+  // FOOD_REQUEST_RATE_LIMITED: eligibility requires a cooldown since the last request.
+  assert(c.includes('REQUEST_COOLDOWN') && c.includes('lastFoodRequestAt'), 'food requests are not rate-limited (would nag)');
+  assert(/sinceReq >= requestCooldown\(\)/.test(c), 'hunger eligibility does not enforce the request cooldown');
+  const v2 = read('src/components/PetRoomV2.jsx');
+  assert(v2.includes('pr-food-bubble') && v2.includes('requestMsg'), 'the room does not show the food-request bubble');
+});
+
+// TRANSIENT_COMPANION_STATE_NOT_PERSISTED — only the durable hunger timestamps are persisted; the
+// animation phase / pose / position are NEVER written to storage. Founder blocker 2D.
+check('TRANSIENT_COMPANION_STATE_NOT_PERSISTED: only hunger timestamps persist', () => {
+  const c = read('src/hooks/useCompanion.js');
+  assert(c.includes("'nof.companion.hunger.v1'"), 'hunger timestamps are not persisted to their own store key');
+  // The ONLY thing written is hungerRef.current (the two timestamps) — never phase/pose/position.
+  assert(/setItem\(HUNGER_KEY, JSON\.stringify\(hungerRef\.current\)\)/.test(c), 'persistence does not write exactly the hunger timestamps');
+  assert(!/setItem\([^)]*(phase|\bpose\b|posRef|position)/.test(c), 'companion persists transient animation state — it must not');
+  assert(c.includes('lastFedAt') && c.includes('lastFoodRequestAt'), 'durable hunger model (lastFedAt / lastFoodRequestAt) missing');
+});
+
+// ══════════════════════════════════════════════════════════════════════════════
+// RC-16 milestone semantic guards — real adult/high-risk protection (P0), social
+// foundation (P1), Future-Diary sharing (P2), AI-image foundation (P3). Each pins an
+// honesty/architecture invariant the milestone must not silently regress.
+// ══════════════════════════════════════════════════════════════════════════════
+
+// DEFAULT_PROTECTION_ARCHITECTURE — a real bundled blocklist evaluated locally in Chrome: a
+// versioned domains-only data contract compiled into a STATIC declarativeNetRequest ruleset
+// (requestDomains → blocked.html), registered disabled-by-default and toggled at runtime, plus the
+// three protection modes.
+check('DEFAULT_PROTECTION_ARCHITECTURE: bundled blocklist is a real, versioned, toggleable static ruleset', () => {
+  const manifest = JSON.parse(read('extensions/chrome-shield/manifest.json'));
+  const rr = (manifest.declarative_net_request && manifest.declarative_net_request.rule_resources) || [];
+  const bundled = rr.find((r) => r.id === 'nof_bundled_blocklist');
+  assert(bundled, 'manifest does not register the nof_bundled_blocklist static ruleset');
+  assert(bundled.enabled === false, 'bundled blocklist must be enabled:false (opt-in default protection)');
+  assert(bundled.path === 'blocklist-rules.json', 'bundled ruleset path is not blocklist-rules.json');
+
+  const data = JSON.parse(read('extensions/chrome-shield/data/adult-domains.v1.json'));
+  assert(data.schema === 'nof.blocklist/v1', 'blocklist data is missing the versioned schema');
+  assert(typeof data.version === 'number', 'blocklist data has no numeric version');
+  assert(['fixture', 'production'].includes(data.listType), 'blocklist data has no fixture/production listType');
+  assert(Array.isArray(data.domains), 'blocklist data has no domains array');
+
+  const rules = JSON.parse(read('extensions/chrome-shield/blocklist-rules.json'));
+  assert(Array.isArray(rules) && rules.length >= 1, 'blocklist-rules.json has no rules');
+  assert(
+    rules.every((r) => r.condition && Array.isArray(r.condition.requestDomains)),
+    'bundled rules must match by requestDomains (exact domain + subdomain), never substring',
+  );
+  assert(
+    rules.every((r) => r.action && r.action.type === 'redirect' && r.action.redirect && r.action.redirect.extensionPath === '/blocked.html'),
+    'bundled rules must redirect to blocked.html',
+  );
+
+  const sw = read('extensions/chrome-shield/service_worker.js');
+  assert(
+    sw.includes('SET_PROTECTION_STATE') && sw.includes('updateEnabledRulesets') && sw.includes('nof_bundled_blocklist'),
+    'service worker does not toggle the bundled ruleset via SET_PROTECTION_STATE/updateEnabledRulesets',
+  );
+
+  const prot = read('src/constants/protection.js');
+  for (const mode of ['off', 'default', 'custom']) {
+    assert(prot.includes(`'${mode}'`), `protection.js is missing protection mode: ${mode}`);
+  }
+});
+
+// ADULT_BLOCKING_ENGINE_REAL — the engine is real and local; the shipped list is a clearly-marked
+// FIXTURE (reserved TLDs only, no real domain in the repo — protected rule #5), and the production
+// status is honestly NOT_YET_PROVISIONED and never claimed otherwise.
+check('ADULT_BLOCKING_ENGINE_REAL: real local engine, honest FIXTURE list, production not provisioned', () => {
+  const data = JSON.parse(read('extensions/chrome-shield/data/adult-domains.v1.json'));
+  if (data.listType === 'fixture') {
+    for (const d of data.domains) {
+      assert(
+        /\.(test|example|invalid)$/.test(d),
+        `fixture blocklist has a non-reserved domain (must be .test/.example/.invalid): ${d}`,
+      );
+    }
+  }
+  const prot = read('src/constants/protection.js');
+  assert(
+    prot.includes("PRODUCTION_ADULT_BLOCKLIST_STATE = 'NOT_YET_PROVISIONED'"),
+    'protection.js must honestly mark the production adult blocklist NOT_YET_PROVISIONED',
+  );
+  assert(
+    read('src/screens/ShieldScreen.jsx').includes('실제 성인 사이트를 막는다고는'),
+    'Shield screen must state the fixture list does not block real adult sites',
+  );
+});
+
+// ALLOWLIST_OVERRIDE — a user allow wins over a user block wins over the bundled list
+// (allow 3 > user block 2 > bundled 1), implemented with a native allow rule.
+check('ALLOWLIST_OVERRIDE: allow(3) > user block(2) > bundled(1) via native priorities', () => {
+  const sw = read('extensions/chrome-shield/service_worker.js');
+  assert(/ALLOW_PRIORITY\s*=\s*3/.test(sw), 'allow rules must be priority 3');
+  assert(sw.includes("action: { type: 'allow' }"), 'allowlist must use a native declarativeNetRequest allow rule');
+  assert(sw.includes('SET_ALLOWLIST') && sw.includes('applyAllowlist'), 'service worker has no allowlist path');
+  assert(/priority:\s*2/.test(read('extensions/chrome-shield/signals.js')), 'user block dynamic rules must be priority 2');
+  assert(/BUNDLED_PRIORITY\s*=\s*1/.test(read('scripts/build-blocklist.mjs')), 'bundled rules must be priority 1');
+  assert(read('src/constants/protection.js').includes('desiredProtectionState'), 'protection.js has no mode→state mapping (with allowlist)');
+});
+
+// NO_BROWSING_HISTORY_UPLOAD — the extension blocklist path is local-only: no network sink, no
+// remote code, no URL/visited-target upload, and the bundled data files carry no http(s) literal.
+check('NO_BROWSING_HISTORY_UPLOAD: extension blocklist path is local-only (no network/upload)', () => {
+  const runtime = ['service_worker.js', 'signals.js', 'blocklist-meta.js'];
+  const sinks = ['fetch(', 'XMLHttpRequest', 'WebSocket', 'navigator.sendBeacon', 'EventSource', 'import("http', "import('http"];
+  for (const f of runtime) {
+    read(`extensions/chrome-shield/${f}`).split('\n').forEach((line, i) => {
+      if (isCommentLine(line)) return;
+      for (const s of sinks) assert(!line.includes(s), `extensions/chrome-shield/${f}:${i + 1} adds a network sink: ${s}`);
+    });
+  }
+  // The bundled data + generated ruleset are domains only — no scheme/URL literal.
+  assert(!read('extensions/chrome-shield/blocklist-rules.json').includes('http'), 'blocklist-rules.json contains an http(s) literal — it must be domains only');
+  assert(!JSON.stringify(JSON.parse(read('extensions/chrome-shield/data/adult-domains.v1.json')).domains).includes('http'), 'adult-domains.v1.json domains contain a scheme — domains only');
+});
+
+// PRIVATE_DIARY_DEFAULT — the Future Diary is private by default: the public-share store is SEPARATE
+// from the private record, the public copy is built by WHITELIST (no counter name / streak / id /
+// timestamp), and the private local-only disclosure remains.
+check('PRIVATE_DIARY_DEFAULT: public share store is separate + whitelist-scrubbed, private stays local', () => {
+  const shareHook = read('src/hooks/useFutureDiaryShare.js');
+  assert(shareHook.includes("'nof.social.shares.v1'"), 'public share store must use its own key, separate from the private bundle');
+  assert(!shareHook.includes("'nof.mvp.state.v1'"), 'share store must never touch the private diary bundle key');
+  const social = read('src/constants/social.js');
+  assert(social.includes('scrubFutureDiaryForShare') && social.includes('PUBLIC_SHARE_ALLOWED_KEYS'), 'social.js has no whitelist scrub for shares');
+  for (const leak of ['counterName', 'streakDays', 'moodLabel']) {
+    assert(social.includes(`'${leak}'`) === false || social.includes('PRIVATE_LEAK_KEYS'), 'social.js must track private-leak keys it forbids on shares');
+  }
+  const diary = read('src/screens/FutureDiaryScreen.jsx');
+  assert(diary.includes('일반 기록과 섞이지 않고') && diary.includes('이 기기에만'), 'diary lost its private local-only disclosure');
+});
+
+// PUBLIC_SHARE_EXPLICIT_OPT_IN — sharing happens only through an explicit user action, never on save.
+check('PUBLIC_SHARE_EXPLICIT_OPT_IN: sharing is opt-in only, never auto-published on save', () => {
+  const diary = read('src/screens/FutureDiaryScreen.jsx');
+  assert(diary.includes('익명으로 영감에 공유') && diary.includes('나만 보기'), 'diary is missing the explicit 나만 보기 / 익명 공유 choice');
+  const saveFn = diary.match(/const save = \(\) => \{[\s\S]*?\n {2}\};/);
+  assert(saveFn, 'could not locate the diary save() function');
+  assert(saveFn[0].includes('onSaveFutureDiary') && !saveFn[0].includes('shareEntry'), 'save() must NOT auto-share — sharing is a separate opt-in action');
+  assert(diary.includes('openShare') && diary.includes('confirmShare'), 'diary share must go through an explicit preview/confirm path');
+});
+
+// SOCIAL_FAKE_USERS = ZERO — with no backend, the network league/plaza/inspiration are empty +
+// configured:false; no fabricated users/posts/rankings. (The deterministic PRACTICE league is a
+// separate, clearly-labelled local thing.)
+check('SOCIAL_FAKE_USERS: no fabricated network users/posts/rankings when backend not configured', () => {
+  const client = read('src/lib/socialClient.js');
+  assert(client.includes('configured: false, rows: []'), 'leaderboard must be empty when not configured');
+  assert(client.includes('configured: false, messages: []'), 'shout stream must be empty when not configured');
+  assert(client.includes('configured: false, cards: []'), 'inspiration feed must be empty when not configured');
+  const hub = read('src/components/CommunityHub.jsx');
+  assert(hub.includes('아직 실제 커뮤니티가 연결되지 않았어요'), 'CommunityHub must show an honest not-connected empty state');
+  assert(hub.includes('연습 리그'), 'CommunityHub must label the deterministic league a practice league');
+});
+
+// COMMUNITY_NO_DM — no direct messages: the model has no recipient, and the UI says so.
+check('COMMUNITY_NO_DM: no direct-message concept in the model or UI', () => {
+  const social = read('src/constants/social.js');
+  assert(!/recipient|\bdmTo\b|directMessage/i.test(social), 'social model must not carry a DM recipient');
+  assert(read('src/components/CommunityHub.jsx').includes('개인 메시지(DM)는 없어요'), 'CommunityHub must state there are no DMs');
+});
+
+// COMMUNITY_NO_LINK — shouts reject links (and contact info) structurally.
+check('COMMUNITY_NO_LINK: shout validation rejects links + contact info', () => {
+  const social = read('src/constants/social.js');
+  assert(social.includes('export function containsLink') && social.includes('validateShoutText'), 'social.js must validate + reject links');
+  assert(/link_not_allowed/.test(social), 'shout validation must reject links');
+  assert(read('src/lib/moderation.js').includes('contact_info'), 'moderation must reject contact info');
+  assert(read('src/components/CommunityHub.jsx').includes('링크·연락처·사진은 올릴 수 없어요'), 'plaza compose must state no links/contact/images');
+});
+
+// IMAGE_USAGE_LIMIT = PRESENT — a real usage ledger caps generation from day one (free trials + pro
+// monthly), and the caller checks it before generating.
+check('IMAGE_USAGE_LIMIT: real usage meter caps generation (no unlimited)', () => {
+  const policy = read('src/constants/imagePolicy.js');
+  assert(/FREE_IMAGE_TRIALS\s*=\s*\d+/.test(policy) && /PRO_MONTHLY_IMAGE_LIMIT\s*=\s*\d+/.test(policy), 'image policy is missing the usage limits');
+  const usage = read('src/hooks/useImageUsage.js');
+  assert(usage.includes('canGenerate') && usage.includes('recordGeneration'), 'usage ledger is missing canGenerate/recordGeneration');
+  assert(usage.includes("'nof.image.usage.v1'"), 'usage ledger has no persisted store');
+  assert(read('src/screens/FutureDiaryScreen.jsx').includes('imageUsage.canGenerate'), 'diary must check the usage cap BEFORE generating');
+});
+
+// IMAGE_PROVIDER_FAKE_OUTPUT = ZERO — no provider is wired; generate() returns not_configured and
+// NEVER a fabricated image; usage is spent only on a real ready image.
+check('IMAGE_PROVIDER_FAKE_OUTPUT: no fabricated image, honest not_configured', () => {
+  const provider = read('src/lib/futureImageProvider.js');
+  assert(provider.includes("state: 'not_configured'"), 'provider must return not_configured when unwired');
+  assert(!/data:image|base64|placeholder\.(png|jpg|svg)/i.test(provider), 'provider must not embed a fabricated/placeholder image');
+  assert(provider.includes('isImageProviderConfigured'), 'provider must probe real configuration, not assume it');
+  const diary = read('src/screens/FutureDiaryScreen.jsx');
+  assert(diary.includes('미래 이미지 생성은 아직 연결되지 않았어요'), 'diary must show the honest not-connected image message');
+  assert(/res\.state === 'ready'[\s\S]*recordGeneration/.test(diary), 'diary must spend a usage trial only on a real ready image');
+});
+
+// ── RC-17 — real service integration guards (Supabase social + OpenAI image/moderation + prod blocklist)
+
+// The Supabase adapter is real, single-seam, and has NO fake fallback.
+check('RC17 SUPABASE_ADAPTER: real single-seam adapter, honest empty when not configured', () => {
+  const c = read('src/lib/supabaseClient.js');
+  assert(/VITE_SUPABASE_URL/.test(c) && /VITE_SUPABASE_ANON_KEY/.test(c), 'adapter must probe the Supabase env seam');
+  assert(c.includes('isSupabaseConfigured'), 'adapter must expose a real configuration probe');
+  assert(
+    c.includes('configured: false, rows: []') && c.includes('configured: false, messages: []') && c.includes('configured: false, cards: []'),
+    'adapter must return honest empty results (no fabricated users/posts/rankings) when not configured',
+  );
+  assert(read('src/lib/socialClient.js').includes("from './supabaseClient.js'"), 'socialClient must delegate to the Supabase adapter');
+});
+
+// No service-role key or OpenAI key can reach the client bundle.
+check('RC17 CLIENT_SECRETS: no service-role / OpenAI key readable from the client', () => {
+  for (const f of walk(join(ROOT, 'src'), ['.js', '.jsx'])) {
+    const txt = readFileSync(f, 'utf8');
+    assert(!txt.includes('SUPABASE_SERVICE_ROLE_KEY'), `${rel(f)} references the service-role key (server-only)`);
+    assert(!/import\.meta\.env\.[A-Za-z0-9_]*OPENAI[A-Za-z0-9_]*/.test(txt), `${rel(f)} reads an OpenAI key from client env`);
+    assert(!/import\.meta\.env\.[A-Za-z0-9_]*SERVICE_ROLE[A-Za-z0-9_]*/.test(txt), `${rel(f)} reads a service-role key from client env`);
+    assert(!/\bsk-[A-Za-z0-9]{16,}/.test(txt), `${rel(f)} contains a hardcoded OpenAI-style secret`);
+  }
+});
+
+// RLS migrations exist: every entity + RLS enabled everywhere + policies present.
+check('RC17 RLS_MIGRATIONS: schema + RLS enabled on every table + policies present', () => {
+  const mig = walk(join(ROOT, 'supabase/migrations'), ['.sql']).map((f) => readFileSync(f, 'utf8')).join('\n');
+  for (const t of ['anonymous_profiles', 'weekly_leagues', 'league_memberships', 'league_contributions', 'shout_messages', 'reactions', 'future_diary_shares', 'reports', 'block_relations', 'image_usage']) {
+    assert(mig.includes(`public.${t}`), `migration is missing entity: ${t}`);
+  }
+  assert((mig.match(/enable row level security/g) || []).length >= 10, 'RLS must be enabled on every table');
+  assert(/create policy/.test(mig), 'RLS policies must be defined');
+});
+
+// League contribution is server-authoritative — the client can never inject a score.
+check('RC17 LEAGUE_SERVER_AUTHORITY: score is server-decided; client sends only a kind', () => {
+  const mig = walk(join(ROOT, 'supabase/migrations'), ['.sql']).map((f) => readFileSync(f, 'utf8')).join('\n');
+  assert(/create or replace function public\.record_league_contribution/.test(mig), 'league contribution RPC is missing');
+  assert(/security definer/.test(mig), 'league RPC must be SECURITY DEFINER (server-controlled)');
+  assert(/unique \(user_id, event_key\)/.test(mig), 'contributions must dedupe by event_key (no double count)');
+  const c = read('src/lib/supabaseClient.js');
+  assert(/record_league_contribution', \{ p_kind: kind \}/.test(c), 'client must send ONLY a kind to the league RPC');
+  assert(!/p_points|p_score/.test(c), 'client must never send points/score to the league RPC');
+});
+
+// Shouts carry a real 24h TTL (schema + server + model); there is no direct-message concept.
+check('RC17 SHOUT_TTL: 24h expiry enforced in schema + server + model; no DM', () => {
+  const mig = walk(join(ROOT, 'supabase/migrations'), ['.sql']).map((f) => readFileSync(f, 'utf8')).join('\n');
+  assert(mig.includes('expires_at') && /check \(expires_at > created_at\)/.test(mig), 'schema must enforce a TTL column');
+  assert(read('supabase/functions/publish-shout/index.ts').includes('TTL_MS'), 'publish-shout must set an expiry');
+  assert(read('src/constants/social.js').includes('SHOUT_TTL_MS'), 'the model must carry a TTL constant');
+  // No direct-message COLUMN (a comment may legitimately explain that DMs do not exist).
+  assert(!/recipient_id|dm_to|\bdmTo\b|direct_message/i.test(mig), 'no direct-message recipient column in the schema');
+});
+
+// Public publish is fail-closed without a configured moderation service (client + server + RLS).
+check('RC17 MODERATION_GATE: public publish fail-closed without moderation', () => {
+  const mod = read('src/lib/moderation.js');
+  assert(mod.includes('moderateForPublish') && mod.includes('MODERATION_NOT_CONFIGURED'), 'client must gate publish on moderation');
+  assert(/allowed: false, state: 'MODERATION_NOT_CONFIGURED'/.test(mod), 'unconfigured moderation must NOT allow publish');
+  const ps = read('supabase/functions/publish-shout/index.ts');
+  assert(ps.includes("error: 'MODERATION_NOT_CONFIGURED'") && ps.includes('openaiConfigured'), 'server publish must refuse when moderation unconfigured');
+  const mig = walk(join(ROOT, 'supabase/migrations'), ['.sql']).map((f) => readFileSync(f, 'utf8')).join('\n');
+  assert(!/create policy[^\n]*shout_messages[^\n]*insert|shouts_insert/i.test(mig), 'clients must not insert shouts directly (moderated server publish only)');
+});
+
+// Public/media moderation must never turn a missing provider input or failed signed URL into "safe".
+check('RC17 MODERATION_FAIL_CLOSED: signed media + explicit provider verdict are mandatory', () => {
+  const helper = read('supabase/functions/_shared/openai.ts');
+  assert(
+    helper.includes("throw new Error('moderation input missing')"),
+    'empty moderation input must fail closed, never become flagged:false'
+  );
+  assert(
+    helper.includes("typeof result.flagged !== 'boolean'") &&
+      helper.includes("throw new Error('moderation verdict missing')"),
+    'missing or malformed provider verdict must fail closed'
+  );
+
+  const moderateFn = read('supabase/functions/moderate-content/index.ts');
+  assert(
+    moderateFn.includes('if (!m.configured)') &&
+      moderateFn.includes("state: 'MODERATION_NOT_CONFIGURED'") &&
+      moderateFn.includes('allowed: false'),
+    'moderate-content must refuse a missing provider verdict'
+  );
+
+  const shout = read('supabase/functions/publish-shout/index.ts');
+  assert(
+    shout.includes('if (!m.configured)') &&
+      shout.includes("error: 'MODERATION_NOT_CONFIGURED'"),
+    'shout publish must refuse a missing provider verdict'
+  );
+
+  const share = read('supabase/functions/publish-future-diary-share/index.ts');
+  assert(
+    share.includes('signedErr') &&
+      share.includes('!signed?.signedUrl') &&
+      share.includes("error: 'image_unavailable'"),
+    'public diary image share must require a real signed URL'
+  );
+  assert(
+    share.includes('if (!m.configured)'),
+    'public diary share must require an explicit moderation verdict'
+  );
+
+  const gen = read('supabase/functions/generate-future-image/index.ts');
+  assert(
+    gen.includes('signedErr') &&
+      gen.includes('!signed?.signedUrl') &&
+      gen.includes("error: 'signed_url_error'"),
+    'generated image must fail closed when a signed URL cannot be created'
+  );
+  assert(
+    gen.includes('if (!m.configured)') &&
+      gen.includes("error: 'moderation_unavailable'"),
+    'generated image must require an explicit moderation verdict'
+  );
+});
+
+// Image generation quota is server-authoritative: reserve BEFORE generate, refund on failure.
+check('RC17 IMAGE_QUOTA_SERVER_AUTHORITY: reserve-before-generate + refund-on-failure', () => {
+  const mig = walk(join(ROOT, 'supabase/migrations'), ['.sql']).map((f) => readFileSync(f, 'utf8')).join('\n');
+  assert(mig.includes('image_usage') && /reserve_image_generation/.test(mig) && /refund_image_generation/.test(mig), 'server usage table + reserve/refund functions required');
+  const fn = read('supabase/functions/generate-future-image/index.ts');
+  assert(fn.indexOf("rpc('reserve_image_generation'") >= 0 && fn.indexOf('await generateImage(') >= 0, 'generate fn must reserve + call the provider');
+  assert(fn.indexOf("rpc('reserve_image_generation'") < fn.indexOf('await generateImage('), 'must reserve BEFORE generating');
+  assert(/refund_image_generation/.test(fn) && fn.includes("error: 'quota_exceeded'"), 'must refund on failure + refuse when over quota');
+  assert(read('src/constants/imagePolicy.js').includes('FREE_IMAGE_TRIALS'), 'client keeps the UX usage limits (not the authority)');
+});
+
+// Production blocklist attribution + fail-closed, license-gated promotion.
+check('RC17 BLOCKLIST_ATTRIBUTION: license review documented + promotion license-gated', () => {
+  const attr = read('extensions/chrome-shield/data/BLOCKLIST_ATTRIBUTION.md');
+  assert(/PRODUCTION_BLOCKLIST_LICENSE_REVIEW_REQUIRED\s*=\s*YES/.test(attr), 'attribution must flag the open license review');
+  assert(/^PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED\s*=\s*NO/m.test(attr), 'license review must be uncleared by default');
+  assert(/StevenBlack/.test(attr) && /MIT/.test(attr), 'attribution must name the upstream + its wrapper license');
+  const build = read('scripts/build-blocklist.mjs');
+  assert(build.includes('PRODUCTION_BLOCKLIST_LICENSE_REVIEW_CLEARED') && build.includes('flag[1]'), 'promotion must read the cleared FLAG (line-anchored), not prose');
+});
+
+// Production blocklist is deterministic: one shared normalize + source/compiled SHA-256.
+check('RC17 BLOCKLIST_DETERMINISM: shared normalize + source & compiled SHA-256', () => {
+  const norm = read('scripts/lib/blocklist-normalize.mjs');
+  assert(norm.includes('canonicalDomainsJson') && norm.includes('sha256Hex') && norm.includes('normalizeHostsToDomains'), 'normalize lib must expose canonical + sha256 + hosts helpers');
+  assert(read('scripts/fetch-production-blocklist.mjs').includes('sourceSha256'), 'fetch must pin the source SHA-256');
+  assert(read('scripts/build-blocklist.mjs').includes('compiledSha256'), 'build must emit the compiled SHA-256');
+  // The extension never fetches the list at runtime — only the dev script does.
+  assert(!/fetch\(/.test(read('extensions/chrome-shield/service_worker.js')), 'the extension must not fetch a list at runtime');
+});
+
+// Real Chrome capacity check + fail-closed enable (P0-B).
+check('RC17 BUNDLE_CAPACITY: real getAvailableStaticRuleCount + fail-closed enable', () => {
+  const sw = read('extensions/chrome-shield/service_worker.js');
+  assert(sw.includes('getAvailableStaticRuleCount'), 'SW must query real Chrome static-rule capacity');
+  assert(/capacity: 'INSUFFICIENT'/.test(sw) && /available < needed/.test(sw), 'SW must compare capacity and fail closed on INSUFFICIENT');
+});
+
+// UI truth (P0-C): production-protection claim is gated; never a total-coverage overclaim.
+check('RC17 UI_TRUTH: production protection claim gated to real status; no total-coverage claim', () => {
+  const prot = read('src/constants/protection.js');
+  assert(prot.includes('bundledStatusView'), 'protection.js must derive the honest label from real status');
+  assert(prot.includes('기본 유해사이트 보호 켜짐') && prot.includes('알려진 유해사이트 목록을 기준으로'), 'production label + honest basis note required');
+  // Scan RENDERED code only — a comment may quote the forbidden phrase to say it must never be used.
+  const protCode = prot.replace(/\/\*[\s\S]*?\*\//g, '').split('\n').filter((l) => !l.trim().startsWith('//')).join('\n');
+  assert(!/모든 음란|모든 성인|전부 차단|완벽 차단|100% 차단/.test(protCode), 'never a total-coverage / perfection claim in a rendered string');
+});
+
+// Privacy: the adapter uploads ONLY whitelisted public prose — no private/browsing-history leak.
+check('RC17 PRIVACY: adapter uploads only whitelisted public fields (no private/history leak)', () => {
+  const c = read('src/lib/supabaseClient.js');
+  const shareFn = c.match(/export async function shareFutureDiary[\s\S]*?\n\}/);
+  assert(shareFn, 'shareFutureDiary not found');
+  for (const leak of ['counterName', 'streakDays', 'sourcePrivateId', 'browsing', 'history', 'visitedUrl', 'checkinNote']) {
+    assert(!shareFn[0].includes(leak), `share upload must not carry private field: ${leak}`);
+  }
+  assert(
+    shareFn[0].includes('futureSelf') && shareFn[0].includes('idealDay') && shareFn[0].includes('feelingsEnvironment'),
+    'share upload must carry only the whitelisted prose fields',
   );
 });
 

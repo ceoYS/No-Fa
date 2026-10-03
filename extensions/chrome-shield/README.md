@@ -137,10 +137,12 @@ RC-15 는 **실제 제출이 아니라 제출 전 하드닝**이다. 팝업·옵
 | 타입 | 동작 | 응답 |
 |------|------|------|
 | `PING` | 살아있는지 확인 | `{ ok, name, version }` |
-| `GET_STATUS` | 현재 동적 룰 수 | `{ ok, dynamicRuleCount, testSignal, name, version }` |
+| `GET_STATUS` | 현재 상태(사실) | `{ ok, dynamicRuleCount, userBlockCount, allowlistCount, defaultProtection, bundled:{version,listType,domainCount}, testSignal, name, version }` |
 | `SET_TEST_SIGNAL` | 무해한 테스트 토큰 동적 룰 설치 | `{ ok, count, testSignal }` |
-| `SET_BLOCK_RULES` | 정규화한 신호 배열 → 동적 룰 | `{ ok, count }` |
-| `CLEAR_RULES` | 동적 룰 제거 | `{ ok, removed }` |
+| `SET_BLOCK_RULES` | 정규화한 신호 배열 → 동적 룰(사용자 차단, priority 2) | `{ ok, count }` |
+| `SET_ALLOWLIST` | 허용 도메인 배열 → allow 룰(priority 3) | `{ ok, allowlistCount }` |
+| `SET_PROTECTION_STATE` | 원하는 보호 상태 전체를 한 번에(멱등 조정) | `{ ok, ...GET_STATUS }` |
+| `CLEAR_RULES` | 동적 룰 제거 + 번들 기본 보호 끔 | `{ ok, removed }` |
 
 신호 매핑 원칙은 그대로다: 앱이 **추상 위험 신호**를 **앱이 관리하는 큐레이션 토큰**으로 바꿔
 보낸다. 사용자가 위험한 주소를 직접 찾지 않는다(그 검색 자체가 재발 트리거다). 실제 사용자
@@ -219,6 +221,32 @@ declarativeNetRequest 룰로 설치하고, 그 값이 든 주소가 실제로 `b
 다른 브라우저 차단은 하지 않는다 — 이 Chrome 데스크톱 한정이다.
 
 ---
+
+## 기본 보호 목록 + 모드 + 허용목록 (RC-16)
+
+RC-8까지는 사용자가 직접 확인한 값 하나를 동적 룰로 설치했다. RC-16은 **번들 기본 보호 목록**을
+더한다 — 앱이 준비한 도메인 목록을 이 Chrome에서 로컬로 평가한다.
+
+- **데이터 계약:** [`data/adult-domains.v1.json`](data/adult-domains.v1.json) — **도메인만** 담는다
+  (자격증명·방문기록 없음). `schema`/`version`/`listType`(fixture|production) 메타를 가진다.
+- **컴파일:** [`../../scripts/build-blocklist.mjs`](../../scripts/build-blocklist.mjs)
+  (`npm run …` 아님 — `node scripts/build-blocklist.mjs`)가 도메인 목록을 정적 룰셋
+  `blocklist-rules.json`(Chrome이 로드) + `blocklist-meta.js`(상태 보고용)로 만든다. `requestDomains`로
+  **도메인 + 하위도메인만 정확히** 매칭한다(부분 문자열 아님 → 관련 없는 도메인 안 막음).
+- **모드:** `보호 끔` / `기본 보호`(번들 목록 켬) / `사용자 지정 보호`(번들 + 사용자 확인 차단).
+  매니페스트에서 번들 룰셋은 `enabled:false`로 등록되고, `SET_PROTECTION_STATE`가
+  `updateEnabledRulesets`로 켜고 끈다(세션을 넘어 유지).
+- **우선순위:** 허용목록(allow, priority 3) > 사용자 차단(priority 2) > 번들 기본 보호(priority 1).
+  사용자가 명시적으로 허용한 도메인은 기본 보호보다 항상 우선한다.
+- **정직 — FIXTURE:** 지금 번들 목록은 **테스트 도메인**(RFC 6761 예약 TLD `.test/.example/.invalid`)
+  뿐이다. 엔진은 진짜지만 **실제 성인/고위험 도메인 데이터셋은 아직 없다**
+  (`PRODUCTION_ADULT_BLOCKLIST = NOT_YET_PROVISIONED`). 실제 성인 사이트를 막는다고 말하지 않는다.
+  프로덕션 목록이 제공되면 `listType`을 `production`으로 바꾸고 `domains`를 교체한 뒤 다시 빌드한다.
+- **프라이버시:** 도메인 매칭은 전부 로컬이다. 방문 기록을 어디로도 보내지 않고, 원격 텔레메트리도 없다.
+
+자동 스모크(`npm run qa:ext`)가 `SET_PROTECTION_STATE`로 기본 보호를 켜 번들 도메인이
+`blocked.html`로 redirect 되는지, 그리고 그 도메인을 허용목록에 넣으면 더는 redirect 되지 않는지
+(allow가 번들을 이긴다)까지 실제 브라우저에서 검증한다.
 
 ## 멈춤 페이지 → 앱 이어가기 (RC-10)
 

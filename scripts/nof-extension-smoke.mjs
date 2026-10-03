@@ -241,8 +241,10 @@ async function main() {
     await c.sleep(1300);
     const recHref = await c.eval('location.href');
     const recBody = await c.text();
+    // V2 오늘 기록 (EG-02) opens on the day-state/writing step ('오늘 하루' / eyebrow '오늘 기록');
+    // a saved record instead reads back as '오늘의 기록'. Accept any of these honest markers.
     const onRecord = recHref.includes('from=shield') && recHref.includes('to=record')
-      && (recBody.includes('1분 기록') || recBody.includes('오늘의 기록'));
+      && (recBody.includes('오늘 하루') || recBody.includes('오늘의 기록') || recBody.includes('오늘 기록'));
     check('blocked.html → 오늘 기록 opens the record screen', onRecord, recHref);
 
     await c.goto(blockedUrl, 600);
@@ -256,6 +258,49 @@ async function main() {
       && urgeBody.includes('지금 멈추면');
     check('blocked.html → 잠깐 멈춤 opens the urge screen', onUrge, urgeHref);
     await c.shot('rc10_urge_handoff');
+
+    // ── RC-16 — DEFAULT PROTECTION (bundled list) + ALLOWLIST OVERRIDE, real end-to-end ──
+    // Harmless fixture domain from data/adult-domains.v1.json (reserved TLD, never resolves; the
+    // declarativeNetRequest redirect fires on main_frame BEFORE any DNS, so this is safe + real).
+    // IMPORTANT: extSend must run from the APP page (externally_connectable → onMessageExternal); a
+    // fixture navigation lands on blocked.html (a chrome-extension:// page), so we re-open the app
+    // page before every message, or the reply routes through the wrong channel.
+    const FIXTURE_DOMAIN = 'high-risk-fixture.test';
+
+    // 1) 기본 보호 ON → GET_STATUS reports it, and a bundled fixture domain redirects to blocked.html.
+    await c.goto(APP_URL, 800);
+    const protOn = await extSend(c, extId, { type: 'SET_PROTECTION_STATE', defaultProtection: true, allowlist: [], userBlocks: [] });
+    check('SET_PROTECTION_STATE default on', protOn && protOn.ok && protOn.defaultProtection === true,
+      `defaultProtection=${protOn && protOn.defaultProtection} bundledDomains=${protOn && protOn.bundled && protOn.bundled.domainCount}`);
+    // RC-17 P0-B — the REAL Chrome capacity check (getAvailableStaticRuleCount) ran on the same
+    // production code path with a harmless fixture: GET_STATUS reports a numeric available count and a
+    // sane bundled ruleCount + capacity verdict (OK for the small fixture). Fail-closed by construction.
+    check('P0-B capacity reported (real getAvailableStaticRuleCount, fixture path)',
+      protOn && protOn.ok && protOn.bundled && protOn.bundled.capacity === 'OK'
+        && Number.isFinite(protOn.availableStaticRuleCount) && Number.isFinite(protOn.bundled.ruleCount),
+      `avail=${protOn && protOn.availableStaticRuleCount} capacity=${protOn && protOn.bundled && protOn.bundled.capacity} ruleCount=${protOn && protOn.bundled && protOn.bundled.ruleCount}`);
+    await c.sleep(300);
+    await c.goto(`http://${FIXTURE_DOMAIN}/`, 1500);
+    const dfHref = await c.eval('location.href');
+    const dfBlocked = new RegExp(`^chrome-extension://${extId}/blocked\\.html`).test(dfHref);
+    check('DEFAULT_PROTECTION_ARCHITECTURE: bundled domain → blocked.html', dfBlocked, dfHref);
+    await c.shot('rc16_default_protection');
+
+    // 2) ALLOWLIST OVERRIDE: allow that same domain → it no longer redirects (allow beats bundled).
+    await c.goto(APP_URL, 800);
+    const allowSet = await extSend(c, extId, { type: 'SET_PROTECTION_STATE', defaultProtection: true, allowlist: [FIXTURE_DOMAIN], userBlocks: [] });
+    check('SET_PROTECTION_STATE with allowlist', allowSet && allowSet.ok && (allowSet.allowlistCount || 0) >= 1,
+      `allowlistCount=${allowSet && allowSet.allowlistCount}`);
+    await c.sleep(300);
+    await c.goto(`http://${FIXTURE_DOMAIN}/`, 1500);
+    const alHref = await c.eval('location.href');
+    const alNotBlocked = !new RegExp(`^chrome-extension://${extId}/blocked\\.html`).test(alHref);
+    check('ALLOWLIST_OVERRIDE: allow wins over bundled (no redirect)', alNotBlocked, alHref);
+    await c.shot('rc16_allowlist_override');
+
+    // Turn protection back off (also verifies the off path); final cleanup below clears everything.
+    await c.goto(APP_URL, 800);
+    await extSend(c, extId, { type: 'SET_PROTECTION_STATE', defaultProtection: false, allowlist: [], userBlocks: [] });
 
     // Cleanup: clear the dynamic rule we installed so the browser profile is left as found.
     const cleared = await extSend(c, extId, { type: 'CLEAR_RULES' });

@@ -278,6 +278,110 @@ button.v13-card--row {
   }
 }
 
+/* ── Future diary: a premium journal writing surface (Founder feedback #3) ─────
+ * The prompts already read as a calm vision journal; the writing fields were the
+ * weak part — a plain hairline box that felt like a default form. Give each field a
+ * warm filled surface, a clear resting border, generous padding + line-height, and a
+ * soft ember focus ring so writing the future feels intentional, not like a text box. */
+.future-diary-prompt {
+  padding: var(--sp-4);
+  box-shadow: var(--shadow-card);
+}
+.future-diary-prompt .card-label {
+  font-size: var(--fs-body);
+  letter-spacing: -0.01em;
+}
+.future-diary-count {
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.02em;
+}
+.future-diary-input {
+  margin-top: var(--sp-2);
+  padding: 14px 15px;
+  min-height: 132px;
+  background: linear-gradient(180deg, #fffdf9 0%, var(--warm-card) 100%);
+  border: 1.5px solid var(--tint-warm-border);
+  border-radius: var(--r-md);
+  line-height: 1.72;
+  font-size: var(--fs-body);
+  color: var(--text-primary);
+  box-shadow: inset 0 1px 2px rgba(28, 25, 20, 0.04);
+  transition: border-color 160ms var(--ease-soft), box-shadow 160ms var(--ease-soft);
+}
+.future-diary-input::placeholder {
+  color: var(--text-quiet);
+}
+.future-diary-input:focus {
+  border-color: var(--accent-ember);
+  box-shadow: 0 0 0 3px rgba(176, 137, 79, 0.16), inset 0 1px 2px rgba(28, 25, 20, 0.04);
+  outline: none;
+}
+
+/* ── Shield: an at-a-glance "works now vs planned" split (Founder feedback #5) ──
+ * The screen is honest but read as a stack of disclaimers, so it was unclear whether
+ * ANYTHING works. This one card answers it plainly: what the app can genuinely do right
+ * now (all locally, no fake blocking) vs what is still 준비 중 — no over-claim either way. */
+.shield-clarity {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-4);
+}
+.shield-clarity-group {
+  display: flex;
+  flex-direction: column;
+  gap: var(--sp-2);
+}
+.shield-clarity-head {
+  display: flex;
+  align-items: center;
+  gap: var(--sp-2);
+}
+.shield-clarity-badge {
+  font-size: var(--fs-micro);
+  font-weight: 700;
+  border-radius: 99px;
+  padding: 3px 10px;
+  white-space: nowrap;
+}
+.shield-clarity-badge[data-kind='now'] {
+  color: #3f6b4f;
+  background: rgba(122, 162, 132, 0.18);
+}
+.shield-clarity-badge[data-kind='soon'] {
+  color: var(--text-muted);
+  background: var(--bg-surface-raised);
+}
+.shield-clarity-list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.shield-clarity-list li {
+  position: relative;
+  padding-left: 16px;
+  font-size: var(--fs-small);
+  line-height: 1.55;
+  color: var(--text-secondary);
+}
+.shield-clarity-list li::before {
+  content: '';
+  position: absolute;
+  left: 2px;
+  top: 8px;
+  width: 5px;
+  height: 5px;
+  border-radius: 99px;
+}
+.shield-clarity-group[data-kind='now'] .shield-clarity-list li::before {
+  background: #7aa284;
+}
+.shield-clarity-group[data-kind='soon'] .shield-clarity-list li::before {
+  background: var(--border-medium);
+}
+
 /* Settings groups use the same restrained raised-paper hierarchy. */
 .settings-group {
   border-color: var(--border-medium);
@@ -310,6 +414,102 @@ button.v13-card--row {
 .bottom-nav-nd {
   width: 19px;
   height: 19px;
+}
+
+/* -------------------------------------------------------------------------
+ * 상점 (shop sheet) readability on the v13 light shell.
+ *
+ * components.css styles the shop from the ORIGINAL dark palette — .shop-tab and
+ * .catalog-row sit on --ink-700 (a dark slate) and .catalog-thumb on --ink-600 —
+ * but the shell they now open over is light paper, and --text-primary is near-black.
+ * Founder device video showed exactly that collision: dark item names and
+ * descriptions on dark cards. components.css is a pinned canonical authority, so
+ * the repair lands in this bounded repair layer, which loads after it and exists
+ * for precisely this. Every value below is an existing light-shell token — no new
+ * palette, no layout change, no behaviour change.
+ * ------------------------------------------------------------------------- */
+
+.shop-tab {
+  background: var(--bg-surface);
+  border-color: var(--border-medium);
+  color: var(--text-secondary);
+}
+
+.shop-tab[data-selected='true'] {
+  background: var(--tint-warm);
+  border-color: var(--tint-warm-border);
+  color: var(--tint-warm-text);
+  font-weight: 600;
+}
+
+.catalog-row {
+  background: var(--bg-surface);
+  border-color: var(--border-medium);
+}
+
+.catalog-row[data-active='true'] {
+  background: var(--tint-warm);
+  border-color: var(--tint-warm-border);
+}
+
+.catalog-thumb {
+  background: var(--bg-surface-raised);
+  border-color: var(--border-medium);
+}
+
+.catalog-thumb-pending {
+  border-color: var(--border-medium);
+  background: var(--bg-surface-strong);
+}
+
+.catalog-name {
+  color: var(--text-primary);
+  font-weight: 600;
+}
+
+/* The blurb is real product copy, not a caption: --text-muted is a pale grey on white
+ * that a 390px phone loses. It takes the secondary ink instead. */
+.catalog-blurb {
+  color: var(--text-secondary);
+}
+
+/* The buy/use button kept the old ember gradient with near-black text (~4:1 on the
+ * bronze). It follows the v13 light shell's own primary CTA instead. */
+.catalog-action {
+  background: var(--ink-900);
+  color: #f4f6f7;
+  border-color: var(--ink-900);
+}
+
+.catalog-action:hover:not(:disabled) {
+  background: var(--ink-800);
+  border-color: var(--ink-800);
+}
+
+/* Unaffordable is a READABLE state, not a faded one — a 0.45-opacity label over an
+ * already-marginal gradient was unreadable on device. It reads clearly and still
+ * looks plainly inactive. */
+.catalog-action:disabled {
+  background: var(--bg-surface-strong);
+  color: var(--text-secondary);
+  border-color: var(--border-medium);
+  box-shadow: none;
+  cursor: default;
+}
+
+/* Sticky sheet footer (Founder blocker 1) — bounded C2-A repair, kept OUT of the pinned
+ * components.css. The primary CTA stays pinned to the bottom of the scrolling bottom-sheet so it
+ * is ALWAYS discoverable: a tall add-counter form (이름 · 시작 일·시간 · 목표 일수 · 추가하기) can
+ * never push 추가하기 below the fold with no way on. Content scrolls under it; the sheet's own
+ * canvas bg + a soft top fade keep the buttons legible over scrolled text. This layer loads after
+ * components.css, so it overrides the base .sheet-actions without touching the canonical file. */
+.sheet-actions {
+  position: sticky;
+  bottom: 0;
+  margin-top: var(--sp-3);
+  padding-top: var(--sp-3);
+  background: var(--bg-canvas);
+  box-shadow: 0 -10px 16px -8px var(--bg-canvas), 0 -1px 0 var(--border-medium);
 }
 
 @media (prefers-reduced-motion: reduce) {
