@@ -308,10 +308,10 @@ async function runFlow(c) {
   await c.goto(APP_URL);
   await c.clearLS();
   await c.goto(APP_URL);
-  // v13 Final Handoff Home mounts as the ink-hero status surface with the 절제 항목 counter
-  // list (root .v13-home). '절제 시간'/'절제 카운터' were the pre-v13 home strings; they now
-  // live only in a confirm sheet / DisciplineScreen, so home is keyed on '절제 항목' + .v13-home.
-  check('B01', await c.eval("!!document.querySelector('.v13-home')"));
+  // V2 Ember Graphite home mounts as the .v2-screen surface with the white-kitten hero and the
+  // PRESERVED 절제 항목 counter list (.v13-item-row). (The v13 .v13-home root was superseded by
+  // the V2 kitten+XP home; the counter management + '절제 항목' capability is retained.)
+  check('B01', await c.eval("!!document.querySelector('.v2-screen') && !!document.querySelector('.v13-item-row')"));
   check('B02', (await c.has('절제 항목')) && (await c.eval('document.querySelectorAll(".v13-item-row").length >= 1')));
   // v13 in-the-moment actions: 잠깐 멈춤 (hero primary) + 오늘 기록 (secondary).
   check('B03', (await c.has('잠깐 멈춤')) && (await c.has('오늘 기록')));
@@ -366,7 +366,8 @@ async function runFlow(c) {
   // 9 · Urge → check-in continuation (start the 5-min hold so the CTA appears).
   const held = await c.click('5분 같이 버티기');
   const toCheckin = await c.click('오늘 기록에 한 줄 남기기');
-  check('B09', held && toCheckin && (await c.has('1분 기록')));
+  // V2 오늘 기록 (EG-02) opens on the day-state / writing step.
+  check('B09', held && toCheckin && ((await c.has('오늘 하루')) || (await c.has('오늘의 규율 점검'))));
 
   // 10 · Complete the WRITING-first check-in (RC-1): the user's own 회고 (the gate), plus
   //      나와의 약속 / 오늘의 다짐. Verify each writing input actually registered (a silently
@@ -375,11 +376,14 @@ async function runFlow(c) {
   const promiseTyped = await c.type('textarea[aria-label="나와의 약속"]', PROMISE);
   const resolveTyped = await c.type('textarea[aria-label="오늘의 다짐"]', RESOLVE);
   const nextEnabled = await c.click('다음 · 오늘의 규율 점검'); // writing-gated; only clicks once step1Ready
-  const finished = await c.click('오늘 기록 마치기');
-  check('B10', retroTyped && promiseTyped && resolveTyped && nextEnabled && finished,
-    retroTyped && promiseTyped && resolveTyped && nextEnabled && finished
-      ? '' : `retro:${retroTyped} promise:${promiseTyped} resolve:${resolveTyped} next:${nextEnabled} finish:${finished}`);
-  await sleep(400);
+  // V2 EG-02 → EG-03: step 2 '기록하기' shows the itemized XP result as a PREVIEW (nothing
+  // persisted yet), and the result CTA '보러 가기' commits the record + XP together.
+  const recorded = await c.click('기록하기'); await sleep(400);
+  const finished = await c.click('보러 가기');
+  check('B10', retroTyped && promiseTyped && resolveTyped && nextEnabled && recorded && finished,
+    retroTyped && promiseTyped && resolveTyped && nextEnabled && recorded && finished
+      ? '' : `retro:${retroTyped} promise:${promiseTyped} resolve:${resolveTyped} next:${nextEnabled} record:${recorded} finish:${finished}`);
+  await sleep(500);
 
   // 11–12 · Reward landing appears; its save confirmation is gated on the real save.
   const onReward = await c.waitForText('고양이 방', 4000);
@@ -517,7 +521,9 @@ async function runFlow(c) {
   //      counter card's elapsed text, wait past a second, read again — it must advance.
   //      This proves the seconds are real (not a frozen stamp), on the rendered DOM.
   await c.clickExact('홈'); await sleep(300);
-  const readCounter = `(() => { const el = document.querySelector('.v13-hero-timer'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
+  // V2 home shows the live per-counter elapsed time in the PRESERVED counter rows (.v13-item-row);
+  // its trailing seconds tick every second.
+  const readCounter = `(() => { const el = document.querySelector('.v13-item-row'); return el ? el.textContent.replace(/\\s+/g,' ').trim() : null; })()`;
   const tick1 = await c.eval(readCounter);
   await sleep(1500);
   const tick2 = await c.eval(readCounter);
@@ -530,7 +536,8 @@ async function runFlow(c) {
   //      read-back appears (absent before the first pet) — proving the interaction changed
   //      real state, not just played a glow. Asserts on rendered DOM, not source.
   await c.clickExact('홈'); await sleep(250);
-  const toRoom = await c.clickExact('내 방'); await sleep(450); // v13 bottom nav → 고양이 방(내 방)
+  await c.clickExact('내 방'); await sleep(300); // 내 방 tab → Kitten Hub (EG-05)
+  const toRoom = await c.click('방으로 들어가기'); await sleep(450); // hub → the actual room (EG-11)
   const beforePet = await c.has('지금까지 쓰다듬기'); // no petting yet this run → absent
   const petClicked = await c.click('쓰다듬기'); await sleep(350);
   const afterPet = await c.has('지금까지 쓰다듬기'); // count read-back now visible
@@ -583,139 +590,122 @@ async function runFlow(c) {
   check('B27', calOk, calOk ? '' : `cal:${onCal} now:${monthNow} weekday:${hasWeekday} today:${hasToday} prev:${monthPrev} back:${monthBack}`);
   await c.shot('records_month_nav');
 
-  // 28 · 고양이 방 꾸미기 — REAL placement. Open the room, enter 배치 mode, tap a tray item
-  //      to place it, and a placed card appears on the stage; after a HARD RELOAD the card
-  //      is still there (coordinates persisted to localStorage), asserted on rendered DOM.
+  // 28 · 방 꾸미기 (V2 living room, EG-13) — REAL placement. Enter the room, open 꾸미기, tap a
+  //      tray prop to place it (a transparent sprite appears in the 4:3 scene), and after a HARD
+  //      RELOAD it is still there (persisted to useRoomV2). Asserted on rendered DOM.
+  const decorCount = `document.querySelectorAll('.pr-sprite:not(.pr-feeder)').length`;
   await c.clickExact('홈'); await sleep(200);
-  await c.clickExact('내 방'); await sleep(350); // v13 bottom nav → 고양이 방
-  await c.click('아이템 배치하기'); await sleep(300);
-  const trayBefore = await c.eval(`document.querySelectorAll('.room-tray-item').length`);
-  const placedBefore = await c.eval(`document.querySelectorAll('.room-card').length`);
-  await c.clickSelector('.room-tray-item'); await sleep(350); // tap-to-place the first tray item
-  const placedAfter = await c.eval(`document.querySelectorAll('.room-card').length`);
+  await c.clickExact('내 방'); await sleep(300);
+  await c.click('방으로 들어가기'); await sleep(400);
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(350);
+  const trayBefore = await c.eval(`document.querySelectorAll('.pr-tray-item').length`);
+  const placedBefore = await c.eval(decorCount);
+  await c.click('초록 화분'); await sleep(350); // tap-to-place a tray prop
+  const placedAfter = await c.eval(decorCount);
+  await c.click('배치 마치기'); await sleep(300);
   await c.reload(); await sleep(400);
   await c.clickExact('홈'); await sleep(200);
-  await c.clickExact('내 방'); await sleep(350); // v13 bottom nav → 고양이 방
-  await c.click('아이템 배치하기'); await sleep(300);
-  const placedAfterReload = await c.eval(`document.querySelectorAll('.room-card').length`);
+  await c.clickExact('내 방'); await sleep(300);
+  await c.click('방으로 들어가기'); await sleep(450);
+  const placedAfterReload = await c.eval(decorCount);
   const placeOk = trayBefore > 0 && placedAfter > placedBefore && placedAfterReload >= placedAfter;
   check('B28', placeOk, placeOk ? '' : `tray:${trayBefore} before:${placedBefore} after:${placedAfter} reload:${placedAfterReload}`);
   await c.shot('room_place_persist');
 
-  // 29 · A placed card can be DRAGGED to a new position. Read the lamp card's left% before
-  //      and after a real pointer drag (pointerdown → pointermove → pointerup); it must move.
-  const lampSel = '.room-card[data-item="ember_lamp"]';
-  const leftBefore = await c.eval(`(() => { const el = document.querySelector('${lampSel}'); return el ? parseFloat(el.style.left) : null; })()`);
-  const dragged = await c.pointerDrag(lampSel, 0.28, 0.82);
-  const leftAfter = await c.eval(`(() => { const el = document.querySelector('${lampSel}'); return el ? parseFloat(el.style.left) : null; })()`);
-  const moveOk = dragged && leftBefore != null && leftAfter != null && Math.abs(leftAfter - leftBefore) > 5;
+  // 29 · A placed prop can be DRAGGED to a new floor position (real pointer drag inside the 4:3
+  //      scene); its left% changes. Drag is a 꾸미기 affordance, so re-enter edit first, and aim
+  //      at a clear floor spot (a safe-zone target would be rejected — that is B41).
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(350);
+  const plantSel = '.pr-sprite[src*="plant"]';
+  const readLeft = `(() => { const el=document.querySelector('${plantSel}'); return el?parseFloat(el.style.left):null; })()`;
+  const leftBefore = await c.eval(readLeft);
+  const dragged = await c.pointerDrag(plantSel, 0.16, 0.90, '.pet-room--scene');
+  const leftAfter = await c.eval(readLeft);
+  const moveOk = dragged && leftBefore != null && leftAfter != null && Math.abs(leftAfter - leftBefore) > 3;
   check('B29', moveOk, moveOk ? '' : `dragged:${dragged} left ${leftBefore} -> ${leftAfter}`);
-  await c.shot('room_card_repositioned');
+  await c.shot('room_prop_repositioned');
 
-  // 40 · P1 CLOSEOUT — placement must SURVIVE leaving placement mode. The exact Founder
-  //      flow: place → move → 배치 마치기 → THE OBJECT IS STILL THERE, at the same
-  //      coordinates, with no edit chrome on it (no name label, no button/handle, no
-  //      selection outline) → reopen 배치 → same position → hard reload → still present in
-  //      the normal room without entering placement mode at all. All asserted on rendered
-  //      DOM: a saved-count sentence would not satisfy any of these.
-  const lampPos = `(() => { const el = document.querySelector('.room-card[data-item="ember_lamp"]');
+  // 40 · P1 CLOSEOUT — placement SURVIVES leaving 꾸미기. The exact Founder flow: place → move
+  //      → 배치 마치기 → THE OBJECT IS STILL THERE (PetRoomV2 draws decor in view mode), at the
+  //      same coordinates, with no edit chrome (no selection outline) → reopen 꾸미기 → same spot
+  //      → hard reload → still present in the normal room without entering 꾸미기. Asserted on the
+  //      rendered sprite: a saved-count sentence would not satisfy any of these. (Still in 꾸미기.)
+  const plantPos = `(() => { const el = document.querySelector('${plantSel}');
     return el ? { left: parseFloat(el.style.left), top: parseFloat(el.style.top) } : null; })()`;
-  const editPos = await c.eval(lampPos);
+  const editPos = await c.eval(plantPos);
   await c.click('배치 마치기'); await sleep(400);
-  const viewCards = await c.eval(`document.querySelectorAll('.room-card').length`);
-  const viewPos = await c.eval(lampPos);
-  // The placed object is really painted (not a 0-size / display:none ghost) and carries
-  // no editing chrome of any kind in the normal room.
+  const viewCount = await c.eval(decorCount);
+  const viewPos = await c.eval(plantPos);
+  // The placed sprite is really painted (not a 0-size / hidden ghost) and carries no selection
+  // chrome in the normal room.
   const viewClean = await c.eval(`(() => {
-    const el = document.querySelector('.room-card[data-item="ember_lamp"]');
+    const el = document.querySelector('${plantSel}');
     if (!el) return { drawn: false };
-    const img = el.querySelector('img');
-    const r = img ? img.getBoundingClientRect() : null;
-    const cs = img ? getComputedStyle(img) : null;
+    const r = el.getBoundingClientRect();
+    const cs = getComputedStyle(el);
     return {
-      drawn: !!r && r.width > 8 && r.height > 8 && cs.visibility === 'visible' && parseFloat(cs.opacity) > 0.5,
-      viewFlag: el.getAttribute('data-placed-view') === '1',
-      labels: document.querySelectorAll('.room-card .room-card-name').length,
-      handles: document.querySelectorAll('button.room-card').length,
-      selected: document.querySelectorAll('.room-card.is-selected').length,
-      outline: cs ? cs.outlineStyle : null,
-      hits: el.getAttribute('style').includes('pointer-events: none'),
+      drawn: r.width > 8 && r.height > 8 && cs.visibility === 'visible' && parseFloat(cs.opacity) > 0.5,
+      selected: el.getAttribute('data-selected') === 'true',
     };
   })()`);
   await c.shot('room_placed_visible_after_done');
-  // Reopen placement: the same object, still at the same spot.
-  await c.click('아이템 배치하기'); await sleep(350);
-  const reopenPos = await c.eval(lampPos);
+  // Reopen 꾸미기: same sprite, still at the same spot.
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(350);
+  const reopenPos = await c.eval(plantPos);
   await c.click('배치 마치기'); await sleep(350);
-  // Hard reload, then straight into the normal room — no placement mode.
+  // Hard reload, then straight into the normal room — no 꾸미기.
   await c.reload(); await sleep(400);
   await c.clickExact('홈'); await sleep(200);
-  await c.clickExact('내 방'); await sleep(450);
-  const reloadPos = await c.eval(lampPos);
-  const reloadCards = await c.eval(`document.querySelectorAll('.room-card').length`);
-  const same = (a, b) => a && b && Math.abs(a.left - b.left) < 0.5 && Math.abs(a.top - b.top) < 0.5;
+  await c.clickExact('내 방'); await sleep(300);
+  await c.click('방으로 들어가기'); await sleep(450);
+  const reloadPos = await c.eval(plantPos);
+  const reloadCount = await c.eval(decorCount);
+  const same = (a, b) => a && b && Math.abs(a.left - b.left) < 0.6 && Math.abs(a.top - b.top) < 0.6;
   const stayVisible =
     !!editPos
-    && viewCards > 0
+    && viewCount > 0
     && same(editPos, viewPos)
     && viewClean.drawn === true
-    && viewClean.viewFlag === true
-    && viewClean.labels === 0
-    && viewClean.handles === 0
-    && viewClean.selected === 0
-    && viewClean.outline === 'none'
-    && viewClean.hits === true
+    && viewClean.selected === false
     && same(editPos, reopenPos)
-    && reloadCards > 0
+    && reloadCount > 0
     && same(editPos, reloadPos);
-  check('B40', stayVisible, stayVisible ? '' : `edit:${JSON.stringify(editPos)} view:${JSON.stringify(viewPos)} cards:${viewCards} clean:${JSON.stringify(viewClean)} reopen:${JSON.stringify(reopenPos)} reload:${JSON.stringify(reloadPos)}/${reloadCards}`);
+  check('B40', stayVisible, stayVisible ? '' : `edit:${JSON.stringify(editPos)} view:${JSON.stringify(viewPos)}/${viewCount} clean:${JSON.stringify(viewClean)} reopen:${JSON.stringify(reopenPos)} reload:${JSON.stringify(reloadPos)}/${reloadCount}`);
   await c.shot('room_placed_after_reload');
-  // Hand back to B30 in placement mode, exactly as it expects to find the room.
-  await c.click('아이템 배치하기'); await sleep(300);
+  // Hand to B41 in 꾸미기 (drag is an edit affordance).
+  await c.click('방 꾸미기 · 소품 배치'); await sleep(300);
 
-  // 41 · P1 SAFE PLACEMENT (Founder video QA, defect 1) — a decor card can no longer be
-  //      dropped onto the cat or over the feeder. Two REAL pointer drags aim straight at
-  //      the middle of the cat and then at the bowl tray; both must come to rest outside
-  //      the protected boxes. Asserted on the coordinates the component actually saved,
-  //      not on a hover state. The boxes below are the stage-space zones from
-  //      src/constants/roomZones.js (cat = the approved 기쁨/휴식 pose rects mapped through
-  //      the plate's cover-fit + 1.06 scene overscale; feeder = the measured bowl tray).
-  const CAT_BOX = { x0: 37.69, x1: 81.67, y0: 29.84, y1: 87.62 };
-  const FEEDER_BOX = { x0: 63.7, x1: 104.79, y0: 73.76, y1: 101.67 };
-  const inBox = (p, b) => !!p && p.left > b.x0 && p.left < b.x1 && p.top > b.y0 && p.top < b.y1;
-  const ontoCat = await c.pointerDrag(lampSel, 0.55, 0.55);
-  const afterCat = await c.eval(lampPos);
-  const ontoFeeder = await c.pointerDrag(lampSel, 0.86, 0.9);
-  const afterFeeder = await c.eval(lampPos);
-  const safeOk =
-    ontoCat && ontoFeeder
-    && !!afterCat && !!afterFeeder
-    && !inBox(afterCat, CAT_BOX) && !inBox(afterCat, FEEDER_BOX)
-    && !inBox(afterFeeder, CAT_BOX) && !inBox(afterFeeder, FEEDER_BOX);
-  check('B41', safeOk, safeOk ? '' : `cat:${ontoCat}/${JSON.stringify(afterCat)} feeder:${ontoFeeder}/${JSON.stringify(afterFeeder)}`);
+  // 41 · SAFE PLACEMENT — a prop dragged onto the cat or over the feeder (safe zones) is
+  //      REJECTED and never comes to rest over them (useRoomV2 rejects inSafeZone). Two REAL
+  //      pointer drags aim straight at the cat home and then at the feeder; asserted on the
+  //      coordinates the store actually saved. Zones mirror src/constants/roomV2.js SAFE_ZONES.
+  const ZONES = [{ x: 0.34, y: 0.86, r: 0.13 }, { x: 0.64, y: 0.865, r: 0.12 }, { x: 0.72, y: 0.7, r: 0.1 }];
+  const inZone = (p) => !!p && ZONES.some((z) => Math.hypot(p.left / 100 - z.x, p.top / 100 - z.y) < z.r);
+  await c.pointerDrag(plantSel, 0.34, 0.86, '.pet-room--scene'); // aim at the cat home
+  const afterCat = await c.eval(plantPos);
+  await c.pointerDrag(plantSel, 0.64, 0.865, '.pet-room--scene'); // aim at the feeder
+  const afterFeeder = await c.eval(plantPos);
+  const safeOk = !!afterCat && !!afterFeeder && !inZone(afterCat) && !inZone(afterFeeder);
+  check('B41', safeOk, safeOk ? '' : `cat:${JSON.stringify(afterCat)} feeder:${JSON.stringify(afterFeeder)}`);
   await c.shot('room_placement_safe_zone');
 
-  // 42 · P1 EMPTY-STATE SEMANTICS (Founder video QA, defect 4) — with every owned prop
-  //      already placed, the tray is empty but the ROOM is not. The line must describe the
-  //      tray ("nothing new to place") and name the props that are in the room; it must
-  //      never read as "your room is empty" while the user's own props are on screen.
+  // 42 · TRAY HONESTY — the 꾸미기 tray tells the truth: a placed prop offers 치우기 (tap to
+  //      remove), and a form/reward-gated prop shows its gate (Lv.6 / 황금 리그) rather than a
+  //      fake unlock. Asserted on the rendered tray (still in 꾸미기 from B41).
   const trayState = await c.eval(`(() => {
-    const note = document.querySelector('.room-tray .hairline-note');
+    const items = [...document.querySelectorAll('.pr-tray-item')];
+    const tags = items.map((i) => { const t = i.querySelector('.pr-tray-tag'); return t ? t.textContent.trim() : null; });
     return {
-      trayItems: document.querySelectorAll('.room-tray-item').length,
-      placed: document.querySelectorAll('.room-card').length,
-      note: note ? note.textContent.trim() : null,
+      total: items.length,
+      placed: items.filter((i) => i.getAttribute('data-placed') === 'true').length,
+      gated: items.filter((i) => i.disabled).length,
+      hasRemove: tags.includes('치우기'),
+      hasGate: tags.some((t) => t && (t.includes('Lv.') || t.includes('리그'))),
     };
   })()`);
-  const emptyCopyOk =
-    trayState.trayItems === 0
-    && trayState.placed > 0
-    && typeof trayState.note === 'string'
-    && trayState.note.includes('새로 배치할 아이템이 없어요')
-    && trayState.note.includes(`방에 놓은 소품 ${trayState.placed}개는 그대로 있어요`)
-    && !trayState.note.startsWith('방에 놓을 아이템이 없어요');
-  check('B42', emptyCopyOk, emptyCopyOk ? '' : JSON.stringify(trayState));
-  await c.shot('room_tray_empty_copy');
+  const trayOk = trayState.total > 0 && trayState.placed >= 1 && trayState.hasRemove && trayState.hasGate;
+  check('B42', trayOk, trayOk ? '' : JSON.stringify(trayState));
+  await c.shot('room_tray_honesty');
 
   // 30 · The snack hand-off is a REAL visible motion that updates real state. Leave 배치
   //      mode, press 간식 놓아주기 → the snack token animates (data-active) and the fed state
@@ -1003,7 +993,7 @@ async function runFlow(c) {
   const dlUrge = await c.has('지금 멈추면'); // v13 urge title
   const dlUrgeText = await c.text();
   await c.goto(`${APP_URL}?from=shield&to=record`); await sleep(500);
-  const dlRecord = (await c.has('1분 기록')) || (await c.has('오늘의 기록'));
+  const dlRecord = (await c.has('오늘의 기록')) || (await c.has('오늘 하루')) || (await c.has('오늘 기록'));
   const dlRecordText = await c.text();
   await c.goto(`${APP_URL}?from=shield&to=bogus`); await sleep(500);
   const dlFallback = (await c.has('절제 항목')) && !(await c.has('지금 멈추면'));

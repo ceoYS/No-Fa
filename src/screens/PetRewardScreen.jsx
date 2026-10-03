@@ -1,7 +1,19 @@
 import { lazy, Suspense, useEffect, useRef, useState } from 'react';
-import PetRoomEditor from '../components/PetRoomEditor.jsx';
 import PetRoomDecorator from '../components/PetRoomDecorator.jsx';
 import PetSceneViewer, { CatStateSelector } from '../components/PetSceneViewer.jsx';
+import KittenHub from '../components/KittenHub.jsx';
+import GrowthRoadmap from '../components/GrowthRoadmap.jsx';
+import WeeklyLeague from '../components/WeeklyLeague.jsx';
+import LeagueLadder from '../components/LeagueLadder.jsx';
+import CommunityHub from '../components/CommunityHub.jsx';
+import GrowthCelebration from '../components/GrowthCelebration.jsx';
+import PetRoomV2 from '../components/PetRoomV2.jsx';
+import { useProgression } from '../hooks/useProgression.js';
+import { useLeague } from '../hooks/useLeague.js';
+import { useFutureDiaryShare } from '../hooks/useFutureDiaryShare.js';
+import { useCompanion } from '../hooks/useCompanion.js';
+import { useRoomV2 } from '../hooks/useRoomV2.js';
+import { consumeRoomView } from '../lib/roomNav.js';
 import usePetSound from '../hooks/usePetSound.js';
 import useDismissOnEscape from '../hooks/useDismissOnEscape.js';
 import {
@@ -120,6 +132,19 @@ function catDebugRequested() {
   }
 }
 
+// Deterministic/accelerated QA seam for the living companion: ?roomqa=1 speeds up the
+// autonomous roam cadence and shortens travel so a headless screenshot pass can observe a
+// roam without waiting the full restrained interval. Off in normal use.
+function roomQaRequested() {
+  if (typeof window === 'undefined') return false;
+  try {
+    const params = new URLSearchParams(window.location.search);
+    return params.get('roomqa') === '1';
+  } catch {
+    return false;
+  }
+}
+
 // Cat state machine timings (fixed, never random). A user action holds its pose
 // long enough to read as an answer, then the cat settles back to its default pose
 // on its own. The idle loop is much slower than either reaction so it never
@@ -223,6 +248,53 @@ export default function PetRewardScreen({
   const { play: playSound, muted, toggleMuted, hasSound } = usePetSound();
   // Esc closes whichever sheet (보관함 / 상점) is open — keyboard dismiss parity.
   useDismissOnEscape(sheet !== null, () => setSheet(null));
+
+  // V2 progression + weekly league (own-key stores). The 내 방 tab hosts an internal view
+  // router — Kitten Hub (EG-05, landing) → Pet Room (EG-11) / Growth roadmap (EG-06) /
+  // Weekly league (EG-09) / League ladder (EG-10) — so these surfaces exist WITHOUT touching
+  // App.jsx's screen list. Home entry points hand off the intended view via roomNav.
+  const prog = useProgression();
+  const league = useLeague();
+  // 영감(inspiration) public copies of the future diary — a self-owned store, separate from the
+  // private diary in App state. Passed into CommunityHub's 영감 tab.
+  const share = useFutureDiaryShare();
+  const [view, setView] = useState(() => consumeRoomView() ?? 'hub');
+
+  // V2 living room: persisted theme + decor (own store), and the ONE companion state machine.
+  // 백염 눈밤 is a league-reward theme, unlocked only after reaching the 백염 league.
+  const allowSnow = league.tier?.id === 'white';
+  const roomV2 = useRoomV2({ allowSnow });
+  const [roomQa] = useState(roomQaRequested);
+  const companion = useCompanion({
+    getSnackCount: () => inventory.snack ?? 0,
+    onConsumeSnack: onFeedSnack, // charges the ONE snack exactly once at feed start
+    occupied: roomV2.decor,
+    // ?roomqa=1 accelerates every autonomous cadence (roam / life tick / hunger / sleep) so a
+    // headless pass can OBSERVE the living behaviours without waiting the production intervals.
+    seam: roomQa
+      ? {
+          // Roam stays observable (fast cadence); hunger + sleep are driven ONLY by the
+          // deterministic force methods below, so an automated pass sees each state on demand
+          // without the two competing for the idle window.
+          roamEveryMs: 2600,
+          moveScale: 0.5,
+          lifeTickMs: 900,
+          hungerAfterMs: 900000,
+          sleepAfterMs: 900000,
+          requestCooldownMs: 1200,
+        }
+      : null,
+  });
+
+  // Deterministic QA seam (?roomqa=1): expose the companion's force methods so a headless pass can
+  // trigger the REAL hunger / sleep states on demand (no waiting hours). Off in normal use.
+  useEffect(() => {
+    if (!roomQa || typeof window === 'undefined') return undefined;
+    window.__nofRoom = { forceHunger: companion.forceHunger, forceSleep: companion.forceSleep };
+    return () => {
+      try { delete window.__nofRoom; } catch { /* ignore */ }
+    };
+  }, [roomQa, companion.forceHunger, companion.forceSleep]);
 
   useEffect(() => () => {
     clearTimeout(motionTimer.current);
@@ -359,6 +431,13 @@ export default function PetRewardScreen({
   const stageReady = petStageArtReady({ theme: activeRoomTheme, catState: catMotion, sceneMode });
   // The selected-item bar only makes sense for an item that's actually visible.
   const canControlSelected = selectedItem && !sceneMode && isItemSpriteReady(selectedItem.assetId);
+  // De-clutter (Founder): PetRoomV2 is the ONE user-facing decoration flow — its own 방 꾸미기
+  // tray places/persists decor (roomV2 store) and shows edit guides only while editing. The
+  // legacy shard decorator (placementMode → PetRoomDecorator) is retained ONLY for the
+  // debug-gated 3D experiment, which reuses placementMode to toggle its edit overlay. Its
+  // entry points render behind this flag, so the normal 2.5D room never shows a second
+  // competing editor beside PetRoomV2.
+  const legacyDecorEntry = room3d && !room3dBlocked;
   const feedCardMessage =
     tapMsg === NO_SNACK_MESSAGE
       ? NO_SNACK_MESSAGE
@@ -371,24 +450,23 @@ export default function PetRewardScreen({
   };
 
   const handleFeed = () => {
-    if (snackCount <= 0) {
+    // The ONE companion state machine runs the causal feed sequence (notice → approach the
+    // active-room feeder → down/chew/finish → settle) and charges the single snack EXACTLY
+    // once (onConsumeSnack = onFeedSnack). Zero inventory returns false: no charge, no
+    // approach, no fake feed — just the honest "no snack" line.
+    const started = companion.feed();
+    if (!started) {
       setTapMsg(NO_SNACK_MESSAGE);
       return;
     }
-    onFeedSnack?.();
     // Soft purr on a successful feed (gesture-triggered, silent if asset absent).
     playSound('purr');
-    // Visual hand-off cue — a snack token rises toward the scene (a delivery, not
-    // a feeding motion).
+    // Visual hand-off cue — a snack token rises toward the scene (a delivery, not a motion).
     triggerSnackToss();
-    // …and the cat answers the snack with its 기쁨 pose before settling back.
+    // Legacy 2.5D reaction pose (guarded); the V2 scene above shows the real feed sequence.
     reactCat('happy', CAT_HAPPY_MS);
-    if (sceneMode) {
-      setTapMsg(SCENE_FEED_MESSAGE);
-      triggerSceneReaction();
-      return;
-    }
-    triggerMotion('happy', 1600);
+    setTapMsg(SCENE_FEED_MESSAGE);
+    triggerSceneReaction();
   };
 
   // 쓰다듬기 (놀아주기): record the affection (App stamps a day-scoped count) and answer
@@ -397,16 +475,15 @@ export default function PetRewardScreen({
   // reacts on its own (the optional 3D rig answers only this direct gesture).
   const handlePet = () => {
     onPetPet?.();
+    // The companion answers 쓰다듬기 with its visible reaction pose + hearts, then settles —
+    // interrupting any roam safely. This is the ONLY path to a pet reaction (never autonomous).
+    companion.pet();
     playSound('purr'); // gesture-triggered, silent until a real audio file is wired
     triggerAffectionToss();
-    // A different answer from the snack's 기쁨: petting settles the cat into 휴식.
+    // A different answer from the snack's 기쁨: petting settles the cat into 휴식 (legacy, guarded).
     reactCat('rest', CAT_PET_MS);
     setTapMsg(PET_MESSAGE);
-    if (sceneMode) {
-      triggerSceneReaction();
-      return;
-    }
-    triggerMotion('happy', 1200);
+    triggerSceneReaction();
   };
 
   // Cat tap — reached from the 2.5D stage's scene tap AND, in the 3D
@@ -440,12 +517,96 @@ export default function PetRewardScreen({
     triggerMotion('happy', 1600);
   };
 
+  // Growth celebration (EG-07) — a one-shot modal shown over ANY 내 방 view when the kitten
+  // has crossed a growth-form threshold that has not yet been acknowledged (durable, no replay).
+  const celebration = prog.pendingCelebration ? (
+    <GrowthCelebration
+      form={prog.pendingCelebration}
+      kittenName={prog.kittenName}
+      onAcknowledge={prog.acknowledgeCelebration}
+      onGoRoom={() => {
+        prog.acknowledgeCelebration();
+        setView('room');
+      }}
+    />
+  ) : null;
+
+  // Internal view router (no App.jsx change). Hub is the landing (design EG-05); the pet
+  // room + reward economy is the 'room' view below.
+  if (view === 'hub') {
+    return (
+      <>
+        <KittenHub
+          kittenName={prog.kittenName}
+          level={prog.level}
+          form={prog.form}
+          nextForm={prog.nextForm}
+          progress={prog.progress}
+          accessories={prog.accessories}
+          equippedAccessories={prog.equippedAccessories}
+          daysTogether={prog.daysTogether}
+          onEnterRoom={() => setView('room')}
+          onGrowth={() => setView('growth')}
+          onLeague={() => setView('community')}
+          onToggleAccessory={prog.toggleAccessory}
+        />
+        {celebration}
+      </>
+    );
+  }
+  if (view === 'growth') {
+    return (
+      <>
+        <GrowthRoadmap
+          xp={prog.xp}
+          form={prog.form}
+          progress={prog.progress}
+          recordedToday={todayRecord?.checkin != null}
+          onBack={() => setView('hub')}
+          onRecord={() => onNavigate?.('checkin')}
+        />
+        {celebration}
+      </>
+    );
+  }
+  if (view === 'league') {
+    return (
+      <>
+        <WeeklyLeague league={league} onBack={() => setView('hub')} onLadder={() => setView('ladder')} />
+        {celebration}
+      </>
+    );
+  }
+  if (view === 'ladder') {
+    return (
+      <>
+        <LeagueLadder league={league} onBack={() => setView('league')} />
+        {celebration}
+      </>
+    );
+  }
+  if (view === 'community') {
+    return (
+      <>
+        <CommunityHub
+          league={league}
+          share={share}
+          onBack={() => setView('hub')}
+          onOpenLeague={() => setView('league')}
+        />
+        {celebration}
+      </>
+    );
+  }
+
   return (
-    <div className="screen">
+    <div className="v2-screen eg-form pet-room-screen">
+      {celebration}
       <header className="screen-header">
         <div>
           <p className="screen-greeting">함께 지나온 시간이 머무는 곳</p>
           <h1 className="screen-title">고양이 방</h1>
+          <button type="button" className="eg-room-back" onClick={() => setView('hub')}>← 내 고양이</button>
         </div>
         <div className="room-header-side">
           {/* Only render the 소리/무음 toggle once real audio is confirmed present.
@@ -499,6 +660,29 @@ export default function PetRewardScreen({
         </section>
       ) : null}
 
+      {/* V2 LIVING ROOM (Slice 3 · EG-11/12/13) — the primary stage. The kitten really
+          walks/roams/reacts here via the ONE companion state machine over the approved V2
+          sprites; the feeder does a real empty↔full swap; decor + theme persist (useRoomV2).
+          Hidden during the legacy shard-decorator (placementMode) and the 3D experiment. */}
+      {!placementMode && !(room3d && !room3dBlocked) ? (
+        <PetRoomV2
+          companion={companion}
+          kittenName={prog.kittenName}
+          emberShards={emberShards}
+          level={prog.level}
+          theme={roomV2.theme}
+          themeId={roomV2.themeId}
+          onSetTheme={roomV2.setTheme}
+          allowSnow={allowSnow}
+          decor={roomV2.decor}
+          onAddDecor={roomV2.addDecor}
+          onPlaceDecor={roomV2.placeDecor}
+          onRemoveDecor={roomV2.removeDecor}
+          onTapCat={() => playSound('meow')}
+          onPlayToy={() => playSound('meow')}
+        />
+      ) : null}
+
       {/* 3D experiment stage — mounted OUTSIDE the placementMode branch so ONE
           canvas (and one camera pose) serves both 감상 and 꾸미기. Toggling
           아이템 배치하기 only switches PetRoom3D's edit overlay (tray / hints /
@@ -542,29 +726,17 @@ export default function PetRewardScreen({
         )
       ) : (
         <>
-          {room3d && !room3dBlocked ? null : (
-            <PetRoomEditor
-              theme={activeRoomTheme}
-              placements={placements}
-              tone="bright"
-              catMotion={catMotion}
-              catState={catState}
-              selectedId={selectedId}
-              onSelect={setSelectedId}
-              onMove={onMoveItem}
-              onPlaceAt={onPlaceItemAt}
-              onCatTap={handleCatTap}
-              sceneMode={sceneMode}
-              reacting={sceneReacting}
-              label="지금 꾸미는 고양이 방"
-            />
-          )}
+          {/* The old still-composite PetRoomEditor stage is superseded by the V2 living room
+              above (PetRoomV2). The legacy shard-item decorator (PetRoomDecorator, below)
+              and the shard economy remain as secondary 방 관리. PetRoomEditor.jsx itself is
+              left untouched (its honesty guards still hold); it is simply no longer the view
+              stage now that real gait art exists. */}
 
-          {/* SECONDARY to the objects themselves. The placed props are now drawn in the
-              room above (PlacedDecorLayer), so this row no longer stands in for them —
-              it is just the shortcut back into 배치, and it names the count so the user
-              can tell at a glance that nothing was dropped. */}
-          {placements.length > 0 ? (
+          {/* SECONDARY to the objects themselves. LEGACY, debug-gated: this shard-decorator
+              shortcut back into 배치 now renders only under the 3D experiment (legacyDecorEntry).
+              In the normal 2.5D flow PetRoomV2's own 방 꾸미기 is the single decoration entry, so
+              this row never competes with it. It names the legacy placement count when shown. */}
+          {legacyDecorEntry && placements.length > 0 ? (
             <button
               type="button"
               className="v13-card v13-card--flat v13-flat-row"
@@ -614,13 +786,18 @@ export default function PetRewardScreen({
             </p>
           )}
 
-          <button
-            type="button"
-            className="btn btn-ghost btn-block placement-enter-btn"
-            onClick={() => setPlacementMode(true)}
-          >
-            아이템 배치하기
-          </button>
+          {/* LEGACY, debug-gated. The normal room's decoration entry is PetRoomV2's own
+              방 꾸미기 (above); this legacy shard-decorator entry appears only under the 3D
+              experiment so it never stacks a second editor onto the normal flow. */}
+          {legacyDecorEntry ? (
+            <button
+              type="button"
+              className="btn btn-ghost btn-block placement-enter-btn"
+              onClick={() => setPlacementMode(true)}
+            >
+              아이템 배치하기
+            </button>
+          ) : null}
         </>
       )}
 
@@ -776,7 +953,7 @@ export default function PetRewardScreen({
             return (
               <div className="row-between reward-row" data-claimed={claimed} key={m.id}>
                 <div>
-                  <div style={{ color: 'var(--text-primary)' }}>{m.label} 달성</div>
+                  <div style={{ color: 'var(--eg-text)', fontWeight: 700 }}>{m.label} 달성</div>
                   <div className="hairline-note">
                     {claimed ? '이미 받은 보상이에요.' : milestoneReward(m.kind, m.amount)}
                   </div>
@@ -797,7 +974,7 @@ export default function PetRewardScreen({
           {lockedNext ? (
             <div className="row-between reward-row" data-locked="true" key={lockedNext.id}>
               <div>
-                <div style={{ color: 'var(--text-secondary)' }}>{lockedNext.label} 달성</div>
+                <div style={{ color: 'var(--eg-text-2)' }}>{lockedNext.label} 달성</div>
                 <div className="hairline-note">
                   {streakIsReal
                     ? '아직 받을 수 없어요. 오늘을 채우면 열려요.'

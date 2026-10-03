@@ -46,3 +46,19 @@ design_outputs/claude_design_v3/*.html
 # Chrome-generated debris from loading the unpacked chrome-shield extension
 # (indexed rulesets etc.) — regenerated locally on each load, never commit
 extensions/chrome-shield/_metadata/
+
+# Production adult blocklist (RC-17 P0). The repo keeps ONLY the harmless fixture
+# (protected rule #5: no real adult domains/terms in source). The real list is a
+# release-time artifact — fetched, normalized, and compiled by the developer, then
+# packaged into the distributed extension zip. It must NEVER be committed here.
+extensions/chrome-shield/data/.sources/
+extensions/chrome-shield/data/adult-domains.production.json
+extensions/chrome-shield/blocklist-rules.production.json
+extensions/chrome-shield/blocklist-meta.production.js
+
+# Server secrets (RC-17). Belt-and-suspenders over the .env rules above.
+supabase/.env
+supabase/functions/**/.env
+
+# Supabase CLI local linked-project/runtime metadata — machine-local, never commit
+supabase/.temp/

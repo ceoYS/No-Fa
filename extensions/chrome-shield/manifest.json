@@ -32,6 +32,11 @@
         "id": "nof_static_rules",
         "enabled": true,
         "path": "rules.json"
+      },
+      {
+        "id": "nof_bundled_blocklist",
+        "enabled": false,
+        "path": "blocklist-rules.json"
       }
     ]
   },

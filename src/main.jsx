@@ -5,6 +5,7 @@ import ErrorBoundary from './components/ErrorBoundary.jsx';
 import './styles/tokens.css';
 import './styles/components.css';
 import './styles/c2a-polish.css';
+import './styles/v2-ember.css';
 
 ReactDOM.createRoot(document.getElementById('root')).render(
   <React.StrictMode>

@@ -1,0 +1,26 @@
+[
+  {
+    "id": 1,
+    "priority": 1,
+    "action": {
+      "type": "redirect",
+      "redirect": {
+        "extensionPath": "/blocked.html"
+      }
+    },
+    "condition": {
+      "requestDomains": [
+        "another-fixture-adult.test",
+        "blocked-fixture-adult.test",
+        "fixture-gambling.test",
+        "fixture-subdomain-root.test",
+        "high-risk-fixture.test",
+        "nof-fixture-block.invalid",
+        "sample-explicit-fixture.example"
+      ],
+      "resourceTypes": [
+        "main_frame"
+      ]
+    }
+  }
+]

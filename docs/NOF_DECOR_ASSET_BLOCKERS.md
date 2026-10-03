@@ -93,3 +93,54 @@ These are code-level and shipped in the follow-up pass:
 - the placement tray's empty state describes the TRAY, not the room
 
 None of those touch the two YES flags at the top of this file.
+
+---
+
+## V2 update (2026-08-31) — the Companion Asset Pack resolves blockers 1–3
+
+Status date: 2026-08-31
+Recorded from: company HOME-parity reconstruction (Slice 3 living pet room)
+Asset authority: `NoF_Cat_Pack_1..4` → `public/assets/v2/` (37 transparent cat sprites,
+9 transparent props, one clean 4:3 room plate). Verified by direct image inspection.
+
+```
+V2_CLEAN_ROOM_PLATE            = PRESENT   (public/assets/v2/room-clean.webp, 1200×900, RGB, no baked feeder/decor/cat)
+V2_TRANSPARENT_DECOR_SPRITES   = PRESENT   (bed/rug/lamp/plant/mouse/yarn/house, 512² RGBA)
+V2_TRANSPARENT_FEEDER_SPRITES  = PRESENT   (feeder-empty + feeder-full, 512² RGBA)
+V2_WALK_CYCLE_ART              = PRESENT   (walk-1..6, 512² RGBA — candidate key poses, D-5)
+```
+
+The V2 living room (`PetRoomV2` + `useCompanion`) is a SEPARATE path from the pinned
+still-composite `PetRoomEditor`; it uses the V2 pack, so blockers 1–3 above do NOT apply to
+it:
+
+- **Feeder empty→full is HONEST here (not blocked).** `room-clean.webp` has NO baked feeder
+  (confirmed by inspection); the feeder is a separate transparent prop, and `feeder-empty` ↔
+  `feeder-full` are two real sprites. Feeding swaps them — a genuine empty→full→empty cycle,
+  not a fake claim. (This is the opposite of the HOME finding, where the plate had a baked
+  full feeder; that finding was for the OLD plates, not the V2 plate.)
+- **Real placement is honest here.** Transparent decor sprites exist, so `PetRoomV2` places
+  them at normalized floor points (never over the cat/feeder — `SAFE_ZONES`), persisted in
+  `nof.roomv2.v1`. No `spriteReady:true` was raised on the OLD `petAssets` items; the V2 path
+  simply uses a different, genuinely-transparent registry (`companionAssets`).
+- **Real locomotion is honest here.** The kitten walks with multiple approved gait frames
+  (`WALK_GAIT`) while its foot point really translates across the 4:3 floor; left-facing is a
+  scaleX mirror of the right-facing frames. The pinned `PetRoomEditor` still never translates.
+
+### V2 Blocker A — only ONE approved room PLATE exists
+
+The V2 authority ships exactly one room background: `room-clean.webp` (warm walnut, 4:3).
+There is NO separate 새벽 창가 or 백염 눈밤 plate, and art must not be generated. So the theme
+picker applies a REAL, persistent lighting/atmosphere treatment over the one approved plate
+(a genuine, durable rendered change — see `.pet-room-grade--dawn/snow`), NOT a claim of a
+different photograph. Honest maximum given the authority. **What is required to make themes
+distinct photographs:** approved dawn / snow room plates at the same 1200×900 4:3 framing.
+
+### V2 Blocker B — no standalone accessory sprites
+
+The unlocked decorations (리본 @ 씩씩한 탐험가 / 하트 참 @ 잔불 수호자) are baked INTO the
+evolution art (`evo-4`, `evo-5`); the pack has no separate ribbon / heart-charm overlay
+sprites. So the hub's accessory equip is a stored, visibly-toggling preference (착용 / 착용 중
+chip state) — it is NOT presented as a live cat-sprite costume swap, which would need overlay
+art that does not exist. Unlock stays monotonic; equip is separate; nothing fakes a visual the
+art can't deliver.

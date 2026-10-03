@@ -1,0 +1,17 @@
+{
+  "schema": "nof.blocklist/v1",
+  "version": 1,
+  "listType": "fixture",
+  "updatedAt": "2026-09-21",
+  "note": "NoF 실드 번들 차단 목록 — 로컬(Chrome)에서만 평가한다. 도메인만 담는다(자격증명·방문기록 없음). 이 파일은 아직 FIXTURE(테스트 전용)다: 아래 도메인은 모두 RFC 6761 예약 TLD(.test/.example/.invalid)라 실제로 존재하지 않는다. 실제 성인/고위험 도메인은 이 저장소에 담지 않는다(보호 규칙 #5). 프로덕션 목록이 제공되면 listType 를 'production' 으로 바꾸고 domains 를 교체한 뒤 `npm run build:blocklist` 로 blocklist-rules.json 을 다시 만든다.",
+  "matching": "requestDomains — 나열된 도메인과 그 하위 도메인(www., m. 등)만 정확히 매칭한다. 부분 문자열 매칭이 아니라 관련 없는 도메인을 함께 막지 않는다.",
+  "domains": [
+    "blocked-fixture-adult.test",
+    "another-fixture-adult.test",
+    "high-risk-fixture.test",
+    "sample-explicit-fixture.example",
+    "fixture-gambling.test",
+    "fixture-subdomain-root.test",
+    "nof-fixture-block.invalid"
+  ]
+}

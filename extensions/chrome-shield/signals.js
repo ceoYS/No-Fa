@@ -34,7 +34,9 @@ export function buildDynamicRules(signals = []) {
     .filter((s) => s && typeof s.token === 'string' && s.token.trim().length > 0)
     .map((s, i) => ({
       id: DYNAMIC_ID_START + i,
-      priority: 1,
+      // 사용자 차단(동적)은 priority 2 — 번들 기본 보호(정적, priority 1)보다 위, 허용목록(allow,
+      // priority 3)보다 아래. 그래서 우선순위는 허용목록 > 사용자 차단 > 번들 기본 보호가 된다.
+      priority: 2,
       action: { type: 'redirect', redirect: { extensionPath: '/blocked.html' } },
       condition: {
         urlFilter: s.token.trim(),

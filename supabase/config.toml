@@ -1,0 +1,25 @@
+# NoF RC-17 — Supabase project config (local dev + function auth settings). The hosted project id is
+# provisioned by the Founder (see docs/RC17_PROVISIONING.md); replace project_id there / via CLI link.
+project_id = "nof"
+
+[auth]
+enabled = true
+# Anonymous sign-in is the public identity (founder P1-A: no real name). Must also be enabled in the
+# hosted dashboard (Authentication → Providers → Anonymous) for production.
+enable_anonymous_sign_ins = true
+
+[functions.moderate-content]
+verify_jwt = true
+
+[functions.publish-shout]
+verify_jwt = true
+
+[functions.publish-future-diary-share]
+verify_jwt = true
+
+[functions.generate-future-image]
+verify_jwt = true
+
+# Cleanup runs from a scheduler with a shared secret header, not a user JWT.
+[functions.plaza-cleanup]
+verify_jwt = false

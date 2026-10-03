@@ -30,6 +30,14 @@ import {
   getSavedExtensionId,
   saveExtensionId,
 } from '../lib/chromeExtensionBridge.js';
+import { useShieldProtection } from '../hooks/useShieldProtection.js';
+import {
+  PROTECTION_MODES,
+  MODE_LABEL,
+  MODE_HELP,
+  PRIVACY_NOTE,
+  bundledStatusView,
+} from '../constants/protection.js';
 
 const TEST_SIGNAL = 'nof-test-risk-signal';
 const TEST_EXAMPLE = 'https://example.com/?q=nof-test-risk-signal';
@@ -78,6 +86,41 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
   // optimistically, so the stepper can never show connected / applied / complete it did not earn.
   const [ruleApplied, setRuleApplied] = useState(false);
   const [testGuided, setTestGuided] = useState(false);
+
+  // P0 기본 보호 — mode + allowlist + custom block, owned by useShieldProtection (its own store,
+  // no App.jsx coupling). It saves the preference locally and syncs the COMPLETE desired state to
+  // this Chrome's extension; `protection.status` is only ever the REAL GET_STATUS reply, so nothing
+  // below claims protection is on without a real answer. The bundled 기본 보호 list is a FIXTURE
+  // today (test values), so when it is on we say (테스트 목록) and never claim it blocks real 성인 사이트.
+  const protection = useShieldProtection();
+  const [allowInput, setAllowInput] = useState('');
+  const [allowMsg, setAllowMsg] = useState('');
+  const [customInput, setCustomInput] = useState('');
+  const [customMsg, setCustomMsg] = useState('');
+
+  const submitAllow = () => {
+    const ok = protection.addAllow(allowInput);
+    if (ok) {
+      setAllowInput('');
+      setAllowMsg('');
+    } else {
+      setAllowMsg('이 값은 허용 목록에 넣을 수 없어요. example.com 처럼 적어요.');
+    }
+  };
+  const submitCustom = () => {
+    const ok = protection.addUserBlock(customInput);
+    if (ok) {
+      setCustomInput('');
+      setCustomMsg('');
+    } else {
+      setCustomMsg('이 값은 차단 목록에 넣을 수 없어요. example.com 처럼 적어요.');
+    }
+  };
+
+  const ps = protection.status; // REAL GET_STATUS reply, or null when not connected
+  const psBundledOn = !!ps?.defaultProtection;
+  const psBundledCount = ps?.bundled?.domainCount ?? 0;
+  const psApplied = (psBundledOn ? psBundledCount : 0) + (ps?.userBlockCount ?? 0);
 
   // Real DOM anchors so the guided stepper's "바로 가기" buttons can scroll the user to the
   // matching card below (a real scrollIntoView, never a fake navigation).
@@ -233,6 +276,160 @@ export default function ShieldExtensionScreen({ onNavigate, blocklist = [] }) {
           테스트용 Chrome 확장이 맡아요. 둘은 아직 자동으로 이어져 있지 않아요.
         </p>
         <p className="hairline-note shield-safety-note">해롭지 않은 테스트 신호만 사용해요.</p>
+      </section>
+
+      {/* P0 기본 보호 — the product protection modes for THIS Chrome (보호 끔 / 기본 보호 / 사용자 지정
+          보호), the allowlist (a user allow always wins over 기본 보호), and, in 사용자 지정, custom
+          block values. Owned by useShieldProtection: it saves the preference locally and syncs the
+          COMPLETE desired state to the extension. Status is only ever a REAL GET_STATUS reply — nothing
+          claims protection is on without a real answer. The bundled list is a FIXTURE (test values)
+          today, so when it is on we say (테스트 목록) and never claim it blocks real 성인 사이트. It lives
+          here, not on the Shield dashboard, because this is the one Shield surface allowed concrete terms. */}
+      <section className="card shield-protection-modes">
+        <div className="card-row">
+          <span className="card-label">기본 보호</span>
+          <span className="pill shield-tag">이 기기 Chrome 차단</span>
+        </div>
+        <p className="hairline-note">이 Chrome에서 켤 보호 방식을 골라요.</p>
+
+        <div className="shield-kind-row" role="group" aria-label="보호 방식 고르기">
+          {PROTECTION_MODES.map((m) => (
+            <button
+              key={m}
+              type="button"
+              className="shield-chip"
+              data-selected={protection.mode === m}
+              aria-pressed={protection.mode === m}
+              onClick={() => protection.setMode(m)}
+            >
+              {MODE_LABEL[m]}
+            </button>
+          ))}
+        </div>
+        <p className="hairline-note text-quiet">{MODE_HELP[protection.mode]}</p>
+
+        {protection.connected ? (
+          protection.mode === 'off' ? (
+            <p className="hairline-note" aria-live="polite">
+              보호를 껐어요. 잠깐 멈춤 같은 다른 도움은 그대로 쓸 수 있어요.
+            </p>
+          ) : (
+            (() => {
+              // RC-17 P0-C — headline/label derived from the REAL GET_STATUS reply only. The
+              // production "기본 유해사이트 보호 켜짐" claim is gated inside bundledStatusView
+              // (listType==='production' && defaultProtection && capacity OK); a fixture list says
+              // "테스트 목록", an over-capacity list says it could not be turned on (fail closed).
+              const view = bundledStatusView(ps);
+              if (view.state === 'capacity_insufficient') {
+                return (
+                  <>
+                    <p className="hairline-note" aria-live="polite">{view.headline}</p>
+                    <p className="hairline-note text-quiet">{view.note}</p>
+                  </>
+                );
+              }
+              return (
+                <>
+                  <p className="hairline-note" aria-live="polite">
+                    {view.headline} · 차단 규칙 {psApplied}개 적용됨
+                    {(ps?.allowlistCount ?? 0) > 0 ? ` · 허용 ${ps.allowlistCount}개` : ''}.
+                  </p>
+                  {view.note ? <p className="hairline-note text-quiet">{view.note}</p> : null}
+                </>
+              );
+            })()
+          )
+        ) : (
+          <p className="hairline-note text-quiet" aria-live="polite">
+            아직 Chrome 확장이 연결되지 않아 저장만 돼요. 아래에서 연결하면 이 설정이 이 브라우저에 적용돼요.
+          </p>
+        )}
+
+        {/* 허용 목록 — 내가 허용한 곳은 기본 보호·사용자 차단보다 먼저다(allow > block). */}
+        <div className="shield-allowlist">
+          <label className="field-label" htmlFor="shield-allow-value">내가 허용할 곳</label>
+          <p className="hairline-note text-quiet">내가 허용한 곳은 기본 보호보다 먼저 열려요.</p>
+          <input
+            id="shield-allow-value"
+            type="text"
+            className="sheet-input"
+            value={allowInput}
+            onChange={(e) => setAllowInput(e.target.value.trim())}
+            placeholder="예: example.com"
+            maxLength={120}
+            autoCapitalize="none"
+            autoCorrect="off"
+            spellCheck={false}
+          />
+          <button type="button" className="btn btn-ghost btn-block" onClick={submitAllow}>
+            허용 목록에 더하기
+          </button>
+          {allowMsg ? <p className="hairline-note text-quiet" aria-live="polite">{allowMsg}</p> : null}
+          {protection.allowlist.length > 0 ? (
+            <ul className="shield-entry-list">
+              {protection.allowlist.map((d) => (
+                <li className="shield-entry-row" key={d}>
+                  <span className="shield-entry-label"><code>{d}</code></span>
+                  <button
+                    type="button"
+                    className="shield-entry-remove"
+                    aria-label={`${d} 허용에서 빼기`}
+                    onClick={() => protection.removeAllow(d)}
+                  >
+                    빼기
+                  </button>
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="hairline-note text-quiet">아직 허용한 곳이 없어요.</p>
+          )}
+        </div>
+
+        {/* 사용자 지정 차단 — 사용자 지정 보호에서만 보인다(기본 보호 + 내가 더한 차단). */}
+        {protection.mode === 'custom' ? (
+          <div className="shield-customblock">
+            <label className="field-label" htmlFor="shield-custom-value">내가 더할 차단</label>
+            <p className="hairline-note text-quiet">직접 확인한 곳만 이 Chrome 차단 규칙에 더해요.</p>
+            <input
+              id="shield-custom-value"
+              type="text"
+              className="sheet-input"
+              value={customInput}
+              onChange={(e) => setCustomInput(e.target.value.trim())}
+              placeholder="예: example.com"
+              maxLength={120}
+              autoCapitalize="none"
+              autoCorrect="off"
+              spellCheck={false}
+            />
+            <button type="button" className="btn btn-ghost btn-block" onClick={submitCustom}>
+              차단 목록에 더하기
+            </button>
+            {customMsg ? <p className="hairline-note text-quiet" aria-live="polite">{customMsg}</p> : null}
+            {protection.userBlocks.length > 0 ? (
+              <ul className="shield-entry-list">
+                {protection.userBlocks.map((d) => (
+                  <li className="shield-entry-row" key={d}>
+                    <span className="shield-entry-label"><code>{d}</code></span>
+                    <button
+                      type="button"
+                      className="shield-entry-remove"
+                      aria-label={`${d} 차단에서 빼기`}
+                      onClick={() => protection.removeUserBlock(d)}
+                    >
+                      빼기
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="hairline-note text-quiet">아직 더한 차단이 없어요.</p>
+            )}
+          </div>
+        ) : null}
+
+        <p className="hairline-note shield-safety-note">{PRIVACY_NOTE}</p>
       </section>
 
       {/* RC-9 — "3분 보호 설정" guided stepper. Orchestrates the proven RC-7 + RC-8 cards below
